@@ -1,0 +1,8 @@
+{
+  "name": "EcoEvents",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite",
+  "id": "b58c3091"
+}
