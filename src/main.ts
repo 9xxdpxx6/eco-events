@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router';
 
@@ -34,10 +35,51 @@ import '@ionic/vue/css/palettes/dark.system.css';
 /* Theme variables */
 import './theme/variables.css';
 
+import { useAuthStore } from './stores/auth';
+
+const pinia = createPinia();
+
 const app = createApp(App)
   .use(IonicVue)
+  .use(pinia)
   .use(router);
 
+// Инициализируем authStore после настройки Pinia
+const authStore = useAuthStore();
+
+// Сначала синхронно проверяем токен в localStorage
+const token = localStorage.getItem('token');
+if (token) {
+  console.log('🔍 Найден токен в localStorage, устанавливаем предварительную авторизацию');
+  
+  // Получаем сохраненный тип пользователя
+  const savedUserType = localStorage.getItem('userType');
+  console.log('📱 Сохраненный тип пользователя из localStorage:', savedUserType);
+  
+  let userType: 'volunteer' | 'organization' = 'volunteer';
+  if (savedUserType === 'organization') {
+    userType = 'organization';
+  }
+  
+  console.log('✅ Устанавливаем предварительные данные пользователя:', {
+    token: token.substring(0, 10) + '...',
+    userType: userType
+  });
+  
+  authStore.$patch({
+    token: token,
+    isAuthenticated: true,
+    user: { id: 1, email: 'qwe', type: userType },
+    isAuthLoading: false
+  });
+}
+
+// Выполняем полную проверку авторизации асинхронно
+authStore.checkAuth().finally(() => {
+  console.log('✅ Проверка авторизации завершена');
+});
+
+// Монтируем приложение сразу
 router.isReady().then(() => {
   app.mount('#app');
 });
