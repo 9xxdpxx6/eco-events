@@ -12,6 +12,9 @@
     </ion-header>
     
     <ion-content>
+      <!-- Поиск по ключевому слову -->
+      <ion-searchbar v-model="searchText" placeholder="Поиск мероприятий..." clear-input></ion-searchbar>
+
       <!-- Статистика организации -->
       <ion-card>
         <ion-card-content>
@@ -23,10 +26,6 @@
             <div class="stat-item">
               <span class="stat-number">{{ upcomingEventsCount }}</span>
               <span class="stat-label">Предстоящие</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-number">{{ totalParticipants }}</span>
-              <span class="stat-label">Участников</span>
             </div>
           </div>
         </ion-card-content>
@@ -52,35 +51,28 @@
       </div>
 
       <ion-list v-else-if="filteredEvents.length > 0">
-        <ion-item v-for="event in filteredEvents" :key="event.id">
+        <ion-item v-for="event in filteredEvents" :key="event.id ?? Math.random()" class="event-card-vertical" @click="viewEventDetails(Number(event.id))" button>
           <ion-thumbnail slot="start">
-            <img :src="event.image || '/assets/default-event.jpg'" />
+            <img :src="'/assets/default-event.jpg'" />
           </ion-thumbnail>
-          
           <ion-label>
             <h2>{{ event.title }}</h2>
-            <p>{{ formatDate(event.date) }}</p>
+            <p>{{ formatDate(event.startTime) }}</p>
             <p>{{ event.location }}</p>
-            
             <div class="event-stats">
               <ion-chip color="primary">
                 <ion-icon :icon="peopleOutline" />
-                <ion-label>{{ event.participantsCount || 0 }} участников</ion-label>
               </ion-chip>
               <ion-chip :color="getEventStatusColor(event)">
                 <ion-label>{{ getEventStatus(event) }}</ion-label>
               </ion-chip>
             </div>
           </ion-label>
-          
-          <div slot="end" class="event-actions">
-            <ion-button fill="clear" @click="viewEventDetails(event.id)">
-              <ion-icon :icon="eyeOutline" />
-            </ion-button>
-            <ion-button fill="clear" @click="editEvent(event.id)">
+          <div class="event-actions-vertical" @click.stop>
+            <ion-button fill="clear" @click="editEvent(Number(event.id))">
               <ion-icon :icon="createOutline" />
             </ion-button>
-            <ion-button fill="clear" color="danger" @click="deleteEvent(event)">
+            <ion-button fill="clear" color="danger" @click="confirmDeleteEvent(event)">
               <ion-icon :icon="trashOutline" />
             </ion-button>
           </div>
@@ -98,8 +90,8 @@
         </ion-button>
       </div>
 
-      <!-- Floating Action Button -->
-      <ion-fab vertical="bottom" horizontal="end">
+      <!-- FAB теперь фиксирован -->
+      <ion-fab vertical="bottom" horizontal="end" slot="fixed">
         <ion-fab-button @click="createEvent">
           <ion-icon :icon="addOutline"></ion-icon>
         </ion-fab-button>
@@ -109,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   IonPage,
@@ -133,7 +125,8 @@ import {
   IonFab,
   IonFabButton,
   alertController,
-  toastController
+  toastController,
+  IonSearchbar
 } from '@ionic/vue';
 import {
   addOutline,
@@ -141,33 +134,36 @@ import {
   peopleOutline,
   eyeOutline,
   createOutline,
-  trashOutline
+  trashOutline,
+  searchOutline
 } from 'ionicons/icons';
-import { ApiService } from '../services/apiService';
+import { useEventsStore, useAuthStore } from '../stores';
+import type { EventDTO } from '../types/api';
 
 const router = useRouter();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
+const authStore = useAuthStore();
 
-const events = ref<any[]>([]);
-const filteredEvents = ref<any[]>([]);
+const events = ref<EventDTO[]>([]);
+const filteredEvents = ref<EventDTO[]>([]);
 const selectedFilter = ref('all');
 const isLoading = ref(false);
+const page = ref(0);
+const size = 50;
+const searchText = ref('');
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const upcomingEventsCount = computed(() => {
   const now = new Date();
-  return events.value.filter(event => new Date(event.date) > now).length;
+  return events.value.filter((event: EventDTO) => new Date(event.startTime) > now).length;
 });
 
-const totalParticipants = computed(() => {
-  return events.value.reduce((sum, event) => sum + (event.participantsCount || 0), 0);
-});
-
-const loadEvents = async () => {
+const loadEvents = async (hotSearch = false) => {
   isLoading.value = true;
   try {
-    // Здесь будет запрос на получение мероприятий организации
-    const data = await apiService.getEvents();
-    events.value = Array.isArray(data) ? data : [];
+    const organizerId = authStore.user?.id;
+    await eventsStore.fetchEventsSearch(searchText.value, page.value, size);
+    events.value = eventsStore.getEvents;
     filterEvents();
   } catch (error) {
     console.error('Error loading events:', error);
@@ -185,19 +181,50 @@ const loadEvents = async () => {
 const filterEvents = () => {
   let filtered = [...events.value];
   const now = new Date();
-
   switch (selectedFilter.value) {
     case 'upcoming':
-      filtered = filtered.filter(event => new Date(event.date) > now);
+      filtered = filtered.filter((event: EventDTO) => new Date(event.startTime) > now);
       break;
     case 'past':
-      filtered = filtered.filter(event => new Date(event.date) <= now);
+      filtered = filtered.filter((event: EventDTO) => new Date(event.startTime) <= now);
       break;
   }
-
-  // Сортировка по дате
-  filtered.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  filtered.sort((a: EventDTO, b: EventDTO) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   filteredEvents.value = filtered;
+};
+
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+};
+
+const getEventStatus = (event: EventDTO) => {
+  const now = new Date();
+  const eventDate = new Date(event.startTime);
+  
+  if (eventDate < now) {
+    return 'Завершено';
+  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+    return 'Скоро';
+  } else {
+    return 'Запланировано';
+  }
+};
+
+const getEventStatusColor = (event: EventDTO) => {
+  const now = new Date();
+  const eventDate = new Date(event.startTime);
+  
+  if (eventDate < now) {
+    return 'medium';
+  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+    return 'warning';
+  } else {
+    return 'success';
+  }
 };
 
 const createEvent = () => {
@@ -209,10 +236,11 @@ const editEvent = (eventId: number) => {
 };
 
 const viewEventDetails = (eventId: number) => {
-  router.push(`/event-details/${eventId}`);
+  router.push(`/event/${eventId}`);
 };
 
-const deleteEvent = async (event: any) => {
+const deleteEvent = async (event: EventDTO) => {
+  if (!event.id) return;
   const alert = await alertController.create({
     header: 'Удалить мероприятие',
     message: `Вы уверены, что хотите удалить "${event.title}"? Это действие нельзя отменить.`,
@@ -226,7 +254,8 @@ const deleteEvent = async (event: any) => {
         role: 'destructive',
         handler: async () => {
           try {
-            await apiService.deleteEvent(event.id);
+            if (!event.id) return;
+            await eventsStore.deleteEvent(event.id);
             events.value = events.value.filter(e => e.id !== event.id);
             filterEvents();
             const toast = await toastController.create({
@@ -248,37 +277,38 @@ const deleteEvent = async (event: any) => {
       }
     ]
   });
+  
   await alert.present();
 };
 
-const getEventStatus = (event: any) => {
-  const now = new Date();
-  const eventDate = new Date(event.date);
-  
-  if (eventDate > now) {
-    return 'Предстоящее';
-  } else {
-    return 'Завершено';
-  }
-};
-
-const getEventStatusColor = (event: any) => {
-  const now = new Date();
-  const eventDate = new Date(event.date);
-  
-  return eventDate > now ? 'success' : 'medium';
-};
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
+const confirmDeleteEvent = async (event: EventDTO) => {
+  if (!event.id) return;
+  const alert = await alertController.create({
+    header: 'Удалить мероприятие?',
+    message: `Вы уверены, что хотите удалить «${event.title}»? Это действие необратимо.`,
+    buttons: [
+      {
+        text: 'Отмена',
+        role: 'cancel'
+      },
+      {
+        text: 'Удалить',
+        role: 'destructive',
+        handler: async () => {
+          await deleteEvent(event);
+        }
+      }
+    ]
   });
+  await alert.present();
 };
+
+watch(searchText, () => {
+  if (debounceTimeout) clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(() => {
+    loadEvents(true);
+  }, 400);
+});
 
 onMounted(() => {
   loadEvents();
@@ -295,31 +325,18 @@ onMounted(() => {
 .stat-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: center;
 }
 
 .stat-number {
-  font-size: 1.5rem;
+  font-size: 24px;
   font-weight: bold;
   color: var(--ion-color-primary);
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: 14px;
   color: var(--ion-color-medium);
-}
-
-.event-stats {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-.event-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .loading-container {
@@ -336,26 +353,49 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 400px;
+  padding: 32px;
   text-align: center;
   color: var(--ion-color-medium);
-  padding: 20px;
 }
 
 .empty-state h2 {
-  margin: 16px 0 8px 0;
+  margin: 16px 0 8px;
   color: var(--ion-color-dark);
 }
 
 .empty-state p {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
-ion-segment {
-  margin: 8px 16px;
+.event-stats {
+  margin-top: 8px;
 }
 
-ion-card {
-  margin: 16px;
+.event-card-vertical {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  min-height: 180px;
+}
+
+.event-actions-vertical {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+ion-fab[slot="fixed"] {
+  position: fixed !important;
+  bottom: 24px !important;
+  right: 24px !important;
+  z-index: 1000;
+}
+
+.search-bar {
+  margin: 16px 16px 0 16px;
+  border-radius: 8px;
+  background: var(--ion-color-light, #222428);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  align-items: center;
 }
 </style> 

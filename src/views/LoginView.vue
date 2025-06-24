@@ -8,8 +8,8 @@
     <ion-content class="ion-padding">
       <ion-list>
         <ion-item>
-          <ion-label position="stacked">Email</ion-label>
-          <ion-input type="email" v-model="email" placeholder="Введите email"></ion-input>
+          <ion-label position="stacked">Логин</ion-label>
+          <ion-input type="text" v-model="login" placeholder="Введите логин"></ion-input>
         </ion-item>
         <ion-item>
           <ion-label position="stacked">Пароль</ion-label>
@@ -35,73 +35,47 @@
   </ion-page>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref } from 'vue';
+<script setup lang="ts">
+import { ref } from 'vue';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, 
          IonList, IonItem, IonLabel, IonInput, IonButton,
          IonToast } from '@ionic/vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
+import { useAuthStore } from '../stores';
 
-export default defineComponent({
-  name: 'LoginView',
-  components: {
-    IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-    IonList, IonItem, IonLabel, IonInput, IonButton,
-    IonToast
-  },
-  setup() {
-    const router = useRouter();
-    const authStore = useAuthStore();
-    const email = ref('');
-    const password = ref('');
-    const isLoading = ref(false);
-    const showError = ref(false);
+const router = useRouter();
+const authStore = useAuthStore();
+const login = ref('');
+const password = ref('');
+const isLoading = ref(false);
+const showError = ref(false);
 
-    const handleLogin = async () => {
-      if (!email.value || !password.value) {
-        showError.value = true;
-        return;
-      }
-
-      isLoading.value = true;
-      try {
-        const success = await authStore.login(email.value, password.value);
-        if (success) {
-          // Перенаправляем на соответствующую главную страницу в зависимости от роли
-          if (authStore.isVolunteer) {
-            router.push('/tabs/events-list');
-          } else if (authStore.isOrganization) {
-            router.push('/tabs/events-management');
-          } else {
-            // Если роль не определена, перенаправляем на базовый tabs
-            router.push('/tabs/');
-          }
-        } else {
-          showError.value = true;
-        }
-      } catch (error) {
-        console.error('Login error:', error);
-        showError.value = true;
-      } finally {
-        isLoading.value = false;
-      }
-    };
-
-    const goToRegister = () => {
-      router.push('/register');
-    };
-
-    return {
-      email,
-      password,
-      isLoading,
-      showError,
-      handleLogin,
-      goToRegister
-    };
+const handleLogin = async () => {
+  if (!login.value || !password.value) {
+    showError.value = true;
+    return;
   }
-});
+
+  isLoading.value = true;
+  try {
+    await authStore.login({ login: login.value, password: password.value });
+    // Перенаправляем на соответствующую главную страницу в зависимости от роли
+    if (authStore.isAdmin) {
+      router.push('/tabs/events-management');
+    } else {
+      router.push('/tabs/events-list');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    showError.value = true;
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const goToRegister = () => {
+  router.push('/register');
+};
 </script>
 
 <style scoped>

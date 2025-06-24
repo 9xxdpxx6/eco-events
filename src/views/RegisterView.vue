@@ -8,16 +8,8 @@
     <ion-content class="ion-padding">
       <ion-list>
         <ion-item>
-          <ion-label position="stacked">Тип пользователя</ion-label>
-          <ion-select v-model="userType" placeholder="Выберите тип пользователя">
-            <ion-select-option value="volunteer">Волонтёр</ion-select-option>
-            <ion-select-option value="organization">Организация</ion-select-option>
-          </ion-select>
-        </ion-item>
-
-        <ion-item v-if="userType === 'organization'">
-          <ion-label position="stacked">Название организации</ion-label>
-          <ion-input v-model="organizationName" placeholder="Введите название организации"></ion-input>
+          <ion-label position="stacked">Логин</ion-label>
+          <ion-input type="text" v-model="login" placeholder="Введите логин"></ion-input>
         </ion-item>
 
         <ion-item>
@@ -54,111 +46,73 @@
   </ion-page>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref, computed } from 'vue';
+<script setup lang="ts">
+import { ref } from 'vue';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, 
          IonList, IonItem, IonLabel, IonInput, IonButton,
-         IonSelect, IonSelectOption, IonToast } from '@ionic/vue';
+         IonToast } from '@ionic/vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
+import { useAuthStore } from '../stores';
 
-export default defineComponent({
-  name: 'RegisterView',
-  components: {
-    IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
-    IonList, IonItem, IonLabel, IonInput, IonButton,
-    IonSelect, IonSelectOption, IonToast
-  },
-  setup() {
-    const router = useRouter();
-    const authStore = useAuthStore();
-    const userType = ref('');
-    const organizationName = ref('');
-    const email = ref('');
-    const password = ref('');
-    const confirmPassword = ref('');
-    const isLoading = ref(false);
-    const showError = ref(false);
-    const errorMessage = ref('');
+const router = useRouter();
+const authStore = useAuthStore();
+const login = ref('');
+const email = ref('');
+const password = ref('');
+const confirmPassword = ref('');
+const isLoading = ref(false);
+const showError = ref(false);
+const errorMessage = ref('');
 
-    const validateForm = () => {
-      if (!userType.value) {
-        errorMessage.value = 'Выберите тип пользователя';
-        return false;
-      }
-
-      if (userType.value === 'organization' && !organizationName.value) {
-        errorMessage.value = 'Введите название организации';
-        return false;
-      }
-
-      if (!email.value) {
-        errorMessage.value = 'Введите email';
-        return false;
-      }
-
-      if (!password.value) {
-        errorMessage.value = 'Введите пароль';
-        return false;
-      }
-
-      if (password.value !== confirmPassword.value) {
-        errorMessage.value = 'Пароли не совпадают';
-        return false;
-      }
-
-      return true;
-    };
-
-    const handleRegister = async () => {
-      if (!validateForm()) {
-        showError.value = true;
-        return;
-      }
-
-      isLoading.value = true;
-      try {
-        const userData = {
-          email: email.value,
-          password: password.value,
-          type: userType.value as 'volunteer' | 'organization',
-          ...(userType.value === 'organization' && { organizationName: organizationName.value })
-        };
-
-        const success = await authStore.register(userData);
-        if (success) {
-          router.push('/home');
-        } else {
-          errorMessage.value = 'Ошибка регистрации. Попробуйте позже.';
-          showError.value = true;
-        }
-      } catch (error) {
-        console.error('Registration error:', error);
-        errorMessage.value = 'Ошибка регистрации. Попробуйте позже.';
-        showError.value = true;
-      } finally {
-        isLoading.value = false;
-      }
-    };
-
-    const goToLogin = () => {
-      router.push('/login');
-    };
-
-    return {
-      userType,
-      organizationName,
-      email,
-      password,
-      confirmPassword,
-      isLoading,
-      showError,
-      errorMessage,
-      handleRegister,
-      goToLogin
-    };
+const validateForm = () => {
+  if (!login.value) {
+    errorMessage.value = 'Введите логин';
+    return false;
   }
-});
+
+  if (!email.value) {
+    errorMessage.value = 'Введите email';
+    return false;
+  }
+
+  if (!password.value) {
+    errorMessage.value = 'Введите пароль';
+    return false;
+  }
+
+  if (password.value !== confirmPassword.value) {
+    errorMessage.value = 'Пароли не совпадают';
+    return false;
+  }
+
+  return true;
+};
+
+const handleRegister = async () => {
+  if (!validateForm()) {
+    showError.value = true;
+    return;
+  }
+
+  isLoading.value = true;
+  try {
+    await authStore.register({
+      login: login.value,
+      password: password.value
+    });
+    router.push('/tabs/events-list');
+  } catch (error) {
+    console.error('Registration error:', error);
+    errorMessage.value = 'Ошибка регистрации. Попробуйте позже.';
+    showError.value = true;
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const goToLogin = () => {
+  router.push('/login');
+};
 </script>
 
 <style scoped>

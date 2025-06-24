@@ -3,7 +3,7 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button :default-href="`/event-details/${eventId}`"></ion-back-button>
+          <ion-back-button :default-href="`/event/${eventId}`"></ion-back-button>
         </ion-buttons>
         <ion-title>Редактировать мероприятие</ion-title>
         <ion-buttons slot="end">
@@ -45,6 +45,19 @@
                 :class="{ 'ion-invalid': !form.description && showErrors }"
               ></ion-textarea>
             </ion-item>
+
+            <ion-item>
+              <ion-label position="stacked">Тип мероприятия *</ion-label>
+              <ion-select 
+                v-model="form.eventTypeId" 
+                placeholder="Выберите тип мероприятия"
+                :class="{ 'ion-invalid': !form.eventTypeId && showErrors }"
+              >
+                <ion-select-option v-for="type in eventTypes" :key="type.id" :value="type.id">
+                  {{ type.name }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
           </ion-card-content>
         </ion-card>
 
@@ -72,17 +85,6 @@
                 :class="{ 'ion-invalid': !form.time && showErrors }"
               ></ion-datetime>
             </ion-item>
-            
-            <ion-item>
-              <ion-label position="stacked">Продолжительность (часов)</ion-label>
-              <ion-input 
-                type="number" 
-                v-model="form.duration" 
-                placeholder="2"
-                min="1"
-                max="12"
-              ></ion-input>
-            </ion-item>
           </ion-card-content>
         </ion-card>
 
@@ -99,15 +101,6 @@
                 placeholder="Укажите адрес или место сбора"
                 :class="{ 'ion-invalid': !form.location && showErrors }"
               ></ion-input>
-            </ion-item>
-            
-            <ion-item>
-              <ion-label position="stacked">Подробности места</ion-label>
-              <ion-textarea 
-                v-model="form.locationDetails" 
-                placeholder="Дополнительная информация о месте встречи"
-                :rows="2"
-              ></ion-textarea>
             </ion-item>
           </ion-card-content>
         </ion-card>
@@ -152,56 +145,6 @@
                 placeholder="Без ограничений"
                 min="1"
               ></ion-input>
-            </ion-item>
-            
-            <ion-item>
-              <ion-label position="stacked">Категория мероприятия</ion-label>
-              <ion-select v-model="form.category" placeholder="Выберите категорию">
-                <ion-select-option value="cleanup">Уборка территории</ion-select-option>
-                <ion-select-option value="tree-planting">Посадка деревьев</ion-select-option>
-                <ion-select-option value="education">Экологическое просвещение</ion-select-option>
-                <ion-select-option value="recycling">Переработка отходов</ion-select-option>
-                <ion-select-option value="conservation">Охрана природы</ion-select-option>
-                <ion-select-option value="other">Другое</ion-select-option>
-              </ion-select>
-            </ion-item>
-
-            <ion-item>
-              <ion-checkbox v-model="form.requiresRegistration" />
-              <ion-label class="ion-margin-start">Требуется предварительная регистрация</ion-label>
-            </ion-item>
-            
-            <ion-item>
-              <ion-checkbox v-model="form.providesEquipment" />
-              <ion-label class="ion-margin-start">Организация предоставляет инвентарь</ion-label>
-            </ion-item>
-          </ion-card-content>
-        </ion-card>
-
-        <!-- Требования к участникам -->
-        <ion-card>
-          <ion-card-header>
-            <ion-card-title>Требования к участникам</ion-card-title>
-          </ion-card-header>
-          <ion-card-content>
-            <ion-item>
-              <ion-label position="stacked">Минимальный возраст</ion-label>
-              <ion-input 
-                type="number" 
-                v-model="form.minAge" 
-                placeholder="Без ограничений"
-                min="0"
-                max="100"
-              ></ion-input>
-            </ion-item>
-            
-            <ion-item>
-              <ion-label position="stacked">Что необходимо взять с собой</ion-label>
-              <ion-textarea 
-                v-model="form.requirements" 
-                placeholder="Удобная одежда, перчатки, вода..."
-                :rows="3"
-              ></ion-textarea>
             </ion-item>
           </ion-card-content>
         </ion-card>
@@ -249,146 +192,134 @@ import {
   IonDatetime,
   IonSelect,
   IonSelectOption,
-  IonCheckbox,
   IonSpinner,
-  toastController,
-  alertController
+  toastController
 } from '@ionic/vue';
 import { checkmarkOutline } from 'ionicons/icons';
-import { ApiService } from '../services/apiService';
+import { useEventsStore } from '../stores';
+import { useEventTypesStore } from '../stores';
+import type { EventTypeDTO } from '../types/api';
 
 const router = useRouter();
 const route = useRoute();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
+const eventTypesStore = useEventTypesStore();
 
-const eventId = computed(() => route.params.id as string);
-
+const eventId = parseInt(route.params.id as string);
 const form = ref({
   title: '',
   description: '',
+  eventTypeId: null as number | null,
   date: '',
   time: '',
-  duration: 2,
   location: '',
-  locationDetails: '',
   contactEmail: '',
   contactPhone: '',
-  maxParticipants: null,
-  category: '',
-  requiresRegistration: true,
-  providesEquipment: false,
-  minAge: null,
-  requirements: ''
+  maxParticipants: null as number | null
 });
 
+const showErrors = ref(false);
 const isLoading = ref(false);
 const isSaving = ref(false);
-const showErrors = ref(false);
+const eventTypes = ref<EventTypeDTO[]>([]);
 
 const minDate = new Date().toISOString();
 
 const isFormValid = computed(() => {
-  return form.value.title && 
-         form.value.description && 
-         form.value.date && 
-         form.value.time && 
+  return form.value.title &&
+         form.value.description &&
+         form.value.eventTypeId &&
+         form.value.date &&
+         form.value.time &&
          form.value.location;
 });
 
 const loadEvent = async () => {
   isLoading.value = true;
   try {
-    const data = await apiService.getEventDetails(parseInt(eventId.value));
-    
-    // Заполняем форму данными мероприятия
-    const eventDate = new Date((data as any).date);
-    
-    form.value = {
-      title: (data as any).title || '',
-      description: (data as any).description || '',
-      date: eventDate.toISOString().split('T')[0],
-      time: (data as any).time || '',
-      duration: (data as any).duration || 2,
-      location: (data as any).location || '',
-      locationDetails: (data as any).locationDetails || '',
-      contactEmail: (data as any).contactEmail || '',
-      contactPhone: (data as any).contactPhone || '',
-      maxParticipants: (data as any).maxParticipants || null,
-      category: (data as any).category || '',
-      requiresRegistration: (data as any).requiresRegistration ?? true,
-      providesEquipment: (data as any).providesEquipment ?? false,
-      minAge: (data as any).minAge || null,
-      requirements: (data as any).requirements || ''
-    };
+    await eventsStore.fetchEventById(eventId);
+    const event = eventsStore.getCurrentEvent;
+    if (event) {
+      const eventDate = new Date(event.startTime);
+      form.value = {
+        title: event.title,
+        description: event.description,
+        eventTypeId: Number(event.eventType.id),
+        date: eventDate.toISOString().split('T')[0],
+        time: eventDate.toTimeString().slice(0, 5),
+        location: event.location,
+        contactEmail: (event as any).contactEmail || '',
+        contactPhone: (event as any).contactPhone || '',
+        maxParticipants: (event as any).maxParticipants ?? null,
+      };
+    }
   } catch (error) {
     console.error('Error loading event:', error);
     const toast = await toastController.create({
-      message: 'Ошибка загрузки данных мероприятия',
+      message: 'Ошибка загрузки мероприятия',
       duration: 3000,
       color: 'danger'
     });
     await toast.present();
-    router.back();
+    router.push('/tabs/events-management');
   } finally {
     isLoading.value = false;
+  }
+};
+
+const loadEventTypes = async () => {
+  try {
+    await eventTypesStore.fetchEventTypes();
+    eventTypes.value = eventTypesStore.getEventTypes;
+  } catch (error) {
+    console.error('Error loading event types:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка загрузки типов мероприятий',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
   }
 };
 
 const saveChanges = async () => {
   if (!isFormValid.value) {
     showErrors.value = true;
-    const toast = await toastController.create({
-      message: 'Пожалуйста, заполните все обязательные поля',
-      duration: 3000,
-      color: 'warning'
-    });
-    await toast.present();
     return;
   }
 
-  const alert = await alertController.create({
-    header: 'Сохранить изменения',
-    message: 'Вы уверены, что хотите сохранить изменения?',
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Сохранить',
-        handler: async () => {
-          await updateEvent();
-        }
-      }
-    ]
-  });
-  
-  await alert.present();
-};
-
-const updateEvent = async () => {
   isSaving.value = true;
-  
   try {
-    // Объединяем дату и время
-    const eventDateTime = new Date(`${form.value.date}T${form.value.time}`);
-    
+    const eventType = eventTypes.value.find(t => t.id === Number(form.value.eventTypeId));
     const eventData = {
-      ...form.value,
-      date: eventDateTime.toISOString(),
-      updatedAt: new Date().toISOString()
+      title: form.value.title,
+      description: form.value.description,
+      startTime: new Date(`${form.value.date}T${form.value.time}`).toISOString(),
+      endTime: new Date(new Date(form.value.date).getTime() + 3600000).toISOString(),
+      location: form.value.location,
+      contactEmail: form.value.contactEmail,
+      contactPhone: form.value.contactPhone,
+      maxParticipants: form.value.maxParticipants,
+      requiresRegistration: false,
+      providesEquipment: false,
+      minAge: null,
+      requirements: '',
+      conducted: false,
+      eventType: {
+        id: eventType?.id,
+        name: eventType?.name || '',
+        description: eventType?.description || ''
+      }
     };
 
-    await apiService.updateEvent(parseInt(eventId.value), eventData);
-    
+    await eventsStore.updateEvent(eventId, eventData);
     const toast = await toastController.create({
-      message: 'Мероприятие успешно обновлено!',
-      duration: 3000,
+      message: 'Мероприятие успешно обновлено',
+      duration: 2000,
       color: 'success'
     });
     await toast.present();
-    
-    router.push(`/event-details/${eventId.value}`);
+    router.push(`/event/${eventId}`);
   } catch (error) {
     console.error('Error updating event:', error);
     const toast = await toastController.create({
@@ -404,6 +335,7 @@ const updateEvent = async () => {
 
 onMounted(() => {
   loadEvent();
+  loadEventTypes();
 });
 </script>
 
@@ -427,14 +359,5 @@ ion-footer {
 
 .ion-invalid {
   --border-color: var(--ion-color-danger);
-}
-
-ion-item {
-  --padding-start: 0;
-  --inner-padding-end: 0;
-}
-
-ion-label {
-  margin-bottom: 8px;
 }
 </style> 

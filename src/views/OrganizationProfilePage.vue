@@ -15,7 +15,7 @@
               <ion-icon :icon="businessOutline" size="large"></ion-icon>
             </ion-avatar>
             <div class="profile-info">
-              <h2>{{ user?.organizationName || user?.email || 'Организация' }}</h2>
+              <h2>{{ user?.login || 'Организация' }}</h2>
               <p>Экологическая организация</p>
               <ion-chip color="primary">
                 <ion-icon :icon="checkmarkCircleOutline" />
@@ -143,12 +143,14 @@ import {
   notificationsOutline,
   informationCircleOutline
 } from 'ionicons/icons';
-import { useAuthStore } from '../stores/auth';
-import { ApiService } from '../services/apiService';
+import { useAuthStore } from '../stores';
+import { useEventsStore } from '../stores';
+import { useParticipantsStore } from '../stores';
 
 const router = useRouter();
 const authStore = useAuthStore();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
+const participantsStore = useParticipantsStore();
 
 const user = computed(() => authStore.getUser);
 const statistics = ref({
@@ -159,10 +161,35 @@ const statistics = ref({
 
 const loadStatistics = async () => {
   try {
-    const data = await apiService.getStatistics();
-    statistics.value = { ...statistics.value, ...(data as any) };
+    const userId = user.value?.id;
+    if (!userId) return;
+    // Получаем все мероприятия, созданные этой организацией
+    await eventsStore.fetchEvents();
+    const allEvents = eventsStore.getEvents;
+    const userEvents = allEvents.filter(event => event.eventType?.name === user.value?.login); // или другой критерий, если есть
+    // Получаем участников только этих мероприятий
+    const { useParticipantsStore } = await import('../stores/participants');
+    const participantsStore = useParticipantsStore();
+    let totalParticipants = 0;
+    for (const event of userEvents) {
+      if (event.id) {
+        await participantsStore.fetchEventParticipants(event.id);
+        totalParticipants += participantsStore.getEventParticipants.length;
+      }
+    }
+    statistics.value = {
+      eventsCreated: userEvents.length,
+      totalParticipants,
+      rating: 4.8 // фиксированное значение
+    };
   } catch (error) {
     console.error('Error loading statistics:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка загрузки статистики',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
   }
 };
 
@@ -174,13 +201,8 @@ const viewEvents = () => {
   router.push('/tabs/events-management');
 };
 
-const editProfile = async () => {
-  const toast = await toastController.create({
-    message: 'Редактирование профиля будет доступно в следующих версиях',
-    duration: 2000,
-    color: 'primary'
-  });
-  await toast.present();
+const editProfile = () => {
+  router.push('/edit-profile');
 };
 
 const manageDocuments = async () => {
@@ -192,19 +214,14 @@ const manageDocuments = async () => {
   await alert.present();
 };
 
-const showNotificationSettings = async () => {
-  const alert = await alertController.create({
-    header: 'Настройки уведомлений',
-    message: 'Здесь вы сможете настроить уведомления о новых участниках ваших мероприятий.',
-    buttons: ['Понятно']
-  });
-  await alert.present();
+const showNotificationSettings = () => {
+  router.push('/notification-settings');
 };
 
 const showAbout = async () => {
   const alert = await alertController.create({
     header: 'О приложении',
-    message: 'Эко-мероприятия v1.0\n\nПриложение для организации экологических мероприятий и привлечения волонтёров.',
+    message: 'EcoEvents - приложение для организации и участия в экологических мероприятиях. Версия 1.0.0',
     buttons: ['Закрыть']
   });
   await alert.present();
@@ -212,7 +229,7 @@ const showAbout = async () => {
 
 const logout = async () => {
   const alert = await alertController.create({
-    header: 'Выход',
+    header: 'Выйти',
     message: 'Вы уверены, что хотите выйти из аккаунта?',
     buttons: [
       {
@@ -221,9 +238,19 @@ const logout = async () => {
       },
       {
         text: 'Выйти',
-        handler: () => {
-          authStore.logout();
-          router.push('/login');
+        handler: async () => {
+          try {
+            await authStore.logout();
+            router.push('/login');
+          } catch (error) {
+            console.error('Error logging out:', error);
+            const toast = await toastController.create({
+              message: 'Ошибка при выходе из аккаунта',
+              duration: 3000,
+              color: 'danger'
+            });
+            await toast.present();
+          }
         }
       }
     ]
@@ -247,13 +274,18 @@ onMounted(() => {
   gap: 16px;
 }
 
+.profile-info {
+  flex: 1;
+}
+
 .profile-info h2 {
-  margin: 0 0 4px 0;
-  font-size: 1.5rem;
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .profile-info p {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   color: var(--ion-color-medium);
 }
 
@@ -272,23 +304,19 @@ onMounted(() => {
 }
 
 .stat-number {
-  font-size: 1.5rem;
+  font-size: 24px;
   font-weight: bold;
-  color: var(--ion-color-primary);
+  color: var(--ion-color-dark);
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: 14px;
   color: var(--ion-color-medium);
 }
 
 .actions-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 12px;
-}
-
-ion-card {
-  margin: 16px;
 }
 </style> 

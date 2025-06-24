@@ -65,21 +65,12 @@ if (token) {
     token: token.substring(0, 10) + '...',
     userType: userType
   });
-  
-  authStore.$patch({
-    token: token,
-    isAuthenticated: true,
-    user: { id: 1, email: 'qwe', type: userType },
-    isAuthLoading: false
-  });
 }
 
-// Выполняем полную проверку авторизации асинхронно
-authStore.checkAuth().finally(() => {
+// Выполняем полную проверку авторизации асинхронно и только потом монтируем приложение
+authStore.checkAuth().then(() => {
   console.log('✅ Проверка авторизации завершена');
-});
-
-// Монтируем приложение сразу
-router.isReady().then(() => {
-  app.mount('#app');
+  router.isReady().then(() => {
+    app.mount('#app');
+  });
 });

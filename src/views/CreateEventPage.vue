@@ -40,6 +40,19 @@
                 :class="{ 'ion-invalid': !form.description && showErrors }"
               ></ion-textarea>
             </ion-item>
+
+            <ion-item>
+              <ion-label position="stacked">Тип мероприятия *</ion-label>
+              <ion-select 
+                v-model="form.eventTypeId" 
+                placeholder="Выберите тип мероприятия"
+                :class="{ 'ion-invalid': !form.eventTypeId && showErrors }"
+              >
+                <ion-select-option v-for="type in eventTypes" :key="type.id" :value="type.id">
+                  {{ type.name }}
+                </ion-select-option>
+              </ion-select>
+            </ion-item>
           </ion-card-content>
         </ion-card>
 
@@ -150,18 +163,6 @@
             </ion-item>
             
             <ion-item>
-              <ion-label position="stacked">Категория мероприятия</ion-label>
-              <ion-select v-model="form.category" placeholder="Выберите категорию">
-                <ion-select-option value="cleanup">Уборка территории</ion-select-option>
-                <ion-select-option value="tree-planting">Посадка деревьев</ion-select-option>
-                <ion-select-option value="education">Экологическое просвещение</ion-select-option>
-                <ion-select-option value="recycling">Переработка отходов</ion-select-option>
-                <ion-select-option value="conservation">Охрана природы</ion-select-option>
-                <ion-select-option value="other">Другое</ion-select-option>
-              </ion-select>
-            </ion-item>
-
-            <ion-item>
               <ion-checkbox v-model="form.requiresRegistration" />
               <ion-label class="ion-margin-start">Требуется предварительная регистрация</ion-label>
             </ion-item>
@@ -220,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   IonPage,
@@ -249,14 +250,18 @@ import {
   alertController
 } from '@ionic/vue';
 import { checkmarkOutline } from 'ionicons/icons';
-import { ApiService } from '../services/apiService';
+import { useEventsStore } from '../stores';
+import { useEventTypesStore } from '../stores';
+import type { EventTypeDTO } from '../types/api';
 
 const router = useRouter();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
+const eventTypesStore = useEventTypesStore();
 
 const form = ref({
   title: '',
   description: '',
+  eventTypeId: null as number | null,
   date: '',
   time: '',
   duration: 2,
@@ -264,122 +269,99 @@ const form = ref({
   locationDetails: '',
   contactEmail: '',
   contactPhone: '',
-  maxParticipants: null,
-  category: '',
+  maxParticipants: null as number | null,
   requiresRegistration: true,
   providesEquipment: false,
-  minAge: null,
+  minAge: null as number | null,
   requirements: ''
 });
 
-const isSaving = ref(false);
 const showErrors = ref(false);
+const isSaving = ref(false);
+const eventTypes = ref<EventTypeDTO[]>([]);
 
 const minDate = new Date().toISOString();
 
 const isFormValid = computed(() => {
-  const isValid = form.value.title && 
-         form.value.description && 
-         form.value.date && 
-         form.value.time && 
+  return form.value.title &&
+         form.value.description &&
+         form.value.eventTypeId &&
+         form.value.date &&
+         form.value.time &&
          form.value.location;
-  
-  console.log('📝 Валидация формы:', {
-    title: !!form.value.title,
-    description: !!form.value.description,
-    date: !!form.value.date,
-    time: !!form.value.time,
-    location: !!form.value.location,
-    isValid
-  });
-  
-  return isValid;
 });
+
+const loadEventTypes = async () => {
+  try {
+    await eventTypesStore.fetchEventTypes();
+    eventTypes.value = eventTypesStore.getEventTypes;
+  } catch (error) {
+    console.error('Error loading event types:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка загрузки типов мероприятий',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  }
+};
 
 const saveEvent = async () => {
   if (!isFormValid.value) {
     showErrors.value = true;
-    const toast = await toastController.create({
-      message: 'Пожалуйста, заполните все обязательные поля',
-      duration: 3000,
-      color: 'warning'
-    });
-    await toast.present();
     return;
   }
 
-  const alert = await alertController.create({
-    header: 'Создать мероприятие',
-    message: 'Вы уверены, что хотите создать это мероприятие?',
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Создать',
-        handler: async () => {
-          await createEvent();
-        }
-      }
-    ]
-  });
-  
-  await alert.present();
-};
-
-const createEvent = async () => {
   isSaving.value = true;
-  
   try {
-    console.log('🔍 Данные формы перед созданием события:', form.value);
-    
-    // Получаем дату в формате YYYY-MM-DD
-    let dateStr = form.value.date;
-    if (dateStr.includes('T')) {
-      dateStr = dateStr.split('T')[0];
+    // Получаем тип мероприятия полностью
+    const eventType = eventTypes.value.find(t => t.id === Number(form.value.eventTypeId));
+    if (!eventType) throw new Error('Тип мероприятия не найден');
+    let startTime = '';
+    if (form.value.time && form.value.time.includes('T')) {
+      startTime = form.value.time;
+    } else if (form.value.date && form.value.time) {
+      const datePart = form.value.date.split('T')[0];
+      let timePart = form.value.time;
+      if (timePart.length <= 5) timePart += ':00';
+      startTime = new Date(`${datePart}T${timePart}`).toISOString();
     }
-    
-    // Получаем время в формате HH:MM
-    let timeStr = form.value.time;
-    if (timeStr.includes('T')) {
-      timeStr = timeStr.split('T')[1].substring(0, 5);
-    }
-    
-    console.log('📅 Обработанные дата и время:', { dateStr, timeStr });
-    
-    // Создаем корректную дату
-    const eventDateTime = new Date(`${dateStr}T${timeStr}:00`);
-    
-    console.log('⏰ Создана дата события:', eventDateTime);
-    
-    if (isNaN(eventDateTime.getTime())) {
-      throw new Error('Неправильный формат даты или времени');
-    }
-    
+    if (!startTime || isNaN(Date.parse(startTime))) throw new Error('Некорректная дата/время');
+    const duration = Number(form.value.duration) || 2;
+    const endTime = new Date(new Date(startTime).getTime() + duration * 60 * 60 * 1000).toISOString();
     const eventData = {
-      ...form.value,
-      date: eventDateTime.toISOString(),
-      createdAt: new Date().toISOString(),
-      organization: 'Экологи города' // добавляем организацию
+      title: form.value.title,
+      description: form.value.description,
+      startTime,
+      endTime,
+      location: form.value.location,
+      locationDetails: form.value.locationDetails,
+      contactEmail: form.value.contactEmail,
+      contactPhone: form.value.contactPhone,
+      maxParticipants: form.value.maxParticipants,
+      requiresRegistration: form.value.requiresRegistration,
+      providesEquipment: form.value.providesEquipment,
+      minAge: form.value.minAge,
+      requirements: form.value.requirements,
+      conducted: false,
+      eventType: {
+        id: eventType.id,
+        name: eventType.name,
+        description: eventType.description || ''
+      }
     };
-    
-    console.log('📋 Данные для отправки:', eventData);
-
-    await apiService.createEvent(eventData);
-    
+    await eventsStore.createEvent(eventData);
     const toast = await toastController.create({
-      message: 'Мероприятие успешно создано!',
-      duration: 3000,
+      message: 'Мероприятие успешно создано',
+      duration: 2000,
       color: 'success'
     });
     await toast.present();
-    
     router.push('/tabs/events-management');
   } catch (error) {
-    console.error('❌ Ошибка при создании события:', error);
+    console.error('Error creating event:', error);
     const toast = await toastController.create({
-      message: `Ошибка при создании мероприятия: ${(error as Error).message || 'неизвестная ошибка'}`,
+      message: 'Ошибка при создании мероприятия: ' + ((error as any)?.message || error),
       duration: 3000,
       color: 'danger'
     });
@@ -388,6 +370,10 @@ const createEvent = async () => {
     isSaving.value = false;
   }
 };
+
+onMounted(() => {
+  loadEventTypes();
+});
 </script>
 
 <style scoped>

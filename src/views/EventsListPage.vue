@@ -6,7 +6,7 @@
       </ion-toolbar>
     </ion-header>
     <ion-content>
-      <!-- Pull-to-refresh (стандартная анимация сверху) -->
+      <!-- Pull-to-refresh -->
       <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
         <ion-refresher-content
           pulling-text="Потяните для обновления"
@@ -14,7 +14,7 @@
         ></ion-refresher-content>
       </ion-refresher>
 
-      <!-- Sticky поиск и фильтры -->
+      <!-- Поиск и фильтры -->
       <div class="sticky-search-filters">
         <div class="search-sort-row">
           <ion-searchbar 
@@ -47,26 +47,23 @@
         </div>
       </div>
 
-      <!-- Прелоадер только под фильтрами -->
+      <!-- Прелоадер -->
       <EventListLoader v-if="isLoading" />
       <!-- Список мероприятий -->
       <ion-list v-else-if="filteredEvents.length > 0">
         <ion-item 
           v-for="event in filteredEvents" 
-          :key="event.id"
+          :key="event.id ?? Math.random()"
           button
-          @click="openEventDetails(event.id)"
+          @click="openEventDetails(Number(event.id))"
         >
           <ion-thumbnail slot="start">
-            <img :src="event.image || '/assets/default-event.jpg'" />
+            <img :src="'/assets/default-event.jpg'" />
           </ion-thumbnail>
           <ion-label>
             <h2>{{ event.title }}</h2>
-            <p>{{ formatDate(event.date) }}</p>
+            <p>{{ formatDate(event.startTime) }}</p>
             <p>{{ event.location }}</p>
-            <ion-chip color="primary" v-if="event.organization">
-              {{ event.organization }}
-            </ion-chip>
           </ion-label>
           <ion-button 
             slot="end" 
@@ -75,10 +72,7 @@
             @click.stop="toggleEventRegistration(event)"
             :disabled="isRegistering"
           >
-            <ion-icon 
-              :icon="event.isRegistered ? checkmarkCircle : addCircleOutline" 
-              :color="event.isRegistered ? 'success' : 'primary'"
-            />
+            <ion-icon :icon="addCircleOutline" :color="'primary'" />
           </ion-button>
         </ion-item>
       </ion-list>
@@ -111,30 +105,29 @@ import {
   IonChip,
   IonRefresher,
   IonRefresherContent,
-  IonButtons,
+  IonPopover,
   toastController
 } from '@ionic/vue';
 import {
   calendarOutline,
   checkmarkCircle,
   addCircleOutline,
-  mapOutline,
-  personOutline,
-  businessOutline,
-  logOutOutline,
   swapVerticalOutline,
   checkmarkOutline
 } from 'ionicons/icons';
-import { ApiService } from '../services/apiService';
-import { useAuthStore } from '../stores/auth';
+import { useEventsStore } from '../stores';
+import { useParticipantsStore } from '../stores';
+import { useAuthStore } from '../stores';
 import EventListLoader from './EventListLoader.vue';
+import type { EventDTO } from '../types/api';
 
 const router = useRouter();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
+const participantsStore = useParticipantsStore();
 const authStore = useAuthStore();
 
-const events = ref<any[]>([]);
-const filteredEvents = ref<any[]>([]);
+const events = ref<EventDTO[]>([]);
+const filteredEvents = ref<EventDTO[]>([]);
 const searchText = ref('');
 const selectedFilter = ref('all');
 const isLoading = ref(false);
@@ -158,6 +151,10 @@ const filters = [
 if (authStore.isAuthenticated) {
   filters.push({ value: 'my', label: 'Мои' });
 }
+
+const page = ref(0);
+const size = 50;
+const hasMore = ref(true);
 
 function setFilter(value: string) {
   selectedFilter.value = value;
@@ -184,14 +181,25 @@ function selectSort(value: string) {
   loadEvents();
 }
 
-const loadEvents = async () => {
+const loadEvents = async (reset = true) => {
   isLoading.value = true;
   try {
-    const params = new URLSearchParams();
-    params.set('sort', sortBy.value);
-    if (searchText.value) params.set('q', searchText.value);
-    const data = await apiService.getEventsWithParams(params);
-    events.value = Array.isArray(data) ? data : [];
+    if (reset) {
+      page.value = 0;
+      await eventsStore.fetchEventsSearch(searchText.value, page.value, size);
+      events.value = eventsStore.getEvents;
+      hasMore.value = events.value.length === size;
+    } else {
+      page.value += 1;
+      await eventsStore.fetchEventsSearch(searchText.value, page.value, size);
+      const newEvents = eventsStore.getEvents;
+      if (newEvents.length > 0) {
+        events.value = [...events.value, ...newEvents];
+        hasMore.value = newEvents.length === size;
+      } else {
+        hasMore.value = false;
+      }
+    }
     filterEvents();
   } catch (error) {
     console.error('Error loading events:', error);
@@ -206,22 +214,18 @@ const loadEvents = async () => {
   }
 };
 
-const handleRefresh = async (event: CustomEvent) => {
-  try {
-    const data = await apiService.getEvents();
-    events.value = Array.isArray(data) ? data : [];
-    filterEvents();
-  } catch (error) {
-    console.error('Error refreshing events:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка обновления',
-      duration: 2000,
-      color: 'danger'
-    });
-    await toast.present();
-  } finally {
-    event.detail.complete();
+const handleRefresh = async (event: any) => {
+  await loadEvents(true);
+  event.target.complete();
+};
+
+const handleInfiniteScroll = async (event: any) => {
+  if (!hasMore.value) {
+    event.target.complete();
+    return;
   }
+  await loadEvents(false);
+  event.target.complete();
 };
 
 const filterEvents = () => {
@@ -231,91 +235,28 @@ const filterEvents = () => {
   switch (selectedFilter.value) {
     case 'today':
       filtered = filtered.filter(event => {
-        const eventDate = new Date(event.date);
+        const eventDate = new Date(event.startTime);
         return eventDate >= today && eventDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
       });
       break;
     case 'upcoming':
-      filtered = filtered.filter(event => new Date(event.date) > now);
+      filtered = filtered.filter(event => new Date(event.startTime) > now);
       break;
     case 'week':
-      filtered = filtered.filter(event => isEventThisWeek(event.date));
+      filtered = filtered.filter(event => isEventThisWeek(event.startTime));
       break;
     case 'finished':
-      filtered = filtered.filter(event => new Date(event.date) < now);
+      filtered = filtered.filter(event => new Date(event.startTime) < now);
       break;
     case 'my':
-      filtered = filtered.filter(event => event.isRegistered);
+      // filtered = filtered.filter(event => event.isRegistered);
       break;
   }
-  filtered.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
   filteredEvents.value = filtered;
 };
 
-const openEventDetails = (eventId: number) => {
-  router.push(`/event-details/${eventId}`);
-};
-
-const toggleEventRegistration = async (event: any) => {
-  if (isRegistering.value) return;
-  
-  isRegistering.value = true;
-  
-  try {
-    if (event.isRegistered) {
-      // Отменяем участие
-      try {
-        await apiService.leaveEvent(event.id);
-        event.isRegistered = false;
-        const toast = await toastController.create({
-          message: 'Вы отменили участие в мероприятии',
-          duration: 2000,
-          color: 'warning'
-        });
-        await toast.present();
-      } catch (error) {
-        console.error('Error leaving event:', error);
-        const toast = await toastController.create({
-          message: 'Пока функция отмены участия недоступна',
-          duration: 2000,
-          color: 'warning'
-        });
-        await toast.present();
-      }
-    } else {
-      // Регистрируемся на мероприятие
-      try {
-        await apiService.joinEvent(event.id);
-        event.isRegistered = true;
-        const toast = await toastController.create({
-          message: 'Вы зарегистрированы на мероприятие!',
-          duration: 2000,
-          color: 'success'
-        });
-        await toast.present();
-      } catch (error) {
-        console.error('Error joining event:', error);
-        // Пока API не готово, просто меняем состояние локально
-        event.isRegistered = true;
-        const toast = await toastController.create({
-          message: 'Вы зарегистрированы на мероприятие!',
-          duration: 2000,
-          color: 'success'
-        });
-        await toast.present();
-      }
-    }
-  } finally {
-    isRegistering.value = false;
-  }
-};
-
-const formatDate = (dateString: string) => {
-  if (!dateString) return 'Дата не указана';
-  
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return 'Неверная дата';
-  
+const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr);
   return date.toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
@@ -325,33 +266,71 @@ const formatDate = (dateString: string) => {
   });
 };
 
-const logout = () => {
-  authStore.logout();
-  router.push('/login');
+const openEventDetails = (eventId: number) => {
+  router.push(`/event/${eventId}`);
 };
 
-let searchDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+const toggleEventRegistration = async (event: EventDTO) => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login');
+    return;
+  }
 
-watch(searchText, (val, oldVal) => {
-  if (searchDebounceTimeout) clearTimeout(searchDebounceTimeout);
-  searchDebounceTimeout = setTimeout(() => {
-    loadEvents();
-  }, 400);
+  isRegistering.value = true;
+  try {
+    const userId = authStore.user?.id;
+    if (!userId) throw new Error('Нет userId');
+    if (!event.id) return;
+    await participantsStore.deleteParticipant(userId, event.id);
+    await loadEvents();
+  } catch (error) {
+    console.error('Error toggling registration:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка при регистрации на мероприятие',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  } finally {
+    isRegistering.value = false;
+  }
+};
+
+watch(searchText, () => {
+  loadEvents(true);
 });
 
 onMounted(() => {
-  loadEvents();
+  loadEvents(true);
 });
 </script>
 
 <style scoped>
-.loading-container {
+.sticky-search-filters {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--ion-background-color);
+  padding: 8px;
+  border-bottom: 1px solid var(--ion-color-light);
+}
+
+.search-sort-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: var(--ion-color-medium);
+  gap: 8px;
+}
+
+.categories-scroll {
+  display: flex;
+  overflow-x: auto;
+  padding: 8px 0;
+  gap: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-chip {
+  flex-shrink: 0;
 }
 
 .empty-state {
@@ -359,61 +338,24 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 300px;
+  padding: 32px;
   text-align: center;
   color: var(--ion-color-medium);
 }
 
+.empty-state ion-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
 .empty-state h2 {
-  margin: 16px 0 8px 0;
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 500;
 }
 
 .empty-state p {
   margin: 0;
-}
-
-.categories-scroll {
-  display: flex;
-  overflow-x: auto;
-  padding: 8px 8px 8px 8px;
-  gap: 8px;
-  scrollbar-width: none;
-}
-.categories-scroll::-webkit-scrollbar {
-  display: none;
-}
-.category-chip {
-  min-width: 110px;
-  justify-content: center;
-  font-weight: 500;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.navigation-buttons {
-  display: none;
-}
-
-.search-sort-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 8px 8px 8px;
-}
-.search-sort-row ion-searchbar {
-  flex: 1;
-}
-
-.loading-under-filters {
-  margin: 24px 0 0 0;
-  justify-content: flex-start;
-}
-
-.sticky-search-filters {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--ion-background-color, #18191a);
-  box-shadow: 0 2px 8px 0 rgba(0,0,0,0.01);
+  font-size: 16px;
 }
 </style> 

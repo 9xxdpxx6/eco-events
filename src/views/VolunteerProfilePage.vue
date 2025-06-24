@@ -15,7 +15,7 @@
               <ion-icon :icon="personCircleOutline" size="large"></ion-icon>
             </ion-avatar>
             <div class="profile-info">
-              <h2>{{ user?.email || 'Пользователь' }}</h2>
+              <h2>{{ (user?.lastName || '') + ' ' + (user?.firstName || '') + (user?.patronymic ? ' ' + user.patronymic : '') }}</h2>
               <p>Волонтёр</p>
               <ion-chip color="success">
                 <ion-icon :icon="checkmarkCircleOutline" />
@@ -35,17 +35,17 @@
           <div class="stats-grid">
             <div class="stat-item">
               <ion-icon :icon="calendarOutline" color="primary"></ion-icon>
-              <span class="stat-number">{{ statistics.eventsAttended || 0 }}</span>
+              <span class="stat-number">{{ statistics.eventsAttended }}</span>
               <span class="stat-label">Мероприятий посещено</span>
             </div>
             <div class="stat-item">
               <ion-icon :icon="trophyOutline" color="warning"></ion-icon>
-              <span class="stat-number">{{ statistics.points || 0 }}</span>
+              <span class="stat-number">{{ statistics.points }}</span>
               <span class="stat-label">Баллов заработано</span>
             </div>
             <div class="stat-item">
               <ion-icon :icon="timeOutline" color="success"></ion-icon>
-              <span class="stat-number">{{ statistics.hoursVolunteered || 0 }}</span>
+              <span class="stat-number">{{ statistics.hoursVolunteered }}</span>
               <span class="stat-label">Часов волонтёрства</span>
             </div>
           </div>
@@ -69,11 +69,11 @@
 
           <div v-if="selectedTab === 'upcoming'">
             <ion-list v-if="upcomingEvents.length > 0">
-              <ion-item v-for="event in upcomingEvents" :key="event.id" button @click="openEventDetails(event.id)">
+              <ion-item v-for="event in upcomingEvents" :key="event.id" button @click="openEventDetails(event.id!)" @click.stop="leaveEvent(event)">
                 <ion-icon :icon="calendarOutline" slot="start" color="primary"></ion-icon>
                 <ion-label>
                   <h3>{{ event.title }}</h3>
-                  <p>{{ formatDate(event.date) }}</p>
+                  <p>{{ formatDate(event.startTime) }}</p>
                   <p>{{ event.location }}</p>
                 </ion-label>
                 <ion-button slot="end" fill="clear" color="danger" @click.stop="leaveEvent(event)">
@@ -89,16 +89,13 @@
 
           <div v-if="selectedTab === 'past'">
             <ion-list v-if="pastEvents.length > 0">
-              <ion-item v-for="event in pastEvents" :key="event.id" button @click="openEventDetails(event.id)">
+              <ion-item v-for="event in pastEvents" :key="event.id" button @click="openEventDetails(event.id!)" @click.stop="leaveEvent(event)">
                 <ion-icon :icon="checkmarkCircleOutline" slot="start" color="success"></ion-icon>
                 <ion-label>
                   <h3>{{ event.title }}</h3>
-                  <p>{{ formatDate(event.date) }}</p>
+                  <p>{{ formatDate(event.startTime) }}</p>
                   <p>{{ event.location }}</p>
                 </ion-label>
-                <ion-chip slot="end" color="success">
-                  +{{ event.points || 10 }} баллов
-                </ion-chip>
               </ion-item>
             </ion-list>
             <div v-else class="empty-state">
@@ -177,12 +174,16 @@ import {
   notificationsOutline,
   informationCircleOutline
 } from 'ionicons/icons';
-import { useAuthStore } from '../stores/auth';
-import { ApiService } from '../services/apiService';
+import { useAuthStore } from '../stores';
+import { useEventsStore } from '../stores';
+import { useParticipantsStore } from '../stores';
+import type { EventDTO } from '../types/api';
+import { usersApi } from '../api/users';
 
 const router = useRouter();
 const authStore = useAuthStore();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
+const participantsStore = useParticipantsStore();
 
 const user = computed(() => authStore.getUser);
 const statistics = ref({
@@ -191,34 +192,83 @@ const statistics = ref({
   hoursVolunteered: 0
 });
 const selectedTab = ref('upcoming');
-const upcomingEvents = ref<any[]>([]);
-const pastEvents = ref<any[]>([]);
+const upcomingEvents = ref<EventDTO[]>([]);
+const pastEvents = ref<EventDTO[]>([]);
 
 const loadStatistics = async () => {
+  const userId = user.value?.id;
+  if (!userId) return;
   try {
-    const data = await apiService.getStatistics();
-    statistics.value = data as any;
-  } catch (error) {
-    console.error('Error loading statistics:', error);
+    await participantsStore.fetchUserParticipants(userId);
+    const participants = participantsStore.getUserParticipants;
+    statistics.value = {
+      eventsAttended: participants.length,
+      points: 0,
+      hoursVolunteered: 0
+    };
+  } catch (error: any) {
+    if (error?.response?.status === 401) {
+      const toast = await toastController.create({
+        message: 'Не авторизован',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    } else if (error?.response?.status !== 404) {
+      const toast = await toastController.create({
+        message: 'Ошибка загрузки статистики',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
   }
 };
 
 const loadUserEvents = async () => {
+  const userId = user.value?.id;
+  if (!userId) return;
   try {
-    // Здесь будет запрос на получение мероприятий пользователя
-    // Пока заглушка
-    upcomingEvents.value = [];
-    pastEvents.value = [];
-  } catch (error) {
-    console.error('Error loading user events:', error);
+    await participantsStore.fetchUserParticipants(userId);
+    const participants = participantsStore.getUserParticipants;
+    const now = new Date();
+    const eventIds = participants.map(p => p.eventId);
+    const uniqueEventIds = Array.from(new Set(eventIds));
+    const events: EventDTO[] = [];
+    for (const eventId of uniqueEventIds) {
+      try {
+        const event = eventsStore.getEvents.find(e => e.id === eventId);
+        if (!event) return;
+        events.push(event);
+      } catch (e) {}
+    }
+    upcomingEvents.value = events.filter(event => new Date(event.startTime) > now);
+    pastEvents.value = events.filter(event => new Date(event.startTime) <= now);
+  } catch (error: any) {
+    if (error?.response?.status === 401) {
+      const toast = await toastController.create({
+        message: 'Не авторизован',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    } else if (error?.response?.status !== 404) {
+      const toast = await toastController.create({
+        message: 'Ошибка загрузки мероприятий',
+        duration: 3000,
+        color: 'danger'
+      });
+      await toast.present();
+    }
   }
 };
 
 const openEventDetails = (eventId: number) => {
-  router.push(`/event-details/${eventId}`);
+  router.push(`/event/${eventId}`);
 };
 
-const leaveEvent = async (event: any) => {
+const leaveEvent = async (event: EventDTO) => {
+  if (!event.id) return;
   const alert = await alertController.create({
     header: 'Отменить участие',
     message: `Вы уверены, что хотите отменить участие в "${event.title}"?`,
@@ -231,8 +281,11 @@ const leaveEvent = async (event: any) => {
         text: 'Да, отменить',
         handler: async () => {
           try {
-            await apiService.leaveEvent(event.id);
+            const userId = user.value?.id;
+            if (!userId || !event.id) return;
+            await participantsStore.deleteParticipant(event.id, userId);
             upcomingEvents.value = upcomingEvents.value.filter(e => e.id !== event.id);
+            
             const toast = await toastController.create({
               message: 'Участие отменено',
               duration: 2000,
@@ -241,6 +294,12 @@ const leaveEvent = async (event: any) => {
             await toast.present();
           } catch (error) {
             console.error('Error leaving event:', error);
+            const toast = await toastController.create({
+              message: 'Ошибка при отмене участия',
+              duration: 3000,
+              color: 'danger'
+            });
+            await toast.present();
           }
         }
       }
@@ -249,28 +308,18 @@ const leaveEvent = async (event: any) => {
   await alert.present();
 };
 
-const editProfile = async () => {
-  const toast = await toastController.create({
-    message: 'Редактирование профиля будет доступно в следующих версиях',
-    duration: 2000,
-    color: 'primary'
-  });
-  await toast.present();
+const editProfile = () => {
+  router.push('/edit-profile');
 };
 
-const showNotificationSettings = async () => {
-  const alert = await alertController.create({
-    header: 'Настройки уведомлений',
-    message: 'Здесь вы сможете настроить push-уведомления о новых мероприятиях и напоминания.',
-    buttons: ['Понятно']
-  });
-  await alert.present();
+const showNotificationSettings = () => {
+  router.push('/notification-settings');
 };
 
 const showAbout = async () => {
   const alert = await alertController.create({
     header: 'О приложении',
-    message: 'Эко-мероприятия v1.0\n\nПриложение для поиска и участия в экологических мероприятиях.\n\nРазработано для объединения волонтёров и экологических организаций.',
+    message: 'EcoEvents - приложение для организации и участия в экологических мероприятиях. Версия 1.0.0',
     buttons: ['Закрыть']
   });
   await alert.present();
@@ -278,7 +327,7 @@ const showAbout = async () => {
 
 const logout = async () => {
   const alert = await alertController.create({
-    header: 'Выход',
+    header: 'Выйти',
     message: 'Вы уверены, что хотите выйти из аккаунта?',
     buttons: [
       {
@@ -287,9 +336,19 @@ const logout = async () => {
       },
       {
         text: 'Выйти',
-        handler: () => {
-          authStore.logout();
-          router.push('/login');
+        handler: async () => {
+          try {
+            await authStore.logout();
+            router.push('/login');
+          } catch (error) {
+            console.error('Error logging out:', error);
+            const toast = await toastController.create({
+              message: 'Ошибка при выходе из аккаунта',
+              duration: 3000,
+              color: 'danger'
+            });
+            await toast.present();
+          }
         }
       }
     ]
@@ -297,9 +356,8 @@ const logout = async () => {
   await alert.present();
 };
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('ru-RU', {
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -308,9 +366,21 @@ const formatDate = (dateString: string) => {
   });
 };
 
-onMounted(() => {
-  loadStatistics();
-  loadUserEvents();
+onMounted(async () => {
+  // Если нет ФИО или логина, подгружаем пользователя по id
+  if (!user.value?.firstName || !user.value?.lastName || !user.value?.login) {
+    const id = user.value?.id;
+    if (id) {
+      try {
+        const freshUser = await usersApi.getById(id);
+        authStore.user = { ...freshUser, token: authStore.token ?? '' };
+      } catch (e) {
+        // ignore
+      }
+    }
+  }
+  await loadStatistics();
+  await loadUserEvents();
 });
 </script>
 
@@ -325,13 +395,18 @@ onMounted(() => {
   gap: 16px;
 }
 
+.profile-info {
+  flex: 1;
+}
+
 .profile-info h2 {
-  margin: 0 0 4px 0;
-  font-size: 1.5rem;
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+  font-weight: 600;
 }
 
 .profile-info p {
-  margin: 0 0 8px 0;
+  margin: 0 0 8px;
   color: var(--ion-color-medium);
 }
 
@@ -350,13 +425,13 @@ onMounted(() => {
 }
 
 .stat-number {
-  font-size: 1.5rem;
+  font-size: 24px;
   font-weight: bold;
-  color: var(--ion-color-primary);
+  color: var(--ion-color-dark);
 }
 
 .stat-label {
-  font-size: 0.8rem;
+  font-size: 14px;
   color: var(--ion-color-medium);
 }
 
@@ -365,20 +440,16 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 32px;
   text-align: center;
   color: var(--ion-color-medium);
 }
 
 .empty-state p {
-  margin: 16px 0 0 0;
+  margin-top: 16px;
 }
 
-ion-segment {
-  margin-bottom: 16px;
-}
-
-ion-card {
-  margin: 16px;
+ion-segment-button {
+  font-size: 14px;
 }
 </style> 

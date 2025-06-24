@@ -36,13 +36,13 @@
             v-for="event in events.slice(0, 3)" 
             :key="event.id"
             button
-            @click="openEventDetails(event.id)"
+            @click="openEventDetails(Number(event.id))"
           >
             <ion-icon :icon="locationOutline" slot="start" color="primary"></ion-icon>
             <ion-label>
               <h3>{{ event.title }}</h3>
               <p>{{ event.location }}</p>
-              <p>{{ formatDate(event.date) }}</p>
+              <p>{{ formatDate(event.startTime) }}</p>
             </ion-label>
             <ion-button slot="end" fill="clear" size="small">
               <ion-icon :icon="chevronForwardOutline"></ion-icon>
@@ -94,18 +94,18 @@ import {
   chevronForwardOutline,
   locateOutline
 } from 'ionicons/icons';
-import { ApiService } from '../services/apiService';
+import { useEventsStore } from '../stores';
+import type { EventDTO } from '../types/api';
 
 const router = useRouter();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
 
-const events = ref<any[]>([]);
+const events = ref<EventDTO[]>([]);
 
 const loadEvents = async () => {
   try {
-    const data = await apiService.getEvents();
-    // Фильтруем только мероприятия с координатами
-    events.value = Array.isArray(data) ? data.filter((event: any) => event.latitude && event.longitude) : [];
+    await eventsStore.fetchEvents();
+    events.value = eventsStore.getEvents;
   } catch (error) {
     console.error('Error loading events:', error);
     const toast = await toastController.create({
@@ -128,7 +128,7 @@ const refreshEvents = async () => {
 };
 
 const openEventDetails = (eventId: number) => {
-  router.push(`/event-details/${eventId}`);
+  router.push(`/event/${eventId}`);
 };
 
 const showMapInfo = async () => {
@@ -149,9 +149,8 @@ const centerMapOnUser = async () => {
   await toast.present();
 };
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('ru-RU', {
+const formatDate = (date: string) => {
+  return new Date(date).toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -183,7 +182,7 @@ onMounted(() => {
 }
 
 .map-placeholder h2 {
-  margin: 16px 0 8px 0;
+  margin: 16px 0 8px;
   color: var(--ion-color-dark);
 }
 

@@ -81,8 +81,8 @@ const routes: Array<RouteRecordRaw> = [
   },
   // Отдельные страницы
   {
-    path: '/event-details/:id',
-    name: 'EventDetails',
+    path: '/event/:id',
+    name: 'EventDetailsAlias',
     component: () => import('../views/EventDetailsPage.vue'),
     props: true
   },
@@ -96,6 +96,16 @@ const routes: Array<RouteRecordRaw> = [
     name: 'EditEvent',
     component: () => import('../views/EditEventPage.vue'),
     props: true
+  },
+  {
+    path: '/edit-profile',
+    name: 'EditProfile',
+    component: () => import('../views/EditProfilePage.vue')
+  },
+  {
+    path: '/notification-settings',
+    name: 'NotificationSettings',
+    component: () => import('../views/NotificationSettingsPage.vue')
   }
 ];
 

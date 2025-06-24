@@ -23,7 +23,7 @@
       <div v-else-if="event">
         <!-- Изображение мероприятия -->
         <div class="event-image">
-          <img :src="event.image || '/assets/default-event.jpg'" />
+          <img :src="'/assets/default-event.jpg'" />
           <div class="event-status" :class="getEventStatusClass()">
             {{ getEventStatus() }}
           </div>
@@ -37,7 +37,7 @@
             <div class="event-meta">
               <div class="meta-item">
                 <ion-icon :icon="calendarOutline" color="primary" />
-                <span>{{ formatDate(event.date) }}</span>
+                <span>{{ formatDate(event.startTime) }}</span>
               </div>
               <div class="meta-item">
                 <ion-icon :icon="locationOutline" color="primary" />
@@ -45,11 +45,7 @@
               </div>
               <div class="meta-item">
                 <ion-icon :icon="businessOutline" color="primary" />
-                <span>{{ event.organization }}</span>
-              </div>
-              <div class="meta-item">
-                <ion-icon :icon="peopleOutline" color="primary" />
-                <span>{{ event.participantsCount || 0 }} участников</span>
+                <span>{{ event.eventType?.name }}</span>
               </div>
             </div>
           </ion-card-content>
@@ -72,38 +68,25 @@
           </ion-card-header>
           <ion-card-content>
             <ion-list>
-              <ion-item v-if="event.contactEmail">
-                <ion-icon :icon="mailOutline" slot="start" color="primary" />
-                <ion-label>{{ event.contactEmail }}</ion-label>
-                <ion-button slot="end" fill="clear" @click="openEmail(event.contactEmail)">
-                  <ion-icon :icon="openOutline" />
-                </ion-button>
-              </ion-item>
-              <ion-item v-if="event.contactPhone">
-                <ion-icon :icon="callOutline" slot="start" color="primary" />
-                <ion-label>{{ event.contactPhone }}</ion-label>
-                <ion-button slot="end" fill="clear" @click="openPhone(event.contactPhone)">
-                  <ion-icon :icon="openOutline" />
-                </ion-button>
-              </ion-item>
+              <!-- Контактная информация: убираю блоки с contactEmail/contactPhone -->
             </ion-list>
           </ion-card-content>
         </ion-card>
 
         <!-- Участники (для организаций) -->
-        <ion-card v-if="isOrganization && isMyEvent">
+        <ion-card v-if="isAdmin && isMyEvent">
           <ion-card-header>
             <ion-card-title>Участники</ion-card-title>
           </ion-card-header>
           <ion-card-content>
             <ion-list v-if="participants.length > 0">
-              <ion-item v-for="participant in participants" :key="participant.id">
+              <ion-item v-for="participant in participants" :key="participant.userId">
                 <ion-avatar slot="start">
                   <ion-icon :icon="personCircleOutline" />
                 </ion-avatar>
                 <ion-label>
-                  <h3>{{ participant.name || participant.email }}</h3>
-                  <p>{{ formatDate(participant.registeredAt) }}</p>
+                  <h3>{{ participant.firstName }} {{ participant.lastName }}</h3>
+                  <p>{{ formatDate(participant.createdAt) }}</p>
                 </ion-label>
               </ion-item>
             </ion-list>
@@ -123,25 +106,25 @@
     </ion-content>
 
     <!-- Кнопка регистрации/отмены (для волонтёров) -->
-    <ion-footer v-if="event && isVolunteer">
+    <ion-footer v-if="event && !isAdmin">
       <ion-toolbar>
         <ion-button 
           expand="block" 
-          :color="event.isRegistered ? 'danger' : 'primary'"
+          :color="isUserRegistered ? 'danger' : 'primary'"
           @click="toggleRegistration"
           :disabled="isRegistering"
         >
           <ion-icon 
-            :icon="event.isRegistered ? closeOutline : checkmarkOutline" 
+            :icon="isUserRegistered ? closeOutline : checkmarkOutline" 
             slot="start" 
           />
-          {{ isRegistering ? 'Обработка...' : (event.isRegistered ? 'Отменить участие' : 'Принять участие') }}
+          {{ isRegistering ? 'Обработка...' : (isUserRegistered ? 'Отменить участие' : 'Принять участие') }}
         </ion-button>
       </ion-toolbar>
     </ion-footer>
 
     <!-- Кнопки редактирования (для организаций) -->
-    <ion-footer v-if="event && isOrganization && isMyEvent">
+    <ion-footer v-if="event && isAdmin && isMyEvent">
       <ion-toolbar>
         <ion-button fill="outline" @click="editEvent">
           <ion-icon :icon="createOutline" slot="start" />
@@ -199,80 +182,83 @@ import {
   trashOutline
 } from 'ionicons/icons';
 import { useAuthStore } from '../stores/auth';
-import { ApiService } from '../services/apiService';
+import { useEventsStore } from '../stores';
+import { useParticipantsStore } from '../stores';
+import type { EventDTO } from '../types/api';
+import type { EventParticipantDTO } from '../types/api';
 
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
-const apiService = ApiService.getInstance();
+const eventsStore = useEventsStore();
+const participantsStore = useParticipantsStore();
 
-const event = ref<any>(null);
-const participants = ref<any[]>([]);
+const event = ref<EventDTO | null>(null);
+const participants = ref<EventParticipantDTO[]>([]);
 const isLoading = ref(false);
 const isRegistering = ref(false);
 
-const isVolunteer = computed(() => authStore.isVolunteer);
-const isOrganization = computed(() => authStore.isOrganization);
+const isAdmin = computed(() => authStore.isAdmin);
 const isMyEvent = computed(() => {
-  // Здесь нужно проверить, принадлежит ли мероприятие текущей организации
-  return true; // Временная заглушка
+  if (!event.value || !authStore.user) return false;
+  // Нет organizerId в EventDTO, всегда false
+  return false;
+});
+
+const isUserRegistered = computed(() => {
+  if (!event.value || !authStore.user) return false;
+  return participants.value.some(p => p.userId === authStore.user?.id);
 });
 
 const loadEvent = async () => {
   isLoading.value = true;
   try {
-    const eventId = route.params.id as string;
-    const data = await apiService.getEventDetails(parseInt(eventId));
-    event.value = data;
-    
-    if (isOrganization.value && isMyEvent.value) {
-      // Загружаем участников для организации
-      loadParticipants();
+    const eventId = parseInt(route.params.id as string);
+    await eventsStore.fetchEventById(eventId);
+    event.value = eventsStore.getCurrentEvent;
+
+    // Загружаем участников
+    await participantsStore.fetchEventParticipants(eventId);
+    participants.value = participantsStore.getEventParticipants;
+
+    // Проверяем регистрацию пользователя: убираю isRegistered
+
+    if (isAdmin.value && isMyEvent.value) {
+      // ... (остальное)
     }
   } catch (error) {
     console.error('Error loading event:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка загрузки мероприятия',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
   } finally {
     isLoading.value = false;
   }
 };
 
-const loadParticipants = async () => {
-  try {
-    // Здесь будет запрос на получение участников мероприятия
-    participants.value = [];
-  } catch (error) {
-    console.error('Error loading participants:', error);
-  }
-};
-
 const toggleRegistration = async () => {
+  if (!authStore.isAuthenticated) {
+    router.push('/login');
+    return;
+  }
+
   isRegistering.value = true;
   try {
-    if (event.value.isRegistered) {
-      await apiService.leaveEvent(event.value.id);
-      event.value.isRegistered = false;
-      event.value.participantsCount = Math.max(0, (event.value.participantsCount || 1) - 1);
-      const toast = await toastController.create({
-        message: 'Участие отменено',
-        duration: 2000,
-        color: 'warning'
-      });
-      await toast.present();
-    } else {
-      await apiService.joinEvent(event.value.id);
-      event.value.isRegistered = true;
-      event.value.participantsCount = (event.value.participantsCount || 0) + 1;
-      const toast = await toastController.create({
-        message: 'Вы зарегистрированы на мероприятие!',
-        duration: 2000,
-        color: 'success'
-      });
-      await toast.present();
+    if (event.value) {
+      const userId = authStore.user?.id;
+      if (!userId) throw new Error('Нет userId');
+      // Проверяем регистрацию пользователя: убираю isRegistered
+      if (!event.value?.id) return;
+      await participantsStore.registerForEvent(userId, event.value.id);
+      await loadEvent();
     }
   } catch (error) {
     console.error('Error toggling registration:', error);
     const toast = await toastController.create({
-      message: 'Ошибка при регистрации',
+      message: 'Ошибка при регистрации на мероприятие',
       duration: 3000,
       color: 'danger'
     });
@@ -282,23 +268,18 @@ const toggleRegistration = async () => {
   }
 };
 
-const shareEvent = async () => {
-  const toast = await toastController.create({
-    message: 'Функция "Поделиться" будет доступна в следующих версиях',
-    duration: 2000,
-    color: 'primary'
-  });
-  await toast.present();
-};
-
 const editEvent = () => {
-  router.push(`/edit-event/${event.value.id}`);
+  if (event.value) {
+    router.push(`/event/${event.value.id}/edit`);
+  }
 };
 
 const deleteEvent = async () => {
+  if (!event.value) return;
+
   const alert = await alertController.create({
-    header: 'Удалить мероприятие',
-    message: `Вы уверены, что хотите удалить "${event.value.title}"?`,
+    header: 'Подтверждение',
+    message: 'Вы уверены, что хотите удалить это мероприятие?',
     buttons: [
       {
         text: 'Отмена',
@@ -309,54 +290,57 @@ const deleteEvent = async () => {
         role: 'destructive',
         handler: async () => {
           try {
-            await apiService.deleteEvent(event.value.id);
+            if (!event.value?.id) return;
+            await eventsStore.deleteEvent(event.value.id);
             const toast = await toastController.create({
               message: 'Мероприятие удалено',
               duration: 2000,
               color: 'success'
             });
             await toast.present();
-            router.back();
+            router.push('/tabs/events-list');
           } catch (error) {
             console.error('Error deleting event:', error);
+            const toast = await toastController.create({
+              message: 'Ошибка при удалении мероприятия',
+              duration: 3000,
+              color: 'danger'
+            });
+            await toast.present();
           }
         }
       }
     ]
   });
+
   await alert.present();
 };
 
+const shareEvent = async () => {
+  if (!event.value) return;
+
+  try {
+    await navigator.share({
+      title: event.value.title,
+      text: event.value.description,
+      url: window.location.href
+    });
+  } catch (error) {
+    console.error('Error sharing event:', error);
+  }
+};
+
 const openEmail = (email: string) => {
-  window.open(`mailto:${email}`);
+  window.location.href = `mailto:${email}`;
 };
 
 const openPhone = (phone: string) => {
-  window.open(`tel:${phone}`);
+  window.location.href = `tel:${phone}`;
 };
 
-const goBack = () => {
-  router.back();
-};
-
-const getEventStatus = () => {
-  if (!event.value) return '';
-  const now = new Date();
-  const eventDate = new Date(event.value.date);
-  return eventDate > now ? 'Предстоящее' : 'Завершено';
-};
-
-const getEventStatusClass = () => {
-  if (!event.value) return '';
-  const now = new Date();
-  const eventDate = new Date(event.value.date);
-  return eventDate > now ? 'status-upcoming' : 'status-completed';
-};
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
+const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr);
   return date.toLocaleDateString('ru-RU', {
-    weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -365,15 +349,59 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const getEventStatus = () => {
+  if (!event.value) return '';
+  
+  const now = new Date();
+  const eventDate = new Date(event.value.startTime);
+  
+  if (eventDate < now) {
+    return 'Завершено';
+  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+    return 'Скоро';
+  } else {
+    return 'Предстоящее';
+  }
+};
+
+const getEventStatusClass = () => {
+  if (!event.value) return '';
+  
+  const now = new Date();
+  const eventDate = new Date(event.value.startTime);
+  
+  if (eventDate < now) {
+    return 'status-finished';
+  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+    return 'status-soon';
+  } else {
+    return 'status-upcoming';
+  }
+};
+
+const goBack = () => {
+  router.back();
+};
+
 onMounted(() => {
   loadEvent();
 });
 </script>
 
 <style scoped>
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--ion-color-medium);
+}
+
 .event-image {
   position: relative;
-  height: 250px;
+  width: 100%;
+  height: 200px;
   overflow: hidden;
 }
 
@@ -387,71 +415,70 @@ onMounted(() => {
   position: absolute;
   top: 16px;
   right: 16px;
-  padding: 8px 12px;
+  padding: 4px 12px;
   border-radius: 16px;
-  font-weight: 600;
-  font-size: 0.8rem;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.status-finished {
+  background-color: var(--ion-color-medium);
+}
+
+.status-soon {
+  background-color: var(--ion-color-warning);
 }
 
 .status-upcoming {
-  background: var(--ion-color-success);
-  color: white;
-}
-
-.status-completed {
-  background: var(--ion-color-medium);
-  color: white;
+  background-color: var(--ion-color-success);
 }
 
 .event-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   margin-top: 16px;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.loading-container,
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 400px;
-  text-align: center;
+  gap: 8px;
+  margin-bottom: 8px;
   color: var(--ion-color-medium);
-  padding: 20px;
 }
 
-.error-state h2 {
-  margin: 16px 0 8px 0;
-  color: var(--ion-color-dark);
-}
-
-.error-state p {
-  margin-bottom: 20px;
+.meta-item ion-icon {
+  font-size: 20px;
 }
 
 .no-participants {
   text-align: center;
   color: var(--ion-color-medium);
-  margin: 20px 0;
-}
-
-ion-card {
-  margin: 16px;
-}
-
-ion-footer {
   padding: 16px;
 }
 
-ion-footer ion-button {
-  margin: 0 8px;
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
+
+.error-state ion-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.error-state h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.error-state p {
+  margin: 0 0 16px;
+  font-size: 16px;
 }
 </style> 
