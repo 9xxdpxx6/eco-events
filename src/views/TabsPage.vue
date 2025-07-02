@@ -7,12 +7,17 @@
         <template v-if="isVolunteer">
           <ion-tab-button tab="events-list" href="/tabs/events-list">
             <ion-icon aria-hidden="true" :icon="listOutline" />
-            <ion-label>Мероприятия</ion-label>
+            <ion-label>События</ion-label>
           </ion-tab-button>
 
-          <ion-tab-button tab="events-map" href="/tabs/events-map">
-            <ion-icon aria-hidden="true" :icon="mapOutline" />
-            <ion-label>Карта</ion-label>
+          <ion-tab-button tab="my-registrations" href="/tabs/my-registrations">
+            <ion-icon aria-hidden="true" :icon="readerOutline" />
+            <ion-label>Мои записи</ion-label>
+          </ion-tab-button>
+
+          <ion-tab-button tab="bonuses" href="/tabs/bonuses">
+            <ion-icon aria-hidden="true" :icon="trophyOutline" />
+            <ion-label>Бонусы</ion-label>
           </ion-tab-button>
 
           <ion-tab-button tab="volunteer-profile" href="/tabs/volunteer-profile">
@@ -50,10 +55,11 @@ import {
 } from '@ionic/vue';
 import { 
   listOutline, 
-  mapOutline, 
   personOutline, 
   calendarOutline, 
-  businessOutline 
+  businessOutline,
+  readerOutline,
+  trophyOutline
 } from 'ionicons/icons';
 import { computed, watchEffect } from 'vue';
 import { useAuthStore } from '../stores/auth';

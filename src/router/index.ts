@@ -4,7 +4,6 @@ import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import TabsPage from '../views/TabsPage.vue';
 import EventsListPage from '../views/EventsListPage.vue';
-import EventsMapPage from '../views/EventsMapPage.vue';
 import VolunteerProfilePage from '../views/VolunteerProfilePage.vue';
 import EventsManagementPage from '../views/EventsManagementPage.vue';
 import { useAuthStore } from '../stores/auth';
@@ -57,9 +56,14 @@ const routes: Array<RouteRecordRaw> = [
         component: EventsListPage
       },
       {
-        path: 'events-map',
-        name: 'EventsMap',
-        component: EventsMapPage
+        path: 'my-registrations',
+        name: 'MyRegistrations',
+        component: () => import('../views/MyRegistrationsPage.vue')
+      },
+      {
+        path: 'bonuses',
+        name: 'Bonuses',
+        component: () => import('../views/BonusesPage.vue')
       },
       {
         path: 'volunteer-profile',
@@ -142,7 +146,7 @@ router.beforeEach((to, from, next) => {
   } 
   // Проверка доступа к страницам в зависимости от роли
   else if (authStore.isAuthenticated) {
-    const volunteerOnlyRoutes = ['EventsList', 'EventsMap', 'VolunteerProfile'];
+    const volunteerOnlyRoutes = ['EventsList', 'MyRegistrations', 'Bonuses', 'VolunteerProfile'];
     const organizationOnlyRoutes = ['EventsManagement', 'OrganizationProfile', 'CreateEvent', 'EditEvent'];
     
     if (authStore.isVolunteer && organizationOnlyRoutes.includes(to.name as string)) {
