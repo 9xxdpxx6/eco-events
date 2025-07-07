@@ -58,7 +58,7 @@
           @click="openEventDetails(Number(event.id))"
         >
           <ion-thumbnail slot="start">
-            <img :src="'/assets/default-event.jpg'" />
+            <img :src="eventImagePlaceholder" />
           </ion-thumbnail>
           <ion-label>
             <h2>{{ event.title }}</h2>
@@ -115,19 +115,20 @@ import {
   swapVerticalOutline,
   checkmarkOutline
 } from 'ionicons/icons';
-import { useEventsStore } from '../stores';
-import { useParticipantsStore } from '../stores';
-import { useAuthStore } from '../stores';
-import EventListLoader from './EventListLoader.vue';
-import type { EventDTO } from '../types/api';
+import { useEventsStore } from '../../stores';
+import { useParticipantsStore } from '../../stores';
+import { useAuthStore } from '../../stores';
+import EventListLoader from '../EventListLoader.vue';
+import type { EventResponseMediumDTO } from '../../types/api';
+import eventImagePlaceholder from '../../assets/event-no-image.png';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
 const participantsStore = useParticipantsStore();
 const authStore = useAuthStore();
 
-const events = ref<EventDTO[]>([]);
-const filteredEvents = ref<EventDTO[]>([]);
+const events = ref<EventResponseMediumDTO[]>([]);
+const filteredEvents = ref<EventResponseMediumDTO[]>([]);
 const searchText = ref('');
 const selectedFilter = ref('all');
 const isLoading = ref(false);
@@ -186,12 +187,20 @@ const loadEvents = async (reset = true) => {
   try {
     if (reset) {
       page.value = 0;
-      await eventsStore.fetchEventsSearch(searchText.value, page.value, size);
+      await eventsStore.fetchEventsSearch({
+        keyword: searchText.value,
+        page: page.value,
+        size: size
+      });
       events.value = eventsStore.getEvents;
       hasMore.value = events.value.length === size;
     } else {
       page.value += 1;
-      await eventsStore.fetchEventsSearch(searchText.value, page.value, size);
+      await eventsStore.fetchEventsSearch({
+        keyword: searchText.value,
+        page: page.value,
+        size: size
+      });
       const newEvents = eventsStore.getEvents;
       if (newEvents.length > 0) {
         events.value = [...events.value, ...newEvents];
@@ -270,7 +279,7 @@ const openEventDetails = (eventId: number) => {
   router.push(`/event/${eventId}`);
 };
 
-const toggleEventRegistration = async (event: EventDTO) => {
+const toggleEventRegistration = async (event: EventResponseMediumDTO) => {
   if (!authStore.isAuthenticated) {
     router.push('/login');
     return;
@@ -281,7 +290,17 @@ const toggleEventRegistration = async (event: EventDTO) => {
     const userId = authStore.user?.id;
     if (!userId) throw new Error('Нет userId');
     if (!event.id) return;
-    await participantsStore.deleteParticipant(userId, event.id);
+    
+    // В списке кнопка "+" всегда регистрирует на событие
+    await participantsStore.registerForEvent(userId, event.id);
+    
+    const toast = await toastController.create({
+      message: 'Вы успешно записались на мероприятие!',
+      duration: 2000,
+      color: 'success'
+    });
+    await toast.present();
+    
     await loadEvents();
   } catch (error) {
     console.error('Error toggling registration:', error);

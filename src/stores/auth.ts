@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { authApi } from '../api/auth';
 import { usersApi } from '../api/users';
-import type { AuthRequestDTO, AuthResponseDTO } from '../types/api';
+import type { AuthRequestDTO, AuthResponseDTO, UserRegistrationRequestDto } from '../types/api';
 
 interface AuthResponse {
   token: string;
@@ -57,12 +57,28 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async register(userData: AuthRequestDTO) {
+    async register(userData: UserRegistrationRequestDto) {
       try {
-        const response = await authApi.login(userData);
-        this.user = response;
+        // 1. Регистрируем пользователя
+        const registeredUser = await usersApi.register(userData);
+        
+        // 2. Автоматически логинимся после регистрации
+        const loginCredentials: AuthRequestDTO = {
+          login: userData.login,
+          password: userData.password
+        };
+        
+        const authResponse = await authApi.login(loginCredentials);
+        
+        // 3. Сохраняем состояние авторизации
+        this.user = authResponse;
+        this.token = authResponse.token;
         this.isAuthenticated = true;
-        return response;
+        localStorage.setItem('token', authResponse.token);
+        localStorage.setItem('userType', authResponse.role);
+        localStorage.setItem('userId', String(authResponse.id));
+        
+        return authResponse;
       } catch (error) {
         this.logout();
         throw error;
@@ -76,29 +92,46 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false;
       localStorage.removeItem('token');
       localStorage.removeItem('userType');
+      localStorage.removeItem('userId');
     },
 
     async checkAuth() {
+      this.isAuthLoading = true;
       const token = localStorage.getItem('token');
       const role = localStorage.getItem('userType');
       const id = localStorage.getItem('userId');
-      console.log('[checkAuth] token:', token, 'role:', role, 'id:', id);
+      
       if (token && role && id) {
         this.token = token;
         this.isAuthenticated = true;
+        
         try {
-          const user = await usersApi.getMe();
-          console.log('[checkAuth] user from API:', user);
-          this.user = { ...user, token };
+          const user = await usersApi.getById(Number(id));
+          // Создаем объект типа AuthResponseDTO
+          this.user = { 
+            ...user, 
+            token 
+          } as AuthResponseDTO;
         } catch (e) {
-          console.error('[checkAuth] error loading user:', e);
-          this.user = null;
+          if (import.meta.env.DEV) {
+            console.error('[checkAuth] error loading user:', e);
+          }
+          // Создаем минимальный объект пользователя из localStorage
+          this.user = {
+            id: Number(id),
+            fullName: 'Пользователь', // временное имя
+            login: 'user',
+            role: role as 'USER' | 'ADMIN',
+            token
+          } as AuthResponseDTO;
         }
       } else {
         this.token = null;
         this.isAuthenticated = false;
         this.user = null;
       }
+      
+      this.isAuthLoading = false;
     }
   }
 }); 

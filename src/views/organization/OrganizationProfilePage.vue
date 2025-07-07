@@ -143,9 +143,9 @@ import {
   notificationsOutline,
   informationCircleOutline
 } from 'ionicons/icons';
-import { useAuthStore } from '../stores';
-import { useEventsStore } from '../stores';
-import { useParticipantsStore } from '../stores';
+import { useAuthStore } from '../../stores';
+import { useEventsStore } from '../../stores';
+import { useParticipantsStore } from '../../stores';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -168,7 +168,7 @@ const loadStatistics = async () => {
     const allEvents = eventsStore.getEvents;
     const userEvents = allEvents.filter(event => event.eventType?.name === user.value?.login); // или другой критерий, если есть
     // Получаем участников только этих мероприятий
-    const { useParticipantsStore } = await import('../stores/participants');
+    const { useParticipantsStore } = await import('../../stores/participants');
     const participantsStore = useParticipantsStore();
     let totalParticipants = 0;
     for (const event of userEvents) {

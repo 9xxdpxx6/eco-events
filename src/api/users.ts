@@ -1,7 +1,9 @@
 import { apiClient } from './client';
 import type { 
   UserRegistrationRequestDto, 
-  UserRegistrationResponseDto 
+  UserRegistrationResponseDto,
+  UserFilterDTO,
+  Page
 } from '../types/api';
 
 export const usersApi = {
@@ -20,17 +22,32 @@ export const usersApi = {
     return data;
   },
 
+  create: async (userData: UserRegistrationRequestDto): Promise<UserRegistrationResponseDto> => {
+    const { data } = await apiClient.post<UserRegistrationResponseDto>('/api/users/', userData);
+    return data;
+  },
+
   update: async (userId: number, userData: UserRegistrationRequestDto): Promise<UserRegistrationResponseDto> => {
     const { data } = await apiClient.post<UserRegistrationResponseDto>(`/api/users/${userId}`, userData);
     return data;
   },
 
-  delete: async (userId: number): Promise<void> => {
-    await apiClient.delete(`/api/users/${userId}`);
+  delete: async (userId: number): Promise<UserRegistrationResponseDto> => {
+    const { data } = await apiClient.delete<UserRegistrationResponseDto>(`/api/users/${userId}`);
+    return data;
   },
 
-  getMe: async (): Promise<UserRegistrationResponseDto> => {
-    const { data } = await apiClient.get<UserRegistrationResponseDto>(`/api/users/me`);
+  search: async (filter: UserFilterDTO): Promise<Page> => {
+    const params: any = {};
+    if (filter.fullName) params.fullName = filter.fullName;
+    if (filter.login) params.login = filter.login;
+    if (filter.registeredEventsCount !== undefined) params.registeredEventsCount = filter.registeredEventsCount;
+    if (filter.totalBonusPoints !== undefined) params.totalBonusPoints = filter.totalBonusPoints;
+    if (filter.role) params.role = filter.role;
+    if (filter.page !== undefined) params.page = filter.page;
+    if (filter.size !== undefined) params.size = filter.size;
+
+    const { data } = await apiClient.get<Page>('/api/users/search', { params });
     return data;
   }
 }; 

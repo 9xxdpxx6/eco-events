@@ -9,20 +9,20 @@
       <form @submit.prevent="handleSave">
         <ion-list>
           <ion-item>
-            <ion-label position="stacked">Имя</ion-label>
-            <ion-input v-model="form.firstName" required />
-          </ion-item>
-          <ion-item>
-            <ion-label position="stacked">Фамилия</ion-label>
-            <ion-input v-model="form.lastName" required />
-          </ion-item>
-          <ion-item>
-            <ion-label position="stacked">Отчество</ion-label>
-            <ion-input v-model="form.patronymic" />
+            <ion-label position="stacked">Полное имя</ion-label>
+            <ion-input v-model="form.fullName" required placeholder="Иванов Иван Иванович" />
           </ion-item>
           <ion-item>
             <ion-label position="stacked">Логин</ion-label>
             <ion-input v-model="form.login" required />
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Email</ion-label>
+            <ion-input v-model="form.email" type="email" />
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Телефон</ion-label>
+            <ion-input v-model="form.phoneNumber" type="tel" />
           </ion-item>
           <ion-item>
             <ion-label position="stacked">Пароль (оставьте пустым, если не меняете)</ion-label>
@@ -49,12 +49,12 @@ const authStore = useAuthStore();
 const user = authStore.user;
 
 const form = ref<UserRegistrationRequestDto>({
-  firstName: user?.firstName || '',
-  lastName: user?.lastName || '',
-  patronymic: user?.patronymic || '',
+  fullName: user?.fullName || '',
   login: user?.login || '',
   password: '',
   role: user?.role || 'USER',
+  email: '',
+  phoneNumber: '',
 });
 
 const isLoading = ref(false);

@@ -23,7 +23,7 @@
       <div v-else-if="event">
         <!-- Изображение мероприятия -->
         <div class="event-image">
-          <img :src="'/assets/default-event.jpg'" />
+          <img :src="eventImagePlaceholder" />
           <div class="event-status" :class="getEventStatusClass()">
             {{ getEventStatus() }}
           </div>
@@ -62,13 +62,27 @@
         </ion-card>
 
         <!-- Контактная информация -->
-        <ion-card>
+        <ion-card v-if="event.owner && (event.owner.phoneNumber || event.owner.email)">
           <ion-card-header>
-            <ion-card-title>Контакты</ion-card-title>
+            <ion-card-title>Контакты организатора</ion-card-title>
           </ion-card-header>
           <ion-card-content>
             <ion-list>
-              <!-- Контактная информация: убираю блоки с contactEmail/contactPhone -->
+              <ion-item v-if="event.owner.email" button @click="openEmail(event.owner.email)">
+                <ion-icon :icon="mailOutline" slot="start" color="primary" />
+                <ion-label>
+                  <h3>Email</h3>
+                  <p>{{ event.owner.email }}</p>
+                </ion-label>
+              </ion-item>
+              
+              <ion-item v-if="event.owner.phoneNumber" button @click="openPhone(event.owner.phoneNumber)">
+                <ion-icon :icon="callOutline" slot="start" color="primary" />
+                <ion-label>
+                  <h3>Телефон</h3>
+                  <p>{{ event.owner.phoneNumber }}</p>
+                </ion-label>
+              </ion-item>
             </ion-list>
           </ion-card-content>
         </ion-card>
@@ -80,12 +94,12 @@
           </ion-card-header>
           <ion-card-content>
             <ion-list v-if="participants.length > 0">
-              <ion-item v-for="participant in participants" :key="participant.userId">
+              <ion-item v-for="participant in participants" :key="participant.user.id">
                 <ion-avatar slot="start">
                   <ion-icon :icon="personCircleOutline" />
                 </ion-avatar>
                 <ion-label>
-                  <h3>{{ participant.firstName }} {{ participant.lastName }}</h3>
+                  <h3>{{ participant.user.fullName }}</h3>
                   <p>{{ formatDate(participant.createdAt) }}</p>
                 </ion-label>
               </ion-item>
@@ -184,8 +198,9 @@ import {
 import { useAuthStore } from '../stores/auth';
 import { useEventsStore } from '../stores';
 import { useParticipantsStore } from '../stores';
-import type { EventDTO } from '../types/api';
+import type { EventResponseMediumDTO } from '../types/api';
 import type { EventParticipantDTO } from '../types/api';
+import eventImagePlaceholder from '../assets/event-no-image.png';
 
 const router = useRouter();
 const route = useRoute();
@@ -193,7 +208,7 @@ const authStore = useAuthStore();
 const eventsStore = useEventsStore();
 const participantsStore = useParticipantsStore();
 
-const event = ref<EventDTO | null>(null);
+const event = ref<EventResponseMediumDTO | null>(null);
 const participants = ref<EventParticipantDTO[]>([]);
 const isLoading = ref(false);
 const isRegistering = ref(false);
@@ -207,7 +222,7 @@ const isMyEvent = computed(() => {
 
 const isUserRegistered = computed(() => {
   if (!event.value || !authStore.user) return false;
-  return participants.value.some(p => p.userId === authStore.user?.id);
+  return participants.value.some(p => p.user.id === authStore.user?.id);
 });
 
 const loadEvent = async () => {
@@ -250,9 +265,15 @@ const toggleRegistration = async () => {
     if (event.value) {
       const userId = authStore.user?.id;
       if (!userId) throw new Error('Нет userId');
-      // Проверяем регистрацию пользователя: убираю isRegistered
       if (!event.value?.id) return;
-      await participantsStore.registerForEvent(userId, event.value.id);
+      
+      // Правильная логика: проверяем статус регистрации
+      if (isUserRegistered.value) {
+        await participantsStore.unregisterFromEvent(userId, event.value.id);
+      } else {
+        await participantsStore.registerForEvent(userId, event.value.id);
+      }
+      
       await loadEvent();
     }
   } catch (error) {

@@ -15,7 +15,7 @@
               <ion-icon :icon="personCircleOutline" size="large"></ion-icon>
             </ion-avatar>
             <div class="profile-info">
-              <h2>{{ (user?.lastName || '') + ' ' + (user?.firstName || '') + (user?.patronymic ? ' ' + user.patronymic : '') }}</h2>
+              <h2>{{ user?.fullName || '' }}</h2>
               <p>Волонтёр</p>
               <ion-chip color="success">
                 <ion-icon :icon="checkmarkCircleOutline" />
@@ -174,11 +174,11 @@ import {
   notificationsOutline,
   informationCircleOutline
 } from 'ionicons/icons';
-import { useAuthStore } from '../stores';
-import { useEventsStore } from '../stores';
-import { useParticipantsStore } from '../stores';
-import type { EventDTO } from '../types/api';
-import { usersApi } from '../api/users';
+import { useAuthStore } from '../../stores';
+import { useEventsStore } from '../../stores';
+import { useParticipantsStore } from '../../stores';
+import type { EventResponseMediumDTO } from '../../types/api';
+import { usersApi } from '../../api/users';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -192,8 +192,8 @@ const statistics = ref({
   hoursVolunteered: 0
 });
 const selectedTab = ref('upcoming');
-const upcomingEvents = ref<EventDTO[]>([]);
-const pastEvents = ref<EventDTO[]>([]);
+const upcomingEvents = ref<EventResponseMediumDTO[]>([]);
+const pastEvents = ref<EventResponseMediumDTO[]>([]);
 
 const loadStatistics = async () => {
   const userId = user.value?.id;
@@ -232,9 +232,9 @@ const loadUserEvents = async () => {
     await participantsStore.fetchUserParticipants(userId);
     const participants = participantsStore.getUserParticipants;
     const now = new Date();
-    const eventIds = participants.map(p => p.eventId);
+    const eventIds = participants.map(p => p.event.id);
     const uniqueEventIds = Array.from(new Set(eventIds));
-    const events: EventDTO[] = [];
+    const events: EventResponseMediumDTO[] = [];
     for (const eventId of uniqueEventIds) {
       try {
         const event = eventsStore.getEvents.find(e => e.id === eventId);
@@ -267,7 +267,7 @@ const openEventDetails = (eventId: number) => {
   router.push(`/event/${eventId}`);
 };
 
-const leaveEvent = async (event: EventDTO) => {
+const leaveEvent = async (event: EventResponseMediumDTO) => {
   if (!event.id) return;
   const alert = await alertController.create({
     header: 'Отменить участие',
@@ -283,7 +283,7 @@ const leaveEvent = async (event: EventDTO) => {
           try {
             const userId = user.value?.id;
             if (!userId || !event.id) return;
-            await participantsStore.deleteParticipant(event.id, userId);
+            await participantsStore.unregisterFromEvent(userId, event.id);
             upcomingEvents.value = upcomingEvents.value.filter(e => e.id !== event.id);
             
             const toast = await toastController.create({
@@ -368,7 +368,7 @@ const formatDate = (date: string) => {
 
 onMounted(async () => {
   // Если нет ФИО или логина, подгружаем пользователя по id
-  if (!user.value?.firstName || !user.value?.lastName || !user.value?.login) {
+  if (!user.value?.fullName || !user.value?.login) {
     const id = user.value?.id;
     if (id) {
       try {

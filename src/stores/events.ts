@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 import { eventsApi } from '../api/events';
-import type { EventDTO } from '../types/api';
+import type { EventRequestDTO, EventResponseMediumDTO, EventFilterDTO } from '../types/api';
 import { useParticipantsStore } from './participants';
 
 interface EventsState {
-  events: EventDTO[];
-  currentEvent: EventDTO | null;
+  events: EventResponseMediumDTO[];
+  currentEvent: EventResponseMediumDTO | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -39,10 +39,10 @@ export const useEventsStore = defineStore('events', {
         const participantsStore = useParticipantsStore();
         await participantsStore.fetchUserParticipants(userId);
         const participantEvents = participantsStore.getUserParticipants;
-        // Получаем мероприятия по eventId
-        const eventIds = participantEvents.map(p => p.eventId);
+        // Получаем мероприятия по eventId из event объектов
+        const eventIds = participantEvents.map(p => p.event.id);
         const uniqueEventIds = Array.from(new Set(eventIds));
-        const events: EventDTO[] = [];
+        const events: EventResponseMediumDTO[] = [];
         for (const eventId of uniqueEventIds) {
           try {
             const event = await eventsApi.getById(eventId);
@@ -72,7 +72,7 @@ export const useEventsStore = defineStore('events', {
       }
     },
 
-    async createEvent(eventData: EventDTO) {
+    async createEvent(eventData: EventRequestDTO) {
       this.isLoading = true;
       this.error = null;
       try {
@@ -87,7 +87,7 @@ export const useEventsStore = defineStore('events', {
       }
     },
 
-    async updateEvent(eventId: number, eventData: EventDTO) {
+    async updateEvent(eventId: number, eventData: EventRequestDTO) {
       this.isLoading = true;
       this.error = null;
       try {
@@ -145,11 +145,11 @@ export const useEventsStore = defineStore('events', {
       }
     },
 
-    async fetchEventsSearch(keyword: string = '', page: number = 0, size: number = 50, eventTypeId?: number, startDateFrom?: string, startDateTo?: string, organizerId?: number) {
+    async fetchEventsSearch(filter: EventFilterDTO) {
       this.isLoading = true;
       this.error = null;
       try {
-        const events = await eventsApi.search(keyword, page, size, eventTypeId, startDateFrom, startDateTo, organizerId);
+        const events = await eventsApi.search(filter);
         this.events = events;
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при поиске событий';

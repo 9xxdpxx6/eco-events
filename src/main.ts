@@ -47,29 +47,23 @@ const app = createApp(App)
 // Инициализируем authStore после настройки Pinia
 const authStore = useAuthStore();
 
-// Сначала синхронно проверяем токен в localStorage
-const token = localStorage.getItem('token');
-if (token) {
-  console.log('🔍 Найден токен в localStorage, устанавливаем предварительную авторизацию');
-  
-  // Получаем сохраненный тип пользователя
-  const savedUserType = localStorage.getItem('userType');
-  console.log('📱 Сохраненный тип пользователя из localStorage:', savedUserType);
-  
-  let userType: 'volunteer' | 'organization' = 'volunteer';
-  if (savedUserType === 'organization') {
-    userType = 'organization';
-  }
-  
-  console.log('✅ Устанавливаем предварительные данные пользователя:', {
-    token: token.substring(0, 10) + '...',
-    userType: userType
-  });
-}
-
 // Выполняем полную проверку авторизации асинхронно и только потом монтируем приложение
 authStore.checkAuth().then(() => {
-  console.log('✅ Проверка авторизации завершена');
+  if (import.meta.env.DEV) {
+    console.log('✅ Авторизация проверена:', {
+      isAuthenticated: authStore.isAuthenticated,
+      userRole: authStore.user?.role
+    });
+  }
+  
+  router.isReady().then(() => {
+    app.mount('#app');
+  });
+}).catch((error) => {
+  if (import.meta.env.DEV) {
+    console.error('❌ Ошибка при проверке авторизации:', error);
+  }
+  // Даже при ошибке монтируем приложение
   router.isReady().then(() => {
     app.mount('#app');
   });

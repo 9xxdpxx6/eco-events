@@ -196,14 +196,16 @@ import {
   toastController
 } from '@ionic/vue';
 import { checkmarkOutline } from 'ionicons/icons';
-import { useEventsStore } from '../stores';
-import { useEventTypesStore } from '../stores';
-import type { EventTypeDTO } from '../types/api';
+import { useEventsStore } from '../../stores';
+import { useEventTypesStore } from '../../stores';
+import { useAuthStore } from '../../stores/auth';
+import type { EventTypeDTO } from '../../types/api';
 
 const router = useRouter();
 const route = useRoute();
 const eventsStore = useEventsStore();
 const eventTypesStore = useEventTypesStore();
+const authStore = useAuthStore();
 
 const eventId = parseInt(route.params.id as string);
 const form = ref({
@@ -297,19 +299,9 @@ const saveChanges = async () => {
       startTime: new Date(`${form.value.date}T${form.value.time}`).toISOString(),
       endTime: new Date(new Date(form.value.date).getTime() + 3600000).toISOString(),
       location: form.value.location,
-      contactEmail: form.value.contactEmail,
-      contactPhone: form.value.contactPhone,
-      maxParticipants: form.value.maxParticipants,
-      requiresRegistration: false,
-      providesEquipment: false,
-      minAge: null,
-      requirements: '',
       conducted: false,
-      eventType: {
-        id: eventType?.id,
-        name: eventType?.name || '',
-        description: eventType?.description || ''
-      }
+      eventTypeId: eventType?.id!,
+      userId: authStore.user?.id || 1
     };
 
     await eventsStore.updateEvent(eventId, eventData);

@@ -1,42 +1,44 @@
 export interface UserRegistrationRequestDto {
-  firstName: string;
-  lastName: string;
-  patronymic?: string;
+  fullName: string;
   login: string;
   password: string;
   role?: 'USER' | 'ADMIN';
+  phoneNumber?: string;
+  email?: string;
 }
 
 export interface UserRegistrationResponseDto {
   id: number;
-  firstName: string;
-  lastName: string;
-  patronymic?: string;
+  fullName: string;
   login: string;
   role: 'USER' | 'ADMIN';
 }
 
-export interface UserBonusHistoryDTO {
-  id?: number;
-  userId: number;
-  bonusTypeId: number;
-  amount: number;
-  reason?: string;
-  createdAt?: string;
-  active?: boolean;
+export interface UserShortDTO {
+  id: number;
+  fullName: string;
 }
 
-export interface EventParticipantDTO {
-  userId: number;
-  firstName: string;
-  lastName: string;
-  eventId: number;
-  eventName: string;
-  status: string;
-  createdAt: string;
+export interface UserMediumDTO {
+  id: number;
+  fullName: string;
+  registeredEventsCount: number;
+  totalBonusPoints: number;
+  phoneNumber?: string;
+  email?: string;
 }
 
-export interface EventDTO {
+export interface UserFilterDTO {
+  fullName?: string;
+  login?: string;
+  registeredEventsCount?: number;
+  totalBonusPoints?: number;
+  role?: 'USER' | 'ADMIN';
+  page?: number;
+  size?: number;
+}
+
+export interface EventRequestDTO {
   id?: number;
   title: string;
   description: string;
@@ -45,20 +47,82 @@ export interface EventDTO {
   location: string;
   createdAt?: string;
   updatedAt?: string;
+  conducted?: boolean;
+  eventTypeId: number;
+  userId: number;
+}
+
+export interface EventResponseMediumDTO {
+  id: number;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  createdAt: string;
+  updatedAt: string;
   conducted: boolean;
   eventType: EventTypeDTO;
+  owner: UserMediumDTO;
+}
+
+export interface EventShortDTO {
+  id: number;
+  title: string;
+}
+
+export interface EventFilterDTO {
+  keyword?: string;
+  eventTypeId?: number;
+  startDateFrom?: string;
+  startDateTo?: string;
+  page?: number;
+  size?: number;
 }
 
 export interface EventTypeDTO {
   id?: number;
   name: string;
   description?: string;
+  eventsCount?: number;
+}
+
+export interface EventParticipantDTO {
+  status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
+  createdAt: string;
+  user: UserShortDTO;
+  event: EventShortDTO;
+}
+
+export interface RegisterOrUnregisterRequest {
+  userId: number;
+  eventId: number;
 }
 
 export interface BonusTypeDTO {
   id?: number;
   name: string;
   description?: string;
+}
+
+export interface UserBonusHistoryRequestDTO {
+  id?: number;
+  userId: number;
+  bonusTypeId: number;
+  amount?: number;
+  reason?: string;
+  createdAt?: string;
+  active?: boolean;
+}
+
+export interface UserBonusHistoryResponseShortDTO {
+  id: number;
+  user: UserShortDTO;
+  bonusType: BonusTypeDTO;
+  amount: number;
+  reason?: string;
+  createdAt: string;
+  active: boolean;
 }
 
 export interface AuthRequestDTO {
@@ -68,4 +132,33 @@ export interface AuthRequestDTO {
 
 export interface AuthResponseDTO extends UserRegistrationResponseDto {
   token: string;
+}
+
+export interface SortObject {
+  empty: boolean;
+  sorted: boolean;
+  unsorted: boolean;
+}
+
+export interface PageableObject {
+  offset: number;
+  sort: SortObject;
+  pageNumber: number;
+  paged: boolean;
+  pageSize: number;
+  unpaged: boolean;
+}
+
+export interface Page<T = any> {
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  content: T[];
+  number: number;
+  sort: SortObject;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+  pageable: PageableObject;
+  empty: boolean;
 } 

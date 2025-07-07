@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { BonusTypeDTO, UserBonusHistoryDTO } from '../types/api';
+import type { BonusTypeDTO, UserBonusHistoryRequestDTO, UserBonusHistoryResponseShortDTO } from '../types/api';
 
 export const bonusTypesApi = {
   getAll: async (): Promise<BonusTypeDTO[]> => {
@@ -28,23 +28,23 @@ export const bonusTypesApi = {
 };
 
 export const bonusHistoryApi = {
-  getByUserId: async (userId: number): Promise<UserBonusHistoryDTO[]> => {
-    const { data } = await apiClient.get<UserBonusHistoryDTO[]>(`/api/user-bonus-history/user/${userId}`);
+  getByUserId: async (userId: number): Promise<UserBonusHistoryResponseShortDTO[]> => {
+    const { data } = await apiClient.get<UserBonusHistoryResponseShortDTO[]>(`/api/user-bonus-history/user/${userId}`);
     return data;
   },
 
-  getById: async (id: number): Promise<UserBonusHistoryDTO> => {
-    const { data } = await apiClient.get<UserBonusHistoryDTO>(`/api/user-bonus-history/${id}`);
+  getById: async (id: number): Promise<UserBonusHistoryResponseShortDTO> => {
+    const { data } = await apiClient.get<UserBonusHistoryResponseShortDTO>(`/api/user-bonus-history/${id}`);
     return data;
   },
 
-  create: async (bonusHistory: UserBonusHistoryDTO): Promise<UserBonusHistoryDTO> => {
-    const { data } = await apiClient.post<UserBonusHistoryDTO>('/api/user-bonus-history/', bonusHistory);
+  create: async (bonusHistory: UserBonusHistoryRequestDTO): Promise<UserBonusHistoryResponseShortDTO> => {
+    const { data } = await apiClient.post<UserBonusHistoryResponseShortDTO>('/api/user-bonus-history/', bonusHistory);
     return data;
   },
 
-  update: async (id: number, bonusHistory: UserBonusHistoryDTO): Promise<UserBonusHistoryDTO> => {
-    const { data } = await apiClient.post<UserBonusHistoryDTO>(`/api/user-bonus-history/${id}`, bonusHistory);
+  update: async (id: number, bonusHistory: UserBonusHistoryRequestDTO): Promise<UserBonusHistoryResponseShortDTO> => {
+    const { data } = await apiClient.post<UserBonusHistoryResponseShortDTO>(`/api/user-bonus-history/${id}`, bonusHistory);
     return data;
   },
 

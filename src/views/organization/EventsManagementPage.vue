@@ -53,7 +53,7 @@
       <ion-list v-else-if="filteredEvents.length > 0">
         <ion-item v-for="event in filteredEvents" :key="event.id ?? Math.random()" class="event-card-vertical" @click="viewEventDetails(Number(event.id))" button>
           <ion-thumbnail slot="start">
-            <img :src="'/assets/default-event.jpg'" />
+            <img :src="eventImagePlaceholder" />
           </ion-thumbnail>
           <ion-label>
             <h2>{{ event.title }}</h2>
@@ -137,15 +137,16 @@ import {
   trashOutline,
   searchOutline
 } from 'ionicons/icons';
-import { useEventsStore, useAuthStore } from '../stores';
-import type { EventDTO } from '../types/api';
+import { useEventsStore, useAuthStore } from '../../stores';
+import type { EventResponseMediumDTO } from '../../types/api';
+import eventImagePlaceholder from '../../assets/event-no-image.png';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
 const authStore = useAuthStore();
 
-const events = ref<EventDTO[]>([]);
-const filteredEvents = ref<EventDTO[]>([]);
+const events = ref<EventResponseMediumDTO[]>([]);
+const filteredEvents = ref<EventResponseMediumDTO[]>([]);
 const selectedFilter = ref('all');
 const isLoading = ref(false);
 const page = ref(0);
@@ -155,14 +156,18 @@ let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const upcomingEventsCount = computed(() => {
   const now = new Date();
-  return events.value.filter((event: EventDTO) => new Date(event.startTime) > now).length;
+  return events.value.filter((event: EventResponseMediumDTO) => new Date(event.startTime) > now).length;
 });
 
 const loadEvents = async (hotSearch = false) => {
   isLoading.value = true;
   try {
     const organizerId = authStore.user?.id;
-    await eventsStore.fetchEventsSearch(searchText.value, page.value, size);
+    await eventsStore.fetchEventsSearch({
+      keyword: searchText.value,
+      page: page.value,
+      size: size
+    });
     events.value = eventsStore.getEvents;
     filterEvents();
   } catch (error) {
@@ -183,13 +188,13 @@ const filterEvents = () => {
   const now = new Date();
   switch (selectedFilter.value) {
     case 'upcoming':
-      filtered = filtered.filter((event: EventDTO) => new Date(event.startTime) > now);
+      filtered = filtered.filter((event: EventResponseMediumDTO) => new Date(event.startTime) > now);
       break;
     case 'past':
-      filtered = filtered.filter((event: EventDTO) => new Date(event.startTime) <= now);
+      filtered = filtered.filter((event: EventResponseMediumDTO) => new Date(event.startTime) <= now);
       break;
   }
-  filtered.sort((a: EventDTO, b: EventDTO) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  filtered.sort((a: EventResponseMediumDTO, b: EventResponseMediumDTO) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   filteredEvents.value = filtered;
 };
 
@@ -201,7 +206,7 @@ const formatDate = (date: string) => {
   });
 };
 
-const getEventStatus = (event: EventDTO) => {
+const getEventStatus = (event: EventResponseMediumDTO) => {
   const now = new Date();
   const eventDate = new Date(event.startTime);
   
@@ -214,7 +219,7 @@ const getEventStatus = (event: EventDTO) => {
   }
 };
 
-const getEventStatusColor = (event: EventDTO) => {
+const getEventStatusColor = (event: EventResponseMediumDTO) => {
   const now = new Date();
   const eventDate = new Date(event.startTime);
   
@@ -239,7 +244,7 @@ const viewEventDetails = (eventId: number) => {
   router.push(`/event/${eventId}`);
 };
 
-const deleteEvent = async (event: EventDTO) => {
+const deleteEvent = async (event: EventResponseMediumDTO) => {
   if (!event.id) return;
   const alert = await alertController.create({
     header: 'Удалить мероприятие',
@@ -281,7 +286,7 @@ const deleteEvent = async (event: EventDTO) => {
   await alert.present();
 };
 
-const confirmDeleteEvent = async (event: EventDTO) => {
+const confirmDeleteEvent = async (event: EventResponseMediumDTO) => {
   if (!event.id) return;
   const alert = await alertController.create({
     header: 'Удалить мероприятие?',

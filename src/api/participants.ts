@@ -1,9 +1,9 @@
 import { apiClient } from './client';
-import type { EventParticipantDTO } from '../types/api';
+import type { EventParticipantDTO, RegisterOrUnregisterRequest } from '../types/api';
 
 export const participantsApi = {
   getAll: async (): Promise<EventParticipantDTO[]> => {
-    const { data } = await apiClient.get<EventParticipantDTO[]>('/api/participants');
+    const { data } = await apiClient.get<EventParticipantDTO[]>('/api/participants/');
     return data;
   },
 
@@ -17,17 +17,17 @@ export const participantsApi = {
     return data;
   },
 
-  register: async (userId: number, eventId: number): Promise<EventParticipantDTO> => {
-    const { data } = await apiClient.post<EventParticipantDTO>(`/api/participants/user/${userId}/event/${eventId}`);
+  register: async (request: RegisterOrUnregisterRequest): Promise<EventParticipantDTO> => {
+    const { data } = await apiClient.post<EventParticipantDTO>('/api/participants/register', request);
     return data;
+  },
+
+  unregister: async (request: RegisterOrUnregisterRequest): Promise<void> => {
+    await apiClient.post('/api/participants/unregister', request);
   },
 
   updateStatus: async (userId: number, eventId: number, status: string): Promise<EventParticipantDTO> => {
     const { data } = await apiClient.post<EventParticipantDTO>(`/api/participants/${userId}/${eventId}?status=${status}`);
     return data;
-  },
-
-  delete: async (userId: number, eventId: number): Promise<void> => {
-    await apiClient.delete(`/api/participants/${userId}/${eventId}`);
   }
 }; 

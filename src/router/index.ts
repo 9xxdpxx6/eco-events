@@ -3,25 +3,15 @@ import { RouteRecordRaw } from 'vue-router';
 import LoginView from '../views/LoginView.vue';
 import RegisterView from '../views/RegisterView.vue';
 import TabsPage from '../views/TabsPage.vue';
-import EventsListPage from '../views/EventsListPage.vue';
-import VolunteerProfilePage from '../views/VolunteerProfilePage.vue';
-import EventsManagementPage from '../views/EventsManagementPage.vue';
+import EventsListPage from '../views/volunteer/EventsListPage.vue';
+import VolunteerProfilePage from '../views/volunteer/VolunteerProfilePage.vue';
+import EventsManagementPage from '../views/organization/EventsManagementPage.vue';
 import { useAuthStore } from '../stores/auth';
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    redirect: (to) => {
-      const authStore = useAuthStore();
-      if (authStore.isAuthenticated) {
-        if (authStore.isVolunteer) {
-          return '/tabs/events-list';
-        } else if (authStore.isOrganization) {
-          return '/tabs/events-management';
-        }
-      }
-      return '/login';
-    }
+    redirect: '/tabs/events-list'
   },
   {
     path: '/login',
@@ -39,15 +29,7 @@ const routes: Array<RouteRecordRaw> = [
     children: [
       {
         path: '',
-        redirect: (to) => {
-          const authStore = useAuthStore();
-          if (authStore.isVolunteer) {
-            return '/tabs/events-list';
-          } else if (authStore.isOrganization) {
-            return '/tabs/events-management';
-          }
-          return '/tabs/events-list';
-        }
+        redirect: '/tabs/events-list'
       },
       // Маршруты для волонтёров
       {
@@ -58,12 +40,12 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'my-registrations',
         name: 'MyRegistrations',
-        component: () => import('../views/MyRegistrationsPage.vue')
+        component: () => import('../views/volunteer/MyRegistrationsPage.vue')
       },
       {
         path: 'bonuses',
         name: 'Bonuses',
-        component: () => import('../views/BonusesPage.vue')
+        component: () => import('../views/volunteer/BonusesPage.vue')
       },
       {
         path: 'volunteer-profile',
@@ -79,7 +61,7 @@ const routes: Array<RouteRecordRaw> = [
       {
         path: 'organization-profile',
         name: 'OrganizationProfile',
-        component: () => import('../views/OrganizationProfilePage.vue')
+        component: () => import('../views/organization/OrganizationProfilePage.vue')
       }
     ]
   },
@@ -93,12 +75,12 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/create-event',
     name: 'CreateEvent',
-    component: () => import('../views/CreateEventPage.vue')
+    component: () => import('../views/organization/CreateEventPage.vue')
   },
   {
     path: '/edit-event/:id',
     name: 'EditEvent',
-    component: () => import('../views/EditEventPage.vue'),
+    component: () => import('../views/organization/EditEventPage.vue'),
     props: true
   },
   {
@@ -118,49 +100,57 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
-  console.log('🔍 Router guard:', {
-    to: to.name,
-    isAuthenticated: authStore.isAuthenticated,
-    isAuthLoading: authStore.isAuthLoading,
-    user: authStore.user
-  });
+  // Ждем завершения проверки авторизации
+  if (authStore.isAuthLoading) {
+    await new Promise<void>((resolve) => {
+      const checkLoading = () => {
+        if (!authStore.isAuthLoading) {
+          resolve();
+        } else {
+          setTimeout(checkLoading, 50);
+        }
+      };
+      checkLoading();
+    });
+  }
   
-  // Если пользователь не авторизован и пытается попасть не на страницы входа/регистрации
-  if (!authStore.isAuthenticated && !['Login', 'Register'].includes(to.name as string)) {
-    console.log('❌ Пользователь не авторизован, редирект на /login');
-    next('/login');
-  } 
-  // Если пользователь авторизован и пытается попасть на страницы входа/регистрации
-  else if (authStore.isAuthenticated && ['Login', 'Register'].includes(to.name as string)) {
-    console.log('✅ Пользователь авторизован, редирект на главную');
-    if (authStore.isVolunteer) {
-      next('/tabs/events-list');
-    } else if (authStore.isOrganization) {
-      next('/tabs/events-management');
-    } else {
-      next('/tabs/events-list');
-    }
-  } 
-  // Проверка доступа к страницам в зависимости от роли
-  else if (authStore.isAuthenticated) {
+  const isAuthRoute = ['Login', 'Register'].includes(to.name as string);
+  
+  // Неавторизованные пользователи → на страницы входа
+  if (!authStore.isAuthenticated && !isAuthRoute) {
+    return next('/login');
+  }
+  
+  // Авторизованные пользователи не должны видеть страницы входа
+  if (authStore.isAuthenticated && isAuthRoute) {
+    const defaultRoute = authStore.isVolunteer ? '/tabs/events-list' : '/tabs/events-management';
+    return next(defaultRoute);
+  }
+  
+  // Перенаправление с корневых путей
+  if (authStore.isAuthenticated && (to.path === '/' || to.path === '/tabs' || to.path === '/tabs/')) {
+    const defaultRoute = authStore.isVolunteer ? '/tabs/events-list' : '/tabs/events-management';
+    return next(defaultRoute);
+  }
+  
+  // Проверка доступа по ролям
+  if (authStore.isAuthenticated) {
     const volunteerOnlyRoutes = ['EventsList', 'MyRegistrations', 'Bonuses', 'VolunteerProfile'];
     const organizationOnlyRoutes = ['EventsManagement', 'OrganizationProfile', 'CreateEvent', 'EditEvent'];
     
     if (authStore.isVolunteer && organizationOnlyRoutes.includes(to.name as string)) {
-      next('/tabs/events-list');
-    } else if (authStore.isOrganization && volunteerOnlyRoutes.includes(to.name as string)) {
-      next('/tabs/events-management');
-    } else {
-      next();
+      return next('/tabs/events-list');
     }
-  } 
-  else {
-    console.log('✅ Разрешён переход на', to.name);
-    next();
+    
+    if (authStore.isOrganization && volunteerOnlyRoutes.includes(to.name as string)) {
+      return next('/tabs/events-management');
+    }
   }
+  
+  next();
 });
 
 export default router;

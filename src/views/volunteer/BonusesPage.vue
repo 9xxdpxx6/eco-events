@@ -88,13 +88,13 @@ import {
   IonInput
 } from '@ionic/vue';
 import { calendarOutline, trophyOutline } from 'ionicons/icons';
-import { bonusHistoryApi } from '../api/bonuses';
-import { useAuthStore } from '../stores/auth';
-import type { UserBonusHistoryDTO } from '../types/api';
+import { bonusHistoryApi } from '../../api/bonuses';
+import { useAuthStore } from '../../stores/auth';
+import type { UserBonusHistoryResponseShortDTO } from '../../types/api';
 
 const authStore = useAuthStore();
 
-const bonusHistory = ref<UserBonusHistoryDTO[]>([]);
+const bonusHistory = ref<UserBonusHistoryResponseShortDTO[]>([]);
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
 

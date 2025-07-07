@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { participantsApi } from '../api/participants';
-import type { EventParticipantDTO } from '../types/api';
+import type { EventParticipantDTO, RegisterOrUnregisterRequest } from '../types/api';
 
 interface ParticipantsState {
   participants: EventParticipantDTO[];
@@ -71,13 +71,29 @@ export const useParticipantsStore = defineStore('participants', {
       this.isLoading = true;
       this.error = null;
       try {
-        const participant = await participantsApi.register(userId, eventId);
+        const request: RegisterOrUnregisterRequest = { userId, eventId };
+        const participant = await participantsApi.register(request);
         this.participants.push(participant);
         this.userParticipants.push(participant);
         this.eventParticipants.push(participant);
         return participant;
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при регистрации на событие';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async unregisterFromEvent(userId: number, eventId: number) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const request: RegisterOrUnregisterRequest = { userId, eventId };
+        await participantsApi.unregister(request);
+        this._removeParticipantFromLists(userId, eventId);
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Произошла ошибка при отмене регистрации';
         throw error;
       } finally {
         this.isLoading = false;
@@ -99,23 +115,11 @@ export const useParticipantsStore = defineStore('participants', {
       }
     },
 
-    async deleteParticipant(userId: number, eventId: number) {
-      this.isLoading = true;
-      this.error = null;
-      try {
-        await participantsApi.delete(userId, eventId);
-        this._removeParticipantFromLists(userId, eventId);
-      } catch (error) {
-        this.error = error instanceof Error ? error.message : 'Произошла ошибка при удалении участника';
-        throw error;
-      } finally {
-        this.isLoading = false;
-      }
-    },
+
 
     _updateParticipantInLists(participant: EventParticipantDTO) {
       const updateInList = (list: EventParticipantDTO[]) => {
-        const index = list.findIndex(p => p.userId === participant.userId && p.eventId === participant.eventId);
+        const index = list.findIndex(p => p.user.id === participant.user.id && p.event.id === participant.event.id);
         if (index !== -1) {
           list[index] = participant;
         }
@@ -128,7 +132,7 @@ export const useParticipantsStore = defineStore('participants', {
 
     _removeParticipantFromLists(userId: number, eventId: number) {
       const removeFromList = (list: EventParticipantDTO[]) => {
-        return list.filter(p => !(p.userId === userId && p.eventId === eventId));
+        return list.filter(p => !(p.user.id === userId && p.event.id === eventId));
       };
 
       this.participants = removeFromList(this.participants);

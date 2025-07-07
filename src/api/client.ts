@@ -13,8 +13,8 @@ export const apiClient = axios.create({
 // Добавляем интерцептор для добавления токена авторизации
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
-  // Не добавлять токен для login и register
-  const isAuthRequest = config.url?.includes('/auth/login') || config.url?.includes('/auth/register');
+  // Не добавлять токен для login и registration
+  const isAuthRequest = config.url?.includes('/auth/login') || config.url?.includes('/users/registration');
   if (token && !isAuthRequest) {
     config.headers = config.headers || {};
     config.headers.Authorization = token;

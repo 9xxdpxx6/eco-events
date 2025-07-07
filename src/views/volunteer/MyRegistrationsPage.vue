@@ -45,9 +45,9 @@
       </div>
 
       <ion-list v-if="!isLoading && filteredRegistrations.length > 0">
-        <ion-item v-for="reg in filteredRegistrations" :key="reg.eventId" button @click="goToEvent(reg.eventId)">
+        <ion-item v-for="reg in filteredRegistrations" :key="reg.event.id" button @click="goToEvent(reg.event.id)">
           <ion-label>
-            <h2>{{ reg.eventName }}</h2>
+            <h2>{{ reg.event.title }}</h2>
             <RegistrationStatus :status="reg.status" />
             <div class="meta-item" v-if="reg.createdAt">
               <ion-icon :icon="calendarOutline" />
@@ -88,11 +88,11 @@ import {
   IonIcon,
   IonSearchbar
 } from '@ionic/vue';
-import { participantsApi } from '../api/participants';
-import { useAuthStore } from '../stores/auth';
-import type { EventParticipantDTO } from '../types/api';
+import { participantsApi } from '../../api/participants';
+import { useAuthStore } from '../../stores/auth';
+import type { EventParticipantDTO } from '../../types/api';
 import { calendarOutline } from 'ionicons/icons';
-import RegistrationStatus from '../components/RegistrationStatus.vue';
+import RegistrationStatus from '../../components/RegistrationStatus.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -123,7 +123,7 @@ function formatDateInput(dateStr: string) {
 const filteredRegistrations = computed(() => {
   return registrations.value.filter(reg => {
     // Поиск по названию
-    const matchesSearch = reg.eventName?.toLowerCase().includes(searchText.value.toLowerCase());
+    const matchesSearch = reg.event.title?.toLowerCase().includes(searchText.value.toLowerCase());
     // Фильтр по дате
     let from = true, to = true;
     if (dateFrom.value && reg.createdAt) {

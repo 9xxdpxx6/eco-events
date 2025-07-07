@@ -116,7 +116,11 @@ export const useUsersStore = defineStore('users', {
       this.isLoading = true;
       this.error = null;
       try {
-        const user = await usersApi.getMe();
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          throw new Error('Пользователь не авторизован');
+        }
+        const user = await usersApi.getById(Number(userId));
         this.currentUser = user;
         const index = this.users.findIndex(u => u.id === user.id);
         if (index !== -1) {

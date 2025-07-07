@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia';
 import { bonusTypesApi, bonusHistoryApi } from '../api/bonuses';
-import type { BonusTypeDTO, UserBonusHistoryDTO } from '../types/api';
+import type { BonusTypeDTO, UserBonusHistoryRequestDTO, UserBonusHistoryResponseShortDTO } from '../types/api';
 
 interface BonusesState {
   bonusTypes: BonusTypeDTO[];
-  userBonusHistory: UserBonusHistoryDTO[];
+  userBonusHistory: UserBonusHistoryResponseShortDTO[];
   isLoading: boolean;
   error: string | null;
 }
@@ -98,7 +98,7 @@ export const useBonusesStore = defineStore('bonuses', {
       }
     },
 
-    async createBonusHistory(bonusHistory: UserBonusHistoryDTO) {
+    async createBonusHistory(bonusHistory: UserBonusHistoryRequestDTO) {
       this.isLoading = true;
       this.error = null;
       try {
@@ -113,7 +113,7 @@ export const useBonusesStore = defineStore('bonuses', {
       }
     },
 
-    async updateBonusHistory(id: number, bonusHistory: UserBonusHistoryDTO) {
+    async updateBonusHistory(id: number, bonusHistory: UserBonusHistoryRequestDTO) {
       this.isLoading = true;
       this.error = null;
       try {

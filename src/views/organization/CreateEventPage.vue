@@ -250,13 +250,15 @@ import {
   alertController
 } from '@ionic/vue';
 import { checkmarkOutline } from 'ionicons/icons';
-import { useEventsStore } from '../stores';
-import { useEventTypesStore } from '../stores';
-import type { EventTypeDTO } from '../types/api';
+import { useEventsStore } from '../../stores';
+import { useEventTypesStore } from '../../stores';
+import { useAuthStore } from '../../stores/auth';
+import type { EventTypeDTO } from '../../types/api';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
 const eventTypesStore = useEventTypesStore();
+const authStore = useAuthStore();
 
 const form = ref({
   title: '',
@@ -335,20 +337,9 @@ const saveEvent = async () => {
       startTime,
       endTime,
       location: form.value.location,
-      locationDetails: form.value.locationDetails,
-      contactEmail: form.value.contactEmail,
-      contactPhone: form.value.contactPhone,
-      maxParticipants: form.value.maxParticipants,
-      requiresRegistration: form.value.requiresRegistration,
-      providesEquipment: form.value.providesEquipment,
-      minAge: form.value.minAge,
-      requirements: form.value.requirements,
       conducted: false,
-      eventType: {
-        id: eventType.id,
-        name: eventType.name,
-        description: eventType.description || ''
-      }
+      eventTypeId: eventType.id!,
+      userId: authStore.user?.id || 1
     };
     await eventsStore.createEvent(eventData);
     const toast = await toastController.create({
