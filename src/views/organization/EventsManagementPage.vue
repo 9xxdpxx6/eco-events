@@ -1,98 +1,199 @@
 <template>
-  <ion-page>
+  <ion-page class="events-management-page">
     <ion-header>
       <ion-toolbar>
-        <ion-title>Мои мероприятия</ion-title>
+        <ion-title class="page-title">Мои мероприятия</ion-title>
         <ion-buttons slot="end">
-          <ion-button fill="clear" @click="createEvent">
+          <ion-button fill="clear" class="create-button" @click="createEvent">
             <ion-icon :icon="addOutline" />
           </ion-button>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
     
-    <ion-content>
-      <!-- Поиск по ключевому слову -->
-      <ion-searchbar v-model="searchText" placeholder="Поиск мероприятий..." clear-input></ion-searchbar>
-
-      <!-- Статистика организации -->
-      <ion-card>
-        <ion-card-content>
-          <div class="stats-row">
-            <div class="stat-item">
-              <span class="stat-number">{{ events.length }}</span>
-              <span class="stat-label">Всего мероприятий</span>
+    <ion-content class="events-content">
+      <!-- Hero секция со статистикой -->
+      <div class="stats-hero">
+        <div class="hero-background"></div>
+        <div class="hero-content">
+          <div class="stats-header">
+            <div class="stats-icon">
+              <ion-icon :icon="businessOutline" />
             </div>
-            <div class="stat-item">
-              <span class="stat-number">{{ upcomingEventsCount }}</span>
-              <span class="stat-label">Предстоящие</span>
+            <div class="stats-info">
+              <h2>Управление мероприятиями</h2>
+              <p>{{ events.length }} мероприятий создано</p>
             </div>
           </div>
-        </ion-card-content>
-      </ion-card>
+          
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value">{{ upcomingEventsCount }}</div>
+              <div class="stat-label">Предстоящие</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ activeEventsCount }}</div>
+              <div class="stat-label">Активные</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">{{ completedEventsCount }}</div>
+              <div class="stat-label">Завершённые</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Поиск -->
+      <div class="search-section">
+        <div class="search-card eco-card">
+          <ion-searchbar 
+            v-model="searchText" 
+            placeholder="Поиск мероприятий..."
+            class="custom-searchbar"
+            :clear-input="true"
+          ></ion-searchbar>
+        </div>
+      </div>
 
       <!-- Фильтры -->
-      <ion-segment v-model="selectedFilter" @ionChange="filterEvents">
-        <ion-segment-button value="all">
-          <ion-label>Все</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="upcoming">
-          <ion-label>Предстоящие</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="past">
-          <ion-label>Прошедшие</ion-label>
-        </ion-segment-button>
-      </ion-segment>
+      <div class="filters-section">
+        <div class="filters-card eco-card">
+          <div class="filters-header">
+            <ion-icon :icon="optionsOutline" />
+            <span>Фильтр по статусу</span>
+          </div>
+          
+          <ion-segment v-model="selectedFilter" @ionChange="filterEvents" class="custom-segment">
+            <ion-segment-button value="all" class="segment-button">
+              <ion-label>Все</ion-label>
+              <span class="tab-count" v-if="events.length > 0">{{ events.length }}</span>
+            </ion-segment-button>
+            <ion-segment-button value="upcoming" class="segment-button">
+              <ion-label>Предстоящие</ion-label>
+              <span class="tab-count" v-if="upcomingEventsCount > 0">{{ upcomingEventsCount }}</span>
+            </ion-segment-button>
+            <ion-segment-button value="active" class="segment-button">
+              <ion-label>Активные</ion-label>
+              <span class="tab-count" v-if="activeEventsCount > 0">{{ activeEventsCount }}</span>
+            </ion-segment-button>
+            <ion-segment-button value="past" class="segment-button">
+              <ion-label>Завершённые</ion-label>
+              <span class="tab-count" v-if="completedEventsCount > 0">{{ completedEventsCount }}</span>
+            </ion-segment-button>
+          </ion-segment>
+        </div>
+      </div>
 
       <!-- Список мероприятий -->
-      <div v-if="isLoading" class="loading-container">
-        <ion-spinner name="crescent"></ion-spinner>
-        <p>Загружаем мероприятия...</p>
-      </div>
+      <div class="events-section">
+        <!-- Лоадер -->
+        <div v-if="isLoading" class="loading-container">
+          <div class="loading-spinner">
+            <ion-spinner name="crescent" color="primary"></ion-spinner>
+          </div>
+          <p class="loading-text">Загружаем мероприятия...</p>
+        </div>
 
-      <ion-list v-else-if="filteredEvents.length > 0">
-        <ion-item v-for="event in filteredEvents" :key="event.id ?? Math.random()" class="event-card-vertical" @click="viewEventDetails(Number(event.id))" button>
-          <ion-thumbnail slot="start">
-            <img :src="eventImagePlaceholder" />
-          </ion-thumbnail>
-          <ion-label>
-            <h2>{{ event.title }}</h2>
-            <p>{{ formatDate(event.startTime) }}</p>
-            <p>{{ event.location }}</p>
-            <div class="event-stats">
-              <ion-chip color="primary">
-                <ion-icon :icon="peopleOutline" />
-              </ion-chip>
-              <ion-chip :color="getEventStatusColor(event)">
-                <ion-label>{{ getEventStatus(event) }}</ion-label>
-              </ion-chip>
-            </div>
-          </ion-label>
-          <div class="event-actions-vertical" @click.stop>
-            <ion-button fill="clear" @click="editEvent(Number(event.id))">
-              <ion-icon :icon="createOutline" />
+        <!-- Пустое состояние -->
+        <div v-else-if="events.length === 0" class="empty-state">
+          <div class="empty-icon">
+            <ion-icon :icon="calendarOutline" />
+          </div>
+          <h3 class="empty-title">Нет созданных мероприятий</h3>
+          <p class="empty-subtitle">Создайте своё первое экологическое мероприятие и начните привлекать волонтёров!</p>
+          <ion-button fill="solid" @click="createEvent" class="action-button">
+            <ion-icon :icon="addOutline" slot="start" />
+            Создать мероприятие
+          </ion-button>
+        </div>
+
+        <!-- Нет результатов поиска -->
+        <div v-else-if="filteredEvents.length === 0" class="no-results">
+          <div class="no-results-icon">
+            <ion-icon :icon="searchOutline" />
+          </div>
+          <h3 class="no-results-title">Мероприятия не найдены</h3>
+          <p class="no-results-subtitle">Попробуйте изменить критерии поиска или создать новое мероприятие</p>
+          <div class="no-results-actions">
+            <ion-button fill="outline" @click="clearSearch" class="clear-button">
+              Сбросить поиск
             </ion-button>
-            <ion-button fill="clear" color="danger" @click="confirmDeleteEvent(event)">
-              <ion-icon :icon="trashOutline" />
+            <ion-button fill="solid" @click="createEvent" class="action-button">
+              <ion-icon :icon="addOutline" slot="start" />
+              Создать мероприятие
             </ion-button>
           </div>
-        </ion-item>
-      </ion-list>
+        </div>
 
-      <!-- Пустое состояние -->
-      <div v-else class="empty-state">
-        <ion-icon :icon="calendarOutline" size="large" color="medium"></ion-icon>
-        <h2>Нет мероприятий</h2>
-        <p>Создайте своё первое мероприятие</p>
-        <ion-button fill="outline" @click="createEvent">
-          <ion-icon :icon="addOutline" slot="start" />
-          Создать мероприятие
-        </ion-button>
+        <!-- Список мероприятий -->
+        <div v-else class="events-list">
+          <div 
+            v-for="event in filteredEvents" 
+            :key="event.id ?? Math.random()"
+            class="event-card eco-card eco-list-item"
+            @click="viewEventDetails(Number(event.id))"
+          >
+            <div class="event-image">
+              <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+              <div class="event-status">
+                <span :class="['status-badge', 'eco-status', getEventStatusClass(event)]">
+                  {{ getEventStatus(event) }}
+                </span>
+              </div>
+            </div>
+            
+            <div class="event-content">
+              <div class="event-header">
+                <h3 class="event-title">{{ event.title }}</h3>
+                <div class="event-actions" @click.stop>
+                  <ion-button 
+                    fill="clear" 
+                    size="small"
+                    class="action-btn edit-btn" 
+                    @click="editEvent(Number(event.id))"
+                  >
+                    <ion-icon :icon="createOutline" />
+                  </ion-button>
+                  <ion-button 
+                    fill="clear" 
+                    size="small"
+                    class="action-btn delete-btn" 
+                    @click="confirmDeleteEvent(event)"
+                  >
+                    <ion-icon :icon="trashOutline" />
+                  </ion-button>
+                </div>
+              </div>
+              
+              <div class="event-meta">
+                <div class="meta-item">
+                  <ion-icon :icon="calendarOutline" />
+                  <span>{{ formatDate(event.startTime) }}</span>
+                </div>
+                <div class="meta-item">
+                  <ion-icon :icon="locationOutline" />
+                  <span>{{ event.location || 'Место не указано' }}</span>
+                </div>
+                <div class="meta-item">
+                  <ion-icon :icon="layersOutline" />
+                  <span>{{ event.eventType?.name || 'Тип не указан' }}</span>
+                </div>
+              </div>
+              
+              <div class="event-stats">
+                <div class="stat-chip">
+                  <ion-icon :icon="peopleOutline" />
+                  <span>Участников: {{ getParticipantsCount(event) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- FAB теперь фиксирован -->
+      <!-- FAB кнопка -->
       <ion-fab vertical="bottom" horizontal="end" slot="fixed">
-        <ion-fab-button @click="createEvent">
+        <ion-fab-button @click="createEvent" class="create-fab">
           <ion-icon :icon="addOutline"></ion-icon>
         </ion-fab-button>
       </ion-fab>
@@ -109,37 +210,34 @@ import {
   IonToolbar,
   IonTitle,
   IonContent,
-  IonCard,
-  IonCardContent,
-  IonList,
-  IonItem,
-  IonLabel,
-  IonThumbnail,
   IonButton,
   IonButtons,
   IonIcon,
   IonSegment,
   IonSegmentButton,
+  IonLabel,
   IonSpinner,
-  IonChip,
   IonFab,
   IonFabButton,
+  IonSearchbar,
   alertController,
-  toastController,
-  IonSearchbar
+  toastController
 } from '@ionic/vue';
 import {
   addOutline,
   calendarOutline,
   peopleOutline,
-  eyeOutline,
   createOutline,
   trashOutline,
-  searchOutline
+  searchOutline,
+  businessOutline,
+  optionsOutline,
+  locationOutline,
+  layersOutline
 } from 'ionicons/icons';
 import { useEventsStore, useAuthStore } from '../../stores';
 import type { EventResponseMediumDTO } from '../../types/api';
-import eventImagePlaceholder from '../../assets/event-no-image.png';
+import { getEventPlaceholder } from '../../utils/eventImages';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -156,19 +254,44 @@ let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const upcomingEventsCount = computed(() => {
   const now = new Date();
-  return events.value.filter((event: EventResponseMediumDTO) => new Date(event.startTime) > now).length;
+  return events.value.filter((event: EventResponseMediumDTO) => {
+    const eventDate = new Date(event.startTime);
+    return eventDate > now;
+  }).length;
+});
+
+const activeEventsCount = computed(() => {
+  const now = new Date();
+  return events.value.filter((event: EventResponseMediumDTO) => {
+    const eventDate = new Date(event.startTime);
+    const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+    return eventDate <= now && eventEndTime > now;
+  }).length;
+});
+
+const completedEventsCount = computed(() => {
+  const now = new Date();
+  return events.value.filter((event: EventResponseMediumDTO) => {
+    const eventDate = new Date(event.startTime);
+    const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+    return eventEndTime <= now;
+  }).length;
 });
 
 const loadEvents = async (hotSearch = false) => {
   isLoading.value = true;
   try {
-    const organizerId = authStore.user?.id;
     await eventsStore.fetchEventsSearch({
       keyword: searchText.value,
       page: page.value,
       size: size
     });
-    events.value = eventsStore.getEvents;
+    
+    // Фильтруем только свои мероприятия
+    const userId = authStore.user?.id;
+    const allEvents = eventsStore.getEvents;
+    events.value = allEvents.filter(event => event.owner?.id === userId);
+    
     filterEvents();
   } catch (error) {
     console.error('Error loading events:', error);
@@ -186,32 +309,63 @@ const loadEvents = async (hotSearch = false) => {
 const filterEvents = () => {
   let filtered = [...events.value];
   const now = new Date();
+  
   switch (selectedFilter.value) {
     case 'upcoming':
-      filtered = filtered.filter((event: EventResponseMediumDTO) => new Date(event.startTime) > now);
+      filtered = filtered.filter((event: EventResponseMediumDTO) => {
+        const eventDate = new Date(event.startTime);
+        return eventDate > now;
+      });
+      break;
+    case 'active':
+      filtered = filtered.filter((event: EventResponseMediumDTO) => {
+        const eventDate = new Date(event.startTime);
+        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+        return eventDate <= now && eventEndTime > now;
+      });
       break;
     case 'past':
-      filtered = filtered.filter((event: EventResponseMediumDTO) => new Date(event.startTime) <= now);
+      filtered = filtered.filter((event: EventResponseMediumDTO) => {
+        const eventDate = new Date(event.startTime);
+        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+        return eventEndTime <= now;
+      });
       break;
   }
-  filtered.sort((a: EventResponseMediumDTO, b: EventResponseMediumDTO) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  
+  // Сортировка: предстоящие по возрастанию даты, прошедшие по убыванию
+  filtered.sort((a: EventResponseMediumDTO, b: EventResponseMediumDTO) => {
+    const aDate = new Date(a.startTime);
+    const bDate = new Date(b.startTime);
+    
+    if (selectedFilter.value === 'past') {
+      return bDate.getTime() - aDate.getTime(); // убывание для прошедших
+    } else {
+      return aDate.getTime() - bDate.getTime(); // возрастание для предстоящих/активных
+    }
+  });
+  
   filteredEvents.value = filtered;
 };
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('ru-RU', {
     day: 'numeric',
-    month: 'long',
-    year: 'numeric'
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
   });
 };
 
 const getEventStatus = (event: EventResponseMediumDTO) => {
   const now = new Date();
   const eventDate = new Date(event.startTime);
+  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
   
-  if (eventDate < now) {
+  if (eventEndTime < now) {
     return 'Завершено';
+  } else if (eventDate <= now && eventEndTime > now) {
+    return 'Активно';
   } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
     return 'Скоро';
   } else {
@@ -219,17 +373,25 @@ const getEventStatus = (event: EventResponseMediumDTO) => {
   }
 };
 
-const getEventStatusColor = (event: EventResponseMediumDTO) => {
+const getEventStatusClass = (event: EventResponseMediumDTO) => {
   const now = new Date();
   const eventDate = new Date(event.startTime);
+  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
   
-  if (eventDate < now) {
-    return 'medium';
+  if (eventEndTime < now) {
+    return 'eco-status-finished';
+  } else if (eventDate <= now && eventEndTime > now) {
+    return 'eco-status-active';
   } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
-    return 'warning';
+    return 'eco-status-soon';
   } else {
-    return 'success';
+    return 'eco-status-upcoming';
   }
+};
+
+const getParticipantsCount = (event: EventResponseMediumDTO) => {
+  // Заглушка, пока нет данных об участниках в EventResponseMediumDTO
+  return '0';
 };
 
 const createEvent = () => {
@@ -244,11 +406,12 @@ const viewEventDetails = (eventId: number) => {
   router.push(`/event/${eventId}`);
 };
 
-const deleteEvent = async (event: EventResponseMediumDTO) => {
+const confirmDeleteEvent = async (event: EventResponseMediumDTO) => {
   if (!event.id) return;
+  
   const alert = await alertController.create({
-    header: 'Удалить мероприятие',
-    message: `Вы уверены, что хотите удалить "${event.title}"? Это действие нельзя отменить.`,
+    header: 'Удалить мероприятие?',
+    message: `Вы уверены, что хотите удалить «${event.title}»? Это действие необратимо.`,
     buttons: [
       {
         text: 'Отмена',
@@ -263,6 +426,7 @@ const deleteEvent = async (event: EventResponseMediumDTO) => {
             await eventsStore.deleteEvent(event.id);
             events.value = events.value.filter(e => e.id !== event.id);
             filterEvents();
+            
             const toast = await toastController.create({
               message: 'Мероприятие удалено',
               duration: 2000,
@@ -286,26 +450,9 @@ const deleteEvent = async (event: EventResponseMediumDTO) => {
   await alert.present();
 };
 
-const confirmDeleteEvent = async (event: EventResponseMediumDTO) => {
-  if (!event.id) return;
-  const alert = await alertController.create({
-    header: 'Удалить мероприятие?',
-    message: `Вы уверены, что хотите удалить «${event.title}»? Это действие необратимо.`,
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Удалить',
-        role: 'destructive',
-        handler: async () => {
-          await deleteEvent(event);
-        }
-      }
-    ]
-  });
-  await alert.present();
+const clearSearch = () => {
+  searchText.value = '';
+  selectedFilter.value = 'all';
 };
 
 watch(searchText, () => {
@@ -321,27 +468,190 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.stats-row {
+.events-management-page {
+  --background: var(--eco-background-secondary);
+}
+
+.events-content {
+  --background: var(--eco-background-secondary);
+}
+
+.page-title {
+  font-weight: var(--eco-font-weight-semibold);
+  color: var(--eco-gray-800);
+}
+
+.create-button {
+  --color: var(--eco-gray-700);
+}
+
+/* Hero секция */
+.stats-hero {
+  position: relative;
+  padding: var(--eco-space-8) var(--eco-space-4) var(--eco-space-6);
+  margin-bottom: var(--eco-space-4);
+}
+
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, var(--eco-warning) 0%, var(--eco-primary) 100%);
+  border-radius: 0 0 var(--eco-radius-xl) var(--eco-radius-xl);
+}
+
+.hero-content {
+  position: relative;
+  color: white;
+}
+
+.stats-header {
   display: flex;
-  justify-content: space-around;
-  text-align: center;
+  align-items: center;
+  gap: var(--eco-space-4);
+  margin-bottom: var(--eco-space-6);
+}
+
+.stats-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stats-icon ion-icon {
+  font-size: 28px;
+  color: white;
+}
+
+.stats-info h2 {
+  font-family: var(--eco-font-family);
+  font-size: var(--eco-font-size-xl);
+  font-weight: var(--eco-font-weight-semibold);
+  margin: 0 0 var(--eco-space-1) 0;
+  color: white;
+}
+
+.stats-info p {
+  font-size: var(--eco-font-size-sm);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--eco-space-4);
 }
 
 .stat-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  text-align: center;
+  padding: var(--eco-space-4);
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--eco-radius-lg);
+  backdrop-filter: blur(8px);
 }
 
-.stat-number {
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--ion-color-primary);
+.stat-value {
+  font-family: var(--eco-font-family);
+  font-size: var(--eco-font-size-2xl);
+  font-weight: var(--eco-font-weight-bold);
+  margin-bottom: var(--eco-space-2);
+  line-height: 1;
+  color: white;
 }
 
 .stat-label {
-  font-size: 14px;
-  color: var(--ion-color-medium);
+  font-size: var(--eco-font-size-xs);
+  font-weight: var(--eco-font-weight-medium);
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Поиск */
+.search-section {
+  padding: 0 var(--eco-space-4) var(--eco-space-4);
+}
+
+.search-card {
+  background: var(--eco-white);
+  border: 1px solid var(--eco-gray-200);
+}
+
+.custom-searchbar {
+  --background: transparent;
+  --border-radius: 0;
+  --box-shadow: none;
+  --icon-color: var(--eco-gray-500);
+  --color: var(--eco-gray-800);
+  --placeholder-color: var(--eco-gray-500);
+  --clear-button-color: var(--eco-gray-500);
+  margin: 0;
+}
+
+/* Фильтры */
+.filters-section {
+  padding: 0 var(--eco-space-4) var(--eco-space-4);
+}
+
+.filters-card {
+  background: var(--eco-white);
+  border: 1px solid var(--eco-gray-200);
+}
+
+.filters-header {
+  display: flex;
+  align-items: center;
+  gap: var(--eco-space-2);
+  margin-bottom: var(--eco-space-4);
+  color: var(--eco-gray-700);
+  font-weight: var(--eco-font-weight-medium);
+}
+
+.filters-header ion-icon {
+  font-size: 18px;
+  color: var(--eco-primary);
+}
+
+.custom-segment {
+  --background: var(--eco-gray-100);
+  --indicator-color: var(--eco-primary);
+  --color-checked: var(--eco-primary);
+}
+
+.segment-button {
+  position: relative;
+  --color: var(--eco-gray-600);
+  --color-checked: white;
+  --background-checked: var(--eco-primary);
+  min-height: 40px;
+}
+
+.tab-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--eco-error);
+  color: white;
+  font-size: var(--eco-font-size-xs);
+  font-weight: var(--eco-font-weight-bold);
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* События */
+.events-section {
+  padding: 0 var(--eco-space-4) var(--eco-space-6);
 }
 
 .loading-container {
@@ -349,58 +659,266 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 200px;
-  color: var(--ion-color-medium);
+  padding: var(--eco-space-12);
+  text-align: center;
 }
 
-.empty-state {
+.loading-spinner {
+  margin-bottom: var(--eco-space-4);
+}
+
+.loading-text {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-500);
+  margin: 0;
+}
+
+.empty-state,
+.no-results {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px;
+  padding: var(--eco-space-12) var(--eco-space-6);
   text-align: center;
-  color: var(--ion-color-medium);
 }
 
-.empty-state h2 {
-  margin: 16px 0 8px;
-  color: var(--ion-color-dark);
+.empty-icon,
+.no-results-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--eco-gray-100);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--eco-space-6);
 }
 
-.empty-state p {
-  margin-bottom: 24px;
+.empty-icon ion-icon,
+.no-results-icon ion-icon {
+  font-size: 40px;
+  color: var(--eco-gray-400);
+}
+
+.empty-title,
+.no-results-title {
+  font-family: var(--eco-font-family);
+  font-size: var(--eco-font-size-xl);
+  font-weight: var(--eco-font-weight-semibold);
+  color: var(--eco-gray-700);
+  margin: 0 0 var(--eco-space-2) 0;
+}
+
+.empty-subtitle,
+.no-results-subtitle {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-500);
+  margin: 0 0 var(--eco-space-6) 0;
+  max-width: 280px;
+}
+
+.no-results-actions {
+  display: flex;
+  gap: var(--eco-space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.clear-button {
+  --border-color: var(--eco-gray-300);
+  --color: var(--eco-gray-700);
+}
+
+.action-button {
+  --background: var(--eco-primary);
+  --color: white;
+  --border-radius: var(--eco-radius-lg);
+}
+
+/* Список событий */
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eco-space-4);
+}
+
+.event-card {
+  display: flex;
+  background: var(--eco-white);
+  border: 1px solid var(--eco-gray-200);
+  cursor: pointer;
+  transition: all var(--eco-transition-normal);
+}
+
+.event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--eco-shadow-lg);
+  border-color: var(--eco-gray-300);
+}
+
+.event-image {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.event-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.event-status {
+  position: absolute;
+  top: var(--eco-space-2);
+  left: var(--eco-space-2);
+}
+
+.event-content {
+  flex: 1;
+  padding: var(--eco-space-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--eco-space-3);
+}
+
+.event-title {
+  font-family: var(--eco-font-family);
+  font-size: var(--eco-font-size-lg);
+  font-weight: var(--eco-font-weight-semibold);
+  color: var(--eco-gray-800);
+  margin: 0;
+  flex: 1;
+  margin-right: var(--eco-space-3);
+  line-height: var(--eco-line-height-tight);
+}
+
+.event-actions {
+  display: flex;
+  gap: var(--eco-space-1);
+  flex-shrink: 0;
+}
+
+.action-btn {
+  --color: var(--eco-gray-500);
+  width: 32px;
+  height: 32px;
+}
+
+.action-btn:hover {
+  --background: var(--eco-gray-100);
+}
+
+.edit-btn:hover {
+  --color: var(--eco-primary);
+}
+
+.delete-btn:hover {
+  --color: var(--eco-error);
+}
+
+.event-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eco-space-1);
+  margin-bottom: var(--eco-space-3);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--eco-space-2);
+  font-size: var(--eco-font-size-sm);
+  color: var(--eco-gray-500);
+}
+
+.meta-item ion-icon {
+  font-size: 14px;
+  color: var(--eco-gray-400);
+  flex-shrink: 0;
 }
 
 .event-stats {
-  margin-top: 8px;
-}
-
-.event-card-vertical {
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  min-height: 180px;
-}
-
-.event-actions-vertical {
   display: flex;
-  flex-direction: row;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--eco-space-2);
 }
 
-ion-fab[slot="fixed"] {
-  position: fixed !important;
-  bottom: 24px !important;
-  right: 24px !important;
-  z-index: 1000;
-}
-
-.search-bar {
-  margin: 16px 16px 0 16px;
-  border-radius: 8px;
-  background: var(--ion-color-light, #222428);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+.stat-chip {
+  display: flex;
   align-items: center;
+  gap: var(--eco-space-1);
+  padding: var(--eco-space-1) var(--eco-space-2);
+  background: var(--eco-gray-100);
+  border-radius: var(--eco-radius-md);
+  font-size: var(--eco-font-size-xs);
+  color: var(--eco-gray-600);
+}
+
+.stat-chip ion-icon {
+  font-size: 12px;
+  color: var(--eco-gray-500);
+}
+
+/* FAB */
+.create-fab {
+  --background: var(--eco-primary);
+  --background-activated: var(--eco-primary-dark);
+  --color: white;
+}
+
+/* Отзывчивость */
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: var(--eco-space-3);
+  }
+  
+  .stat-value {
+    font-size: var(--eco-font-size-xl);
+  }
+  
+  .no-results-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .event-card {
+    flex-direction: column;
+  }
+  
+  .event-image {
+    width: 100%;
+    height: 160px;
+  }
+  
+  .event-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--eco-space-2);
+  }
+  
+  .event-actions {
+    align-self: flex-end;
+  }
+  
+  .event-meta {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--eco-space-3);
+  }
+  
+  .meta-item {
+    font-size: var(--eco-font-size-sm);
+  }
 }
 </style> 

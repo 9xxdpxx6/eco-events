@@ -1,2 +1,325 @@
 /* For information on how to create your own theme, please see:
 http://ionicframework.com/docs/theming/ */
+
+/* Ionic Variables and Theming. For more info, please see:
+http://ionicframework.com/docs/theming/ */
+
+/* Подключение дизайн-системы */
+@import './design-system.css';
+
+/** Ionic CSS Variables **/
+:root {
+  /* =================================================================
+     Ionic Color Palette - Обновленная под новый дизайн
+     ================================================================= */
+  
+  /** primary **/
+  --ion-color-primary: #355ADD;
+  --ion-color-primary-rgb: 53, 90, 221;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #2442B8;
+  --ion-color-primary-tint: #5A7FE8;
+
+  /** secondary **/
+  --ion-color-secondary: #199EFF;
+  --ion-color-secondary-rgb: 25, 158, 255;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #0D7FD9;
+  --ion-color-secondary-tint: #4DB4FF;
+
+  /** tertiary / success **/
+  --ion-color-tertiary: #2EDC93;
+  --ion-color-tertiary-rgb: 46, 220, 147;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #1FAE6F;
+  --ion-color-tertiary-tint: #58E6A8;
+
+  /** success **/
+  --ion-color-success: #2EDC93;
+  --ion-color-success-rgb: 46, 220, 147;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #1FAE6F;
+  --ion-color-success-tint: #58E6A8;
+
+  /** warning **/
+  --ion-color-warning: #F59E0B;
+  --ion-color-warning-rgb: 245, 158, 11;
+  --ion-color-warning-contrast: #ffffff;
+  --ion-color-warning-contrast-rgb: 255, 255, 255;
+  --ion-color-warning-shade: #D97706;
+  --ion-color-warning-tint: #F7B32D;
+
+  /** danger **/
+  --ion-color-danger: #EF4444;
+  --ion-color-danger-rgb: 239, 68, 68;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #DC2626;
+  --ion-color-danger-tint: #F87171;
+
+  /** dark **/
+  --ion-color-dark: #262626;
+  --ion-color-dark-rgb: 38, 38, 38;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-shade: #171717;
+  --ion-color-dark-tint: #404040;
+
+  /** medium **/
+  --ion-color-medium: #737373;
+  --ion-color-medium-rgb: 115, 115, 115;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #525252;
+  --ion-color-medium-tint: #A3A3A3;
+
+  /** light **/
+  --ion-color-light: #F1F1F1;
+  --ion-color-light-rgb: 241, 241, 241;
+  --ion-color-light-contrast: #262626;
+  --ion-color-light-contrast-rgb: 38, 38, 38;
+  --ion-color-light-shade: #E5E5E5;
+  --ion-color-light-tint: #F9F9F9;
+
+  /* =================================================================
+     Ionic Component Overrides
+     ================================================================= */
+
+  /* Фон приложения */
+  --ion-background-color: #FFFFFF;
+  --ion-background-color-rgb: 255, 255, 255;
+
+  /* Текст */
+  --ion-text-color: #262626;
+  --ion-text-color-rgb: 38, 38, 38;
+
+  /* Границы */
+  --ion-border-color: #E5E5E5;
+
+  /* Toolbar */
+  --ion-toolbar-background: #FFFFFF;
+  --ion-toolbar-border-color: #E5E5E5;
+  --ion-toolbar-color: #262626;
+
+  /* Tab bar */
+  --ion-tab-bar-background: #FFFFFF;
+  --ion-tab-bar-border-color: #E5E5E5;
+  --ion-tab-bar-color: #737373;
+  --ion-tab-bar-color-selected: #355ADD;
+
+  /* Item */
+  --ion-item-background: #FFFFFF;
+  --ion-item-border-color: #E5E5E5;
+
+  /* Card */
+  --ion-card-background: #FFFFFF;
+
+  /* Button */
+  --ion-button-border-radius: 12px;
+
+  /* Input */
+  --ion-input-border-radius: 12px;
+
+  /* Segment */
+  --ion-segment-button-border-radius: 8px;
+
+  /* Toast */
+  --ion-toast-border-radius: 12px;
+
+  /* Alert */
+  --ion-alert-border-radius: 16px;
+
+  /* Modal */
+  --ion-modal-border-radius: 16px 16px 0 0;
+
+  /* Popover */
+  --ion-popover-border-radius: 12px;
+
+  /* Loading */
+  --ion-loading-border-radius: 12px;
+}
+
+/* =================================================================
+   Ionic Component Customizations
+   ================================================================= */
+
+/* Tab Bar стилизация с подчеркиванием */
+ion-tab-bar {
+  height: 60px;
+  padding-bottom: 4px;
+  background-color: #FFFFFF !important;
+  --background: #FFFFFF !important;
+  border-top: 1px solid var(--eco-gray-200);
+}
+
+ion-tab-button {
+  font-family: var(--eco-font-family) !important;
+  --color: var(--eco-gray-500);
+  --color-selected: var(--eco-primary);
+  position: relative;
+  background-color: transparent !important;
+  --background: transparent !important;
+  --background-focused: transparent !important;
+  --background-activated: rgba(53, 90, 221, 0.1) !important;
+}
+
+ion-tab-button.tab-selected::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  background-color: var(--eco-primary);
+  border-radius: 2px;
+}
+
+/* Buttons */
+ion-button {
+  font-family: var(--eco-font-family) !important;
+  font-weight: 500 !important;
+  --border-radius: 12px;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+ion-button.button-fill-solid {
+  --background: var(--eco-primary);
+  --background-activated: var(--eco-primary-dark);
+  --background-hover: var(--eco-primary-dark);
+  --color: white;
+}
+
+/* Input fields */
+ion-input,
+ion-textarea,
+ion-select {
+  font-family: var(--eco-font-family) !important;
+  --border-radius: 12px;
+  --border-width: 2px;
+  --border-color: var(--eco-gray-200);
+  --border-color-focused: var(--eco-primary);
+  --background: white;
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+}
+
+/* Labels */
+ion-label {
+  font-family: var(--eco-font-family) !important;
+}
+
+/* Segment */
+ion-segment {
+  --background: var(--eco-gray-100);
+  --border-radius: 8px;
+}
+
+ion-segment-button {
+  font-family: var(--eco-font-family) !important;
+  --color: var(--eco-gray-600);
+  --color-checked: var(--eco-primary);
+  --background-checked: white;
+  --border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Items */
+ion-item {
+  font-family: var(--eco-font-family) !important;
+  --border-radius: 12px;
+  --background: white;
+  --border-color: var(--eco-gray-200);
+  --color: var(--eco-gray-800);
+  margin-bottom: 8px;
+}
+
+ion-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Cards */
+ion-card {
+  --background: white;
+  border-radius: 12px !important;
+  border: 1px solid var(--eco-gray-200);
+  box-shadow: none;
+  margin: 0 0 12px 0;
+  transition: all 0.25s ease-in-out;
+}
+
+ion-card:hover {
+  border-color: var(--eco-gray-300);
+  transform: translateY(-1px);
+}
+
+/* Headers/Toolbars */
+ion-header ion-toolbar {
+  --background: white;
+  --border-color: var(--eco-gray-200);
+  --color: var(--eco-gray-800);
+}
+
+ion-title {
+  font-family: var(--eco-font-family) !important;
+  font-weight: 600 !important;
+  color: var(--eco-gray-800) !important;
+}
+
+/* Content */
+ion-content {
+  --background: var(--eco-background-secondary);
+}
+
+/* List */
+ion-list {
+  background: transparent;
+  padding: 0;
+}
+
+/* Chips/Badges */
+ion-chip {
+  font-family: var(--eco-font-family) !important;
+  --background: var(--eco-primary);
+  --color: white;
+  font-weight: 500;
+  border-radius: 8px;
+}
+
+/* FAB */
+ion-fab-button {
+  --background: var(--eco-primary);
+  --background-activated: var(--eco-primary-dark);
+  --background-hover: var(--eco-primary-dark);
+  --border-radius: 16px;
+  width: 56px;
+  height: 56px;
+}
+
+/* Toast */
+ion-toast {
+  font-family: var(--eco-font-family) !important;
+  --border-radius: 12px;
+}
+
+/* Alert */
+ion-alert {
+  font-family: var(--eco-font-family) !important;
+  --border-radius: 16px;
+}
+
+/* Modal */
+ion-modal {
+  --border-radius: 16px 16px 0 0;
+}
+
+/* Popover */
+ion-popover {
+  --border-radius: 12px;
+}
