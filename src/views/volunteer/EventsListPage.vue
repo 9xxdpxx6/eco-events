@@ -2,11 +2,11 @@
   <ion-page class="events-list-page">
     <ion-header>
       <ion-toolbar>
-        <ion-title class="page-title">Мероприятия</ion-title>
+        <ion-title class="page-title" @click="scrollToTop">Мероприятия</ion-title>
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="events-content">
+    <ion-content ref="contentRef" class="events-content" :scroll-events="true" @ionScroll="onScroll">
       <!-- Pull-to-refresh -->
       <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
         <ion-refresher-content
@@ -16,7 +16,7 @@
       </ion-refresher>
 
       <!-- Поиск и фильтры -->
-      <div class="search-filters-container">
+      <div :class="['search-filters-container', { 'filters-hidden': !filtersVisible }]">
         <!-- Поиск -->
         <div class="search-section">
           <div class="search-wrapper">
@@ -234,6 +234,9 @@ const isRegistering = ref(false);
 const showSortPopover = ref(false);
 const sortBy = ref('newest');
 const viewMode = ref('grid');
+const contentRef = ref();
+const filtersVisible = ref(true);
+const lastScrollY = ref(0);
 
 const sortOptions = [
   { value: 'newest', label: 'Сначала новые', icon: arrowDownOutline },
@@ -437,6 +440,26 @@ const toggleViewMode = () => {
   viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid';
 };
 
+const scrollToTop = async () => {
+  if (contentRef.value) {
+    await contentRef.value.$el.scrollToTop(300);
+  }
+};
+
+const onScroll = (event: any) => {
+  const currentScrollY = event.detail.scrollTop;
+  
+  if (currentScrollY > lastScrollY.value + 20 && currentScrollY > 50) {
+    // Скролл вниз - скрываем фильтры
+    filtersVisible.value = false;
+  } else if (currentScrollY < lastScrollY.value - 20) {
+    // Скролл вверх - показываем фильтры
+    filtersVisible.value = true;
+  }
+  
+  lastScrollY.value = currentScrollY;
+};
+
 watch(searchText, () => {
   loadEvents(true);
 });
@@ -451,15 +474,20 @@ onMounted(() => {
   --background: var(--eco-background-secondary);
 }
 
-/* Убираем тени с header и toolbar */
+/* Добавляем белую тень к header для скрытия полоски при скролле */
 .events-list-page ion-header {
-  box-shadow: none !important;
-  --box-shadow: none !important;
+  box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
+  --box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
+  position: relative;
+  z-index: 1000;
 }
 
 .events-list-page ion-toolbar {
-  box-shadow: none !important;
-  --box-shadow: none !important;
+  box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
+  --box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .events-content {
@@ -469,6 +497,17 @@ onMounted(() => {
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
+  text-align: center !important;
+  cursor: pointer;
+  transition: color var(--eco-transition-fast);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.page-title:hover {
+  color: var(--eco-primary);
 }
 
 /* Поиск и фильтры */
@@ -481,6 +520,16 @@ onMounted(() => {
   padding: var(--eco-space-4);
   margin-bottom: var(--eco-space-4);
   box-shadow: none !important;
+  transform: translateY(0);
+  transition: transform var(--eco-transition-normal), opacity var(--eco-transition-normal);
+  opacity: 1;
+}
+
+.search-filters-container.filters-hidden {
+  transform: translateY(-120px);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .search-section {
