@@ -451,6 +451,17 @@ onMounted(() => {
   --background: var(--eco-background-secondary);
 }
 
+/* Убираем тени с header и toolbar */
+.events-list-page ion-header {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+}
+
+.events-list-page ion-toolbar {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+}
+
 .events-content {
   --background: var(--eco-background-secondary);
 }
@@ -469,6 +480,7 @@ onMounted(() => {
   border-bottom: 1px solid var(--eco-gray-200);
   padding: var(--eco-space-4);
   margin-bottom: var(--eco-space-4);
+  box-shadow: none !important;
 }
 
 .search-section {
@@ -492,6 +504,7 @@ onMounted(() => {
   --placeholder-color: var(--eco-gray-600);
   --padding-start: 16px;
   --padding-end: 48px;
+  --box-shadow: none !important;
 }
 
 .view-toggle-button {
@@ -500,6 +513,7 @@ onMounted(() => {
   --border-radius: var(--eco-radius-lg);
   width: 48px;
   height: 48px;
+  --box-shadow: none !important;
 }
 
 .sort-button {
@@ -508,6 +522,7 @@ onMounted(() => {
   --border-radius: var(--eco-radius-lg);
   width: 48px;
   height: 48px;
+  --box-shadow: none !important;
 }
 
 .filters-section {
@@ -786,7 +801,8 @@ onMounted(() => {
   --background: #F1F4FB;
   --color: #355ADD;
   border-radius: 12px;
-  box-shadow: none;
+  box-shadow: none !important;
+  --box-shadow: none !important;
   box-sizing: border-box;
   padding: 0;
   flex-shrink: 0;
