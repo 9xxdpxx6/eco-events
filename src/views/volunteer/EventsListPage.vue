@@ -33,14 +33,13 @@
             >
               <ion-icon :icon="viewMode === 'grid' ? listOutline : gridOutline" />
             </ion-button>
-            <ion-button 
-              fill="clear" 
-              class="sort-button"
-              id="sortBtn" 
-              @click="openSortPopover"
-            >
-            <ion-icon :icon="swapVerticalOutline" />
-          </ion-button>
+            <EcoSelect
+              v-model="sortBy"
+              :options="sortOptions"
+              :trigger-icon="swapVerticalOutline"
+              trigger-id="sortBtn"
+              @update:model-value="selectSort"
+            />
           </div>
         </div>
 
@@ -139,42 +138,13 @@
         </p>
       </div>
 
-      <!-- Popover для сортировки -->
-      <ion-popover 
-        :is-open="showSortPopover" 
-        @didDismiss="showSortPopover = false" 
-        trigger="sortBtn" 
-        trigger-action="click"
-      >
-        <ion-content>
-          <ion-list class="sort-options">
-            <ion-item 
-              v-for="option in sortOptions" 
-              :key="option.value" 
-              button 
-              @click="selectSort(option.value)"
-              class="sort-option-item"
-            >
-              <ion-icon :icon="option.icon" slot="start" />
-              <ion-label :class="{ 'selected': sortBy === option.value }">
-                {{ option.label }}
-              </ion-label>
-              <ion-icon 
-                v-if="sortBy === option.value" 
-                :icon="checkmarkOutline" 
-                slot="end" 
-                color="primary" 
-              />
-            </ion-item>
-          </ion-list>
-        </ion-content>
-      </ion-popover>
+
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   IonPage,
@@ -191,14 +161,12 @@ import {
   IonChip,
   IonRefresher,
   IonRefresherContent,
-  IonPopover,
   toastController
 } from '@ionic/vue';
 import {
   calendarOutline,
   addOutline,
   swapVerticalOutline,
-  checkmarkOutline,
   timeOutline,
   locationOutline,
   peopleOutline,
@@ -217,6 +185,7 @@ import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
 import { useAuthStore } from '../../stores';
 import EventListLoader from '../EventListLoader.vue';
+import EcoSelect from '../../components/EcoSelect.vue';
 import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 
@@ -231,12 +200,13 @@ const searchText = ref('');
 const selectedFilter = ref('all');
 const isLoading = ref(false);
 const isRegistering = ref(false);
-const showSortPopover = ref(false);
 const sortBy = ref('newest');
 const viewMode = ref('grid');
 const contentRef = ref();
 const filtersVisible = ref(true);
 const lastScrollY = ref(0);
+let searchTimeout: NodeJS.Timeout | null = null;
+const isInitialized = ref(false);
 
 const sortOptions = [
   { value: 'newest', label: 'Сначала новые', icon: arrowDownOutline },
@@ -276,14 +246,11 @@ function isEventThisWeek(dateStr: string) {
   return eventDate >= startOfWeek && eventDate < endOfWeek;
 }
 
-function openSortPopover() {
-  showSortPopover.value = true;
-}
-
 function selectSort(value: string) {
   sortBy.value = value;
-  showSortPopover.value = false;
-  loadEvents();
+  if (isInitialized.value) {
+    loadEvents(true);
+  }
 }
 
 function getEventStatus(startTime: string) {
@@ -461,11 +428,31 @@ const onScroll = (event: any) => {
 };
 
 watch(searchText, () => {
-  loadEvents(true);
+  // Не выполняем поиск до полной инициализации компонента
+  if (!isInitialized.value) return;
+  
+  // Очищаем предыдущий таймер
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  
+  // Устанавливаем новый таймер с задержкой 500мс
+  searchTimeout = setTimeout(() => {
+    loadEvents(true);
+  }, 500);
 });
 
-onMounted(() => {
-  loadEvents(true);
+onMounted(async () => {
+  await loadEvents(true);
+  // Отмечаем что компонент инициализирован, теперь watch может работать
+  isInitialized.value = true;
+});
+
+onUnmounted(() => {
+  // Очищаем таймер при размонтировании компонента
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
 });
 </script>
 
@@ -565,14 +552,7 @@ onMounted(() => {
   --box-shadow: none !important;
 }
 
-.sort-button {
-  --color: var(--eco-gray-600);
-  --background: var(--eco-gray-100);
-  --border-radius: var(--eco-radius-lg);
-  width: 48px;
-  height: 48px;
-  --box-shadow: none !important;
-}
+
 
 .filters-section {
   overflow: hidden;
@@ -911,24 +891,7 @@ onMounted(() => {
   max-width: 280px;
 }
 
-/* Popover сортировки */
-.sort-options {
-  background: transparent;
-  padding: var(--eco-space-2);
-}
 
-.sort-option-item {
-  --background: white;
-  --border-radius: var(--eco-radius-md);
-  --color: var(--eco-gray-700);
-  margin-bottom: var(--eco-space-1);
-  font-family: var(--eco-font-family);
-}
-
-.sort-option-item ion-label.selected {
-  color: var(--eco-primary);
-  font-weight: var(--eco-font-weight-medium);
-}
 
 /* Отзывчивость */
 @media (max-width: 480px) {
