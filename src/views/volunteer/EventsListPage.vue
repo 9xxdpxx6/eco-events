@@ -177,7 +177,6 @@ import {
   listOutline,
   arrowUpOutline,
   arrowDownOutline,
-  peopleCircleOutline,
   textOutline,
   gridOutline
 } from 'ionicons/icons';
@@ -211,7 +210,6 @@ const isInitialized = ref(false);
 const sortOptions = [
   { value: 'newest', label: 'Сначала новые', icon: arrowDownOutline },
   { value: 'oldest', label: 'Сначала старые', icon: arrowUpOutline },
-  { value: 'participants', label: 'По участникам', icon: peopleCircleOutline },
   { value: 'title', label: 'По алфавиту', icon: textOutline }
 ];
 
@@ -233,7 +231,9 @@ const hasMore = ref(true);
 
 function setFilter(value: string) {
   selectedFilter.value = value;
-  filterEvents();
+  if (isInitialized.value) {
+    loadEvents(true); // Перезагружаем данные с сервера с новыми фильтрами
+  }
 }
 
 function isEventThisWeek(dateStr: string) {
@@ -249,7 +249,7 @@ function isEventThisWeek(dateStr: string) {
 function selectSort(value: string) {
   sortBy.value = value;
   if (isInitialized.value) {
-    loadEvents(true);
+    applySorting(); // Применяем сортировку к уже загруженным данным
   }
 }
 
@@ -282,22 +282,48 @@ function truncateText(text: string, maxLength: number) {
 const loadEvents = async (reset = true) => {
   isLoading.value = true;
   try {
+    // Подготавливаем параметры фильтрации для сервера
+    const filterParams: any = {
+      keyword: searchText.value,
+      page: reset ? 0 : page.value,
+      size: size
+    };
+
+    // Добавляем фильтры по датам для сервера
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (selectedFilter.value) {
+      case 'today':
+        filterParams.startDateFrom = today.toISOString();
+        filterParams.startDateTo = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        break;
+      case 'upcoming':
+        filterParams.startDateFrom = now.toISOString();
+        break;
+      case 'week':
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        filterParams.startDateFrom = startOfWeek.toISOString();
+        filterParams.startDateTo = endOfWeek.toISOString();
+        break;
+      case 'finished':
+        filterParams.startDateTo = now.toISOString();
+        break;
+      // case 'my': // Пока не поддерживается сервером
+      //   break;
+    }
+
     if (reset) {
       page.value = 0;
-      await eventsStore.fetchEventsSearch({
-        keyword: searchText.value,
-        page: page.value,
-        size: size
-      });
+      await eventsStore.fetchEventsSearch(filterParams);
       events.value = eventsStore.getEvents;
       hasMore.value = events.value.length === size;
     } else {
       page.value += 1;
-      await eventsStore.fetchEventsSearch({
-        keyword: searchText.value,
-        page: page.value,
-        size: size
-      });
+      await eventsStore.fetchEventsSearch(filterParams);
       const newEvents = eventsStore.getEvents;
       if (newEvents.length > 0) {
         events.value = [...events.value, ...newEvents];
@@ -306,7 +332,9 @@ const loadEvents = async (reset = true) => {
         hasMore.value = false;
       }
     }
-    filterEvents();
+    
+    // Применяем сортировку на клиенте (пока сервер не поддерживает)
+    applySorting();
   } catch (error) {
     console.error('Error loading events:', error);
     const toast = await toastController.create({
@@ -325,42 +353,60 @@ const handleRefresh = async (event: any) => {
   event.target.complete();
 };
 
-const filterEvents = () => {
-  let filtered = [...events.value];
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+const applySorting = () => {
+  const sorted = [...events.value];
   
-  switch (selectedFilter.value) {
-    case 'today':
-      filtered = filtered.filter(event => {
-        const eventDate = new Date(event.startTime);
-        return eventDate >= today && eventDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
-      });
+  // Применяем сортировку
+  switch (sortBy.value) {
+    case 'newest':
+      sorted.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
       break;
-    case 'upcoming':
-      filtered = filtered.filter(event => new Date(event.startTime) > now);
+    case 'oldest':
+      sorted.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
       break;
-    case 'week':
-      filtered = filtered.filter(event => isEventThisWeek(event.startTime));
-      break;
-    case 'finished':
-      filtered = filtered.filter(event => new Date(event.startTime) < now);
-      break;
-    case 'my':
-      // filtered = filtered.filter(event => event.isRegistered);
+    case 'title':
+      sorted.sort((a, b) => a.title.localeCompare(b.title, 'ru'));
       break;
   }
-  filteredEvents.value = filtered;
+  
+  filteredEvents.value = sorted;
+};
+
+const filterEvents = () => {
+  // Фильтрация теперь происходит на сервере, 
+  // но оставляем для фильтра 'my' который пока не поддерживается сервером
+  let filtered = [...events.value];
+  
+  if (selectedFilter.value === 'my') {
+    // filtered = filtered.filter(event => event.isRegistered);
+    // Пока не реализовано
+  }
+  
+  // Применяем сортировку
+  applySorting();
 };
 
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  const currentYear = new Date().getFullYear();
+  const eventYear = date.getFullYear();
+  
+  if (eventYear === currentYear) {
+    // Если год совпадает с текущим, показываем дату и время
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } else {
+    // Если год не совпадает, показываем дату и год
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+  }
 };
 
 const openEventDetails = (eventId: number) => {
