@@ -114,7 +114,7 @@ export const useAuthStore = defineStore('auth', {
           } as AuthResponseDTO;
         } catch (e) {
           if (import.meta.env.DEV) {
-            console.error('[checkAuth] error loading user:', e);
+          console.error('[checkAuth] error loading user:', e);
           }
           // Создаем минимальный объект пользователя из localStorage
           this.user = {

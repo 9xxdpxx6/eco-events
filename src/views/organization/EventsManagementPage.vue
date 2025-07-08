@@ -65,29 +65,29 @@
           
           <ion-segment v-model="selectedFilter" @ionChange="filterEvents" class="custom-segment">
             <ion-segment-button value="all" class="segment-button">
-              <ion-label>Все</ion-label>
+          <ion-label>Все</ion-label>
               <span class="tab-count" v-if="events.length > 0">{{ events.length }}</span>
-            </ion-segment-button>
+        </ion-segment-button>
             <ion-segment-button value="upcoming" class="segment-button">
-              <ion-label>Предстоящие</ion-label>
+          <ion-label>Предстоящие</ion-label>
               <span class="tab-count" v-if="upcomingEventsCount > 0">{{ upcomingEventsCount }}</span>
             </ion-segment-button>
             <ion-segment-button value="active" class="segment-button">
               <ion-label>Активные</ion-label>
               <span class="tab-count" v-if="activeEventsCount > 0">{{ activeEventsCount }}</span>
-            </ion-segment-button>
+        </ion-segment-button>
             <ion-segment-button value="past" class="segment-button">
               <ion-label>Завершённые</ion-label>
               <span class="tab-count" v-if="completedEventsCount > 0">{{ completedEventsCount }}</span>
-            </ion-segment-button>
-          </ion-segment>
+        </ion-segment-button>
+      </ion-segment>
         </div>
       </div>
 
       <!-- Список мероприятий -->
       <div class="events-section">
         <!-- Лоадер -->
-        <div v-if="isLoading" class="loading-container">
+      <div v-if="isLoading" class="loading-container">
           <div class="loading-spinner">
             <ion-spinner name="crescent" color="primary"></ion-spinner>
           </div>
@@ -105,13 +105,13 @@
             <ion-icon :icon="addOutline" slot="start" />
             Создать мероприятие
           </ion-button>
-        </div>
+      </div>
 
         <!-- Нет результатов поиска -->
         <div v-else-if="filteredEvents.length === 0" class="no-results">
           <div class="no-results-icon">
             <ion-icon :icon="searchOutline" />
-          </div>
+            </div>
           <h3 class="no-results-title">Мероприятия не найдены</h3>
           <p class="no-results-subtitle">Попробуйте изменить критерии поиска или создать новое мероприятие</p>
           <div class="no-results-actions">
@@ -161,7 +161,7 @@
                     @click="confirmDeleteEvent(event)"
                   >
                     <ion-icon :icon="trashOutline" />
-                  </ion-button>
+        </ion-button>
                 </div>
               </div>
               
@@ -591,7 +591,7 @@ onMounted(() => {
   --box-shadow: none;
   --icon-color: var(--eco-gray-500);
   --color: var(--eco-gray-800);
-  --placeholder-color: var(--eco-gray-500);
+  --placeholder-color: var(--eco-gray-600);
   --clear-button-color: var(--eco-gray-500);
   margin: 0;
 }
@@ -698,7 +698,7 @@ onMounted(() => {
 .empty-icon ion-icon,
 .no-results-icon ion-icon {
   font-size: 40px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
 }
 
 .empty-title,
@@ -844,7 +844,7 @@ onMounted(() => {
 
 .meta-item ion-icon {
   font-size: 14px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
   flex-shrink: 0;
 }
 
@@ -920,5 +920,23 @@ onMounted(() => {
   .meta-item {
     font-size: var(--eco-font-size-sm);
   }
+}
+
+.search-input {
+  --background: var(--eco-gray-50);
+  --border-radius: var(--eco-radius-lg);
+  --border-width: 2px;
+  --border-color: var(--eco-gray-200);
+  --border-color-focused: var(--eco-primary);
+  --color: var(--eco-gray-800);
+  --placeholder-color: var(--eco-gray-600);
+  --padding-start: 16px;
+  --padding-end: 48px;
+}
+
+.empty-state ion-icon {
+  font-size: 64px;
+  color: var(--eco-gray-600);
+  margin-bottom: var(--eco-space-4);
 }
 </style> 

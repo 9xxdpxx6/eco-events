@@ -20,12 +20,12 @@
         <!-- Поиск -->
         <div class="search-section">
           <div class="search-wrapper">
-            <ion-searchbar 
-              v-model="searchText" 
-              placeholder="Поиск мероприятий..."
+          <ion-searchbar 
+            v-model="searchText" 
+            placeholder="Поиск мероприятий..."
               class="custom-searchbar"
               :clear-input="true"
-            ></ion-searchbar>
+          ></ion-searchbar>
             <ion-button 
               fill="clear" 
               class="view-toggle-button"
@@ -39,23 +39,23 @@
               id="sortBtn" 
               @click="openSortPopover"
             >
-              <ion-icon :icon="swapVerticalOutline" />
-            </ion-button>
+            <ion-icon :icon="swapVerticalOutline" />
+          </ion-button>
           </div>
         </div>
 
         <!-- Фильтры категорий -->
         <div class="filters-section">
           <div class="filters-scroll">
-            <ion-chip
-              v-for="filter in filters"
-              :key="filter.value"
+          <ion-chip
+            v-for="filter in filters"
+            :key="filter.value"
               :class="['filter-chip', { 'active': selectedFilter === filter.value }]"
-              @click="setFilter(filter.value)"
-            >
-              <ion-icon :icon="filter.icon" />
+            @click="setFilter(filter.value)"
+          >
+              <ion-icon v-if="selectedFilter === filter.value" :icon="filter.icon" />
               <ion-label>{{ filter.label }}</ion-label>
-            </ion-chip>
+          </ion-chip>
           </div>
         </div>
       </div>
@@ -83,17 +83,26 @@
           </div>
 
           <div class="event-content">
+            
+            
             <div class="event-header">
-              <h3 class="event-title">{{ event.title }}</h3>
-              <ion-button 
-                fill="clear" 
+              <h3 class="event-title" lang="ru">{{ event.title }}</h3>
+          <ion-button 
+            fill="clear" 
                 size="small"
                 class="register-button"
-                @click.stop="toggleEventRegistration(event)"
-                :disabled="isRegistering"
-              >
-                <ion-icon :icon="addCircleOutline" />
-              </ion-button>
+            @click.stop="toggleEventRegistration(event)"
+            :disabled="isRegistering"
+          >
+                <ion-icon :icon="addOutline" />
+          </ion-button>
+            </div>
+
+            <!-- Статус для списочного режима -->
+            <div v-if="viewMode === 'list'" class="event-status-text">
+              <span :class="['status-badge-text', getEventStatus(event.startTime)]">
+                {{ getEventStatusText(event.startTime) }}
+              </span>
             </div>
 
             <div class="event-meta">
@@ -187,7 +196,7 @@ import {
 } from '@ionic/vue';
 import {
   calendarOutline,
-  addCircleOutline,
+  addOutline,
   swapVerticalOutline,
   checkmarkOutline,
   timeOutline,
@@ -476,11 +485,13 @@ onMounted(() => {
   flex: 1;
   --background: var(--eco-gray-50);
   --border-radius: var(--eco-radius-lg);
-  --box-shadow: none;
-  --icon-color: var(--eco-gray-500);
+  --border-width: 2px;
+  --border-color: var(--eco-gray-200);
+  --border-color-focused: var(--eco-primary);
   --color: var(--eco-gray-800);
-  --placeholder-color: var(--eco-gray-500);
-  --clear-button-color: var(--eco-gray-500);
+  --placeholder-color: var(--eco-gray-600);
+  --padding-start: 16px;
+  --padding-end: 48px;
 }
 
 .view-toggle-button {
@@ -577,45 +588,67 @@ onMounted(() => {
 }
 
 .events-list .event-image {
-  width: 120px;
-  aspect-ratio: 1/1;
+  width: 168px;
+  height: 168px;
   flex-shrink: 0;
+  margin: var(--eco-space-3);
+  border-radius: var(--eco-radius-lg);
+  overflow: hidden;
 }
 
 .events-list .event-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  padding: var(--eco-space-3);
 }
 
 .events-list .event-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: var(--eco-space-2);
 }
 
 .events-list .event-title {
   font-size: var(--eco-font-size-base);
   line-height: var(--eco-line-height-tight);
+  margin: 0;
+  flex: 1;
+  margin-right: var(--eco-space-2);
+  max-width: 180px;
+  word-break: break-word;
+  white-space: normal;
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
 
 .events-list .event-meta {
-  gap: var(--eco-space-1);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--eco-space-3);
   margin-bottom: var(--eco-space-2);
+}
+
+.events-list .meta-item {
+  display: flex;
+  align-items: center;
+  gap: var(--eco-space-1);
+  font-size: var(--eco-font-size-xs);
+  color: var(--eco-gray-600);
 }
 
 .events-list .event-description {
   font-size: var(--eco-font-size-xs);
   line-height: var(--eco-line-height-normal);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
 }
 
-.events-list .register-button {
-  width: 32px;
-  height: 32px;
-}
 
-.events-list .register-button ion-icon {
-  font-size: 18px;
-}
 
 /* Общие стили карточек */
 .event-card {
@@ -643,6 +676,7 @@ onMounted(() => {
 .events-grid .event-image {
   width: 100%;
   overflow: hidden;
+  border-radius: var(--eco-radius-lg) var(--eco-radius-lg) 0 0;
 }
 
 .events-grid .event-image img {
@@ -708,21 +742,8 @@ onMounted(() => {
   line-height: var(--eco-line-height-tight);
   flex: 1;
   margin-right: var(--eco-space-3);
-}
-
-.register-button {
-  --color: var(--eco-success);
-  --background: var(--eco-success);
-  --background-activated: var(--eco-success-dark);
-  --border-radius: var(--eco-radius-lg);
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-}
-
-.register-button ion-icon {
-  font-size: 20px;
-  color: white;
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
 
 .event-meta {
@@ -753,6 +774,36 @@ onMounted(() => {
   margin: 0;
 }
 
+/* Общие стили для кнопки регистрации */
+.register-button {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --background: #F1F4FB;
+  --color: #355ADD;
+  border-radius: 12px;
+  box-shadow: none;
+  box-sizing: border-box;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.register-button ion-icon {
+  font-size: 28px;
+  color: #355ADD;
+  width: 100%;
+  height: 100%;
+  font-weight: 600;
+  stroke-width: 2.5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Пустое состояние */
 .empty-state {
   display: flex;
@@ -775,8 +826,9 @@ onMounted(() => {
 }
 
 .empty-icon ion-icon {
-  font-size: 40px;
-  color: var(--eco-gray-400);
+  font-size: 64px;
+  color: var(--eco-gray-600);
+  margin-bottom: var(--eco-space-4);
 }
 
 .empty-title {
@@ -845,8 +897,9 @@ onMounted(() => {
   }
   
   .events-list .event-image {
-    width: 100px;
-    aspect-ratio: 1/1;
+    width: 120px;
+    height: 120px;
+    margin: var(--eco-space-2);
   }
   
   .event-content {
@@ -856,5 +909,46 @@ onMounted(() => {
   .event-title {
     font-size: var(--eco-font-size-base);
   }
+}
+
+/* Скрываем статус на изображении в списочном режиме */
+.events-list .event-status {
+  display: none;
+}
+
+/* Статус в текстовой части для списочного режима */
+.event-status-text {
+  margin-bottom: var(--eco-space-2);
+}
+
+.status-badge-text {
+  padding: var(--eco-space-1) var(--eco-space-2);
+  border-radius: var(--eco-radius-sm);
+  font-size: var(--eco-font-size-xs);
+  font-weight: var(--eco-font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+  display: inline-block;
+}
+
+.status-badge-text.upcoming {
+  background: var(--eco-primary);
+}
+
+.status-badge-text.soon {
+  background: var(--eco-warning);
+}
+
+.status-badge-text.finished {
+  background: var(--eco-gray-500);
+}
+
+.events-grid .event-title {
+  max-width: 140px;
+  word-break: break-word;
+  white-space: normal;
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
 </style> 

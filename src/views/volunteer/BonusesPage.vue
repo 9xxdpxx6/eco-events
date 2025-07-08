@@ -3,9 +3,9 @@
     <ion-header>
       <ion-toolbar>
         <ion-title class="page-title">Мои бонусы</ion-title>
-      </ion-toolbar>
-    </ion-header>
-
+        </ion-toolbar>
+      </ion-header>
+    
     <ion-content class="bonuses-content">
       <!-- Статистика бонусов -->
       <div class="stats-section">
@@ -32,7 +32,7 @@
             <div class="stat-item">
               <div class="stat-value spent">{{ totalSpent }}</div>
               <div class="stat-label">Потрачено</div>
-            </div>
+        </div>
           </div>
         </div>
       </div>
@@ -143,8 +143,8 @@
                   <div :class="['bonus-amount', getAmountClass(item.amount)]">
                     {{ item.amount > 0 ? '+' : '' }}{{ item.amount }}
                   </div>
-                </div>
-                
+      </div>
+
                 <div class="bonus-meta">
                   <div class="meta-item">
                     <ion-icon :icon="timeOutline" />
@@ -470,7 +470,7 @@ onMounted(fetchBonusHistory);
   --border-color: var(--eco-gray-200);
   --border-color-focused: var(--eco-primary);
   --color: var(--eco-gray-800);
-  --placeholder-color: var(--eco-gray-500);
+  --placeholder-color: var(--eco-gray-600);
   --padding-start: 16px;
   --padding-end: 48px;
   cursor: pointer;
@@ -551,7 +551,7 @@ onMounted(fetchBonusHistory);
 .empty-icon ion-icon,
 .no-results-icon ion-icon {
   font-size: 40px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
 }
 
 .error-title,
@@ -703,7 +703,7 @@ onMounted(fetchBonusHistory);
 
 .meta-item ion-icon {
   font-size: 16px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
 }
 
 /* Отзывчивость */

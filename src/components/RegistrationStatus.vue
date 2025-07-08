@@ -1,7 +1,7 @@
 <template>
-  <div :class="['reg-status', statusClass]">
+  <div :class="['reg-status', 'eco-status-badge', statusClass]">
     <ion-icon :icon="icon" class="reg-status-icon" />
-    <span>{{ label }}</span>
+    <span class="reg-status-label">{{ label }}</span>
   </div>
 </template>
 
@@ -43,26 +43,92 @@ const statusClass = computed(() => statusMap[props.status]?.class || 'reg-status
 .reg-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 15px;
-  font-weight: 500;
-  border-radius: 12px;
-  padding: 2px 10px 2px 6px;
-  background: var(--ion-color-step-50, #23272f);
+  gap: var(--eco-space-2);
+  font-family: var(--eco-font-family);
+  font-size: var(--eco-font-size-sm);
+  font-weight: var(--eco-font-weight-semibold);
+  line-height: var(--eco-line-height-tight);
+  border-radius: var(--eco-radius-md);
+  padding: var(--eco-space-2) var(--eco-space-3);
+  text-transform: capitalize;
+  letter-spacing: 0.25px;
+  transition: all var(--eco-transition-fast);
+  white-space: nowrap;
 }
+
 .reg-status-icon {
-  font-size: 18px;
+  font-size: 16px;
+  flex-shrink: 0;
 }
+
+.reg-status-label {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Статусы */
 .reg-status-upcoming {
-  color: var(--ion-color-primary);
-  background: rgba(0, 140, 255, 0.08);
+  color: var(--eco-primary);
+  background: rgba(53, 90, 221, 0.1);
+  border: 1px solid rgba(53, 90, 221, 0.2);
 }
+
+.reg-status-upcoming:hover {
+  background: rgba(53, 90, 221, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(53, 90, 221, 0.2);
+}
+
 .reg-status-success {
-  color: var(--ion-color-success);
-  background: rgba(40, 200, 80, 0.08);
+  color: var(--eco-success);
+  background: rgba(46, 220, 147, 0.1);
+  border: 1px solid rgba(46, 220, 147, 0.2);
 }
+
+.reg-status-success:hover {
+  background: rgba(46, 220, 147, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(46, 220, 147, 0.2);
+}
+
 .reg-status-failed {
-  color: var(--ion-color-danger);
-  background: rgba(255, 60, 60, 0.08);
+  color: var(--eco-error);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.reg-status-failed:hover {
+  background: rgba(239, 68, 68, 0.15);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+/* Компактная версия для мобильных устройств */
+@media (max-width: 480px) {
+  .reg-status {
+    font-size: var(--eco-font-size-xs);
+    padding: var(--eco-space-1) var(--eco-space-2);
+    gap: var(--eco-space-1);
+  }
+  
+  .reg-status-icon {
+    font-size: 14px;
+  }
+}
+
+/* Анимация при изменении статуса */
+.reg-status {
+  animation: statusFadeIn 0.3s ease-out;
+}
+
+@keyframes statusFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 </style> 

@@ -59,22 +59,22 @@
               <ion-label class="filter-label">С</ion-label>
               <div class="date-input-wrapper" @click="openDatePicker('from')">
                 <ion-input
-                  :value="dateFromDisplay"
-                  readonly
+                :value="dateFromDisplay"
+                readonly
                   class="date-input"
                   placeholder="Выберите дату"
                 ></ion-input>
                 <ion-icon :icon="calendarOutline" class="date-icon" />
-              </div>
-              <input type="date" ref="dateFromRef" v-model="dateFrom" @change="applyDateFilter" style="display:none" />
             </div>
+            <input type="date" ref="dateFromRef" v-model="dateFrom" @change="applyDateFilter" style="display:none" />
+          </div>
             
             <div class="date-filter">
               <ion-label class="filter-label">По</ion-label>
               <div class="date-input-wrapper" @click="openDatePicker('to')">
                 <ion-input
-                  :value="dateToDisplay"
-                  readonly
+                :value="dateToDisplay"
+                readonly
                   class="date-input"
                   placeholder="Выберите дату"
                 ></ion-input>
@@ -196,7 +196,7 @@
                 <div class="event-image">
                   <img :src="getEventPlaceholder(reg.event.id ?? 0)" alt="Event image" />
                   <div class="registration-status">
-                    <RegistrationStatus :status="reg.status" />
+            <RegistrationStatus :status="reg.status" />
                   </div>
                 </div>
                 
@@ -207,7 +207,7 @@
                   
                   <div class="event-meta">
                     <div class="meta-item">
-                      <ion-icon :icon="calendarOutline" />
+              <ion-icon :icon="calendarOutline" />
                       <span>{{ formatEventDate(reg.event.startTime) }}</span>
                     </div>
                     <div class="meta-item">
@@ -231,7 +231,7 @@
               Отменённые мероприятия
               <span class="group-count">({{ cancelledEvents.length }})</span>
             </h3>
-            
+
             <div class="events-list">
               <div 
                 v-for="reg in cancelledEvents" 
@@ -244,13 +244,13 @@
                   <div class="registration-status">
                     <RegistrationStatus :status="reg.status" />
                   </div>
-                </div>
-                
+      </div>
+
                 <div class="event-content">
                   <div class="event-header">
                     <h4 class="event-title">{{ reg.event.title }}</h4>
-                  </div>
-                  
+      </div>
+
                   <div class="event-meta">
                     <div class="meta-item">
                       <ion-icon :icon="calendarOutline" />
@@ -562,7 +562,7 @@ onMounted(fetchRegistrations);
   --box-shadow: none;
   --icon-color: var(--eco-gray-500);
   --color: var(--eco-gray-800);
-  --placeholder-color: var(--eco-gray-500);
+      --placeholder-color: var(--eco-gray-600);
   --clear-button-color: var(--eco-gray-500);
   margin: 0;
 }
@@ -612,7 +612,7 @@ onMounted(fetchRegistrations);
   --border-color: var(--eco-gray-200);
   --border-color-focused: var(--eco-primary);
   --color: var(--eco-gray-800);
-  --placeholder-color: var(--eco-gray-500);
+  --placeholder-color: var(--eco-gray-600);
   --padding-start: 16px;
   --padding-end: 48px;
   cursor: pointer;
@@ -693,7 +693,7 @@ onMounted(fetchRegistrations);
 .empty-icon ion-icon,
 .no-results-icon ion-icon {
   font-size: 40px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
 }
 
 .error-title,
@@ -848,7 +848,7 @@ onMounted(fetchRegistrations);
 
 .meta-item ion-icon {
   font-size: 14px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
   flex-shrink: 0;
 }
 
@@ -894,5 +894,15 @@ onMounted(fetchRegistrations);
   .meta-item {
     font-size: var(--eco-font-size-sm);
   }
+}
+
+.empty-state ion-icon {
+  font-size: 64px;
+  color: var(--eco-gray-600);
+  margin-bottom: var(--eco-space-4);
+}
+
+.refresh-icon {
+  color: var(--eco-gray-600);
 }
 </style> 

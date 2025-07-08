@@ -7,8 +7,13 @@
           <div class="eco-icon">
             <ion-icon :icon="personAddOutline" />
           </div>
-          <h1 class="page-title">Присоединяйтесь</h1>
-          <p class="page-subtitle">Создайте аккаунт и начните делать мир лучше</p>
+          <div class="app-branding">
+            <div class="app-title-section">
+              <img src="@/assets/logo-white.png" alt="EcoEvents Logo" class="app-logo" />
+              <h1 class="app-title">EcoEvents</h1>
+            </div>
+            <p class="app-subtitle">Присоединяйтесь и начните делать мир лучше</p>
+          </div>
         </div>
 
         <!-- Форма регистрации -->
@@ -126,8 +131,8 @@
               >
                 <ion-icon v-if="isLoading" :icon="refreshOutline" class="loading-icon" />
                 {{ isLoading ? 'Создание аккаунта...' : 'Создать аккаунт' }}
-              </ion-button>
-              
+      </ion-button>
+
               <div class="divider">
                 <span class="divider-text">или</span>
               </div>
@@ -139,8 +144,8 @@
                 class="login-button eco-button eco-button-ghost"
                 @click="goToLogin"
               >
-                Уже есть аккаунт? Войти
-              </ion-button>
+        Уже есть аккаунт? Войти
+      </ion-button>
             </div>
           </div>
         </div>
@@ -295,7 +300,8 @@ const goToLogin = () => {
 
 <style scoped>
 .register-page {
-  --background: linear-gradient(135deg, var(--eco-secondary) 0%, var(--eco-success) 100%);
+  --background: var(--eco-primary);
+  background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-secondary) 100%);
 }
 
 .register-content {
@@ -304,7 +310,7 @@ const goToLogin = () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: var(--eco-space-4);
+  padding: var(--eco-space-6);
 }
 
 .register-container {
@@ -315,44 +321,63 @@ const goToLogin = () => {
 
 .register-header {
   text-align: center;
-  margin-bottom: var(--eco-space-6);
+  margin-bottom: var(--eco-space-8);
+  margin-top: var(--eco-space-8);
   color: white;
 }
 
 .eco-icon {
-  width: 70px;
-  height: 70px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto var(--eco-space-3) auto;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  margin: 0 auto var(--eco-space-4) auto;
 }
 
 .eco-icon ion-icon {
-  font-size: 35px;
+  font-size: 80px;
   color: white;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
 }
 
-.page-title {
+.app-title {
   font-family: var(--eco-font-family);
-  font-size: var(--eco-font-size-2xl);
+  font-size: var(--eco-font-size-3xl);
   font-weight: var(--eco-font-weight-bold);
-  margin: 0 0 var(--eco-space-2) 0;
+  margin: 0;
   color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-stroke: 1px rgba(0, 0, 0, 0.1);
 }
 
-.page-subtitle {
+.app-branding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--eco-space-4);
+}
+
+.app-title-section {
+  display: flex;
+  align-items: center;
+  gap: var(--eco-space-3);
+}
+
+.app-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+.app-subtitle {
   font-family: var(--eco-font-family);
-  font-size: var(--eco-font-size-base);
+  font-size: var(--eco-font-size-lg);
   font-weight: var(--eco-font-weight-normal);
   margin: 0;
-  color: rgba(255, 255, 255, 0.9);
-  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .register-form-card {
@@ -360,6 +385,8 @@ const goToLogin = () => {
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  margin-left: var(--eco-space-2);
+  margin-right: var(--eco-space-2);
 }
 
 .register-form-content {
@@ -391,6 +418,8 @@ const goToLogin = () => {
 .role-segment {
   --background: var(--eco-gray-100);
   --border-radius: 8px;
+  border-radius: 8px;
+  overflow: hidden;
   width: 100%;
 }
 
@@ -566,19 +595,51 @@ const goToLogin = () => {
 /* Отзывчивость */
 @media (max-width: 480px) {
   .register-content {
-    padding: var(--eco-space-3);
-  }
-  
-  .register-form-content {
     padding: var(--eco-space-4);
   }
   
-  .page-title {
-    font-size: var(--eco-font-size-xl);
+  .register-form-content {
+    padding: var(--eco-space-6);
+  }
+  
+  .app-title {
+    font-size: var(--eco-font-size-2xl);
+  }
+  
+  .app-logo {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .app-title-section {
+    gap: var(--eco-space-2);
+  }
+  
+  .app-branding {
+    gap: var(--eco-space-3);
   }
   
   .form-title {
-    font-size: var(--eco-font-size-lg);
+    font-size: var(--eco-font-size-xl);
   }
+}
+
+.eco-input {
+  --background: var(--eco-white);
+  --color: var(--eco-gray-800);
+  --border-color: var(--eco-gray-300);
+  --border-radius: var(--eco-radius-md);
+  --padding-start: var(--eco-space-4);
+  --padding-end: var(--eco-space-4);
+  --padding-top: var(--eco-space-3);
+  --padding-bottom: var(--eco-space-3);
+  font-size: var(--eco-font-size-base);
+  border: 1px solid var(--border-color);
+  transition: all var(--eco-transition-normal);
+}
+
+.eco-input:focus {
+  --border-color: var(--eco-primary);
+  box-shadow: 0 0 0 3px rgba(53, 90, 221, 0.1);
 }
 </style> 

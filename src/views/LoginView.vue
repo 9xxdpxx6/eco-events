@@ -7,8 +7,13 @@
           <div class="eco-icon">
             <ion-icon :icon="leafOutline" />
           </div>
-          <h1 class="app-title">EcoEvents</h1>
-          <p class="app-subtitle">Экологические мероприятия</p>
+          <div class="app-branding">
+            <div class="app-title-section">
+              <img src="@/assets/logo-white.png" alt="EcoEvents Logo" class="app-logo" />
+              <h1 class="app-title">EcoEvents</h1>
+            </div>
+            <p class="app-subtitle">Экологические мероприятия</p>
+          </div>
         </div>
 
         <!-- Форма входа -->
@@ -142,7 +147,8 @@ const goToRegister = () => {
 
 <style scoped>
 .login-page {
-  --background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-secondary) 100%);
+  --background: var(--eco-primary);
+  background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-secondary) 100%);
 }
 
 .login-content {
@@ -163,34 +169,53 @@ const goToRegister = () => {
 .login-header {
   text-align: center;
   margin-bottom: var(--eco-space-8);
+  margin-top: var(--eco-space-8);
   color: white;
 }
 
 .eco-icon {
   width: 80px;
   height: 80px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--eco-space-4) auto;
-  backdrop-filter: blur(10px);
-  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .eco-icon ion-icon {
-  font-size: 40px;
+  font-size: 80px;
   color: white;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
 }
 
 .app-title {
   font-family: var(--eco-font-family);
   font-size: var(--eco-font-size-3xl);
   font-weight: var(--eco-font-weight-bold);
-  margin: 0 0 var(--eco-space-2) 0;
+  margin: 0;
   color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-stroke: 1px rgba(0, 0, 0, 0.1);
+}
+
+.app-branding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--eco-space-4);
+}
+
+.app-title-section {
+  display: flex;
+  align-items: center;
+  gap: var(--eco-space-3);
+}
+
+.app-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.2));
 }
 
 .app-subtitle {
@@ -198,8 +223,8 @@ const goToRegister = () => {
   font-size: var(--eco-font-size-lg);
   font-weight: var(--eco-font-weight-normal);
   margin: 0;
-  color: rgba(255, 255, 255, 0.9);
-  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .login-form-card {
@@ -311,8 +336,40 @@ const goToRegister = () => {
     font-size: var(--eco-font-size-2xl);
   }
   
+  .app-logo {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .app-title-section {
+    gap: var(--eco-space-2);
+  }
+  
+  .app-branding {
+    gap: var(--eco-space-3);
+  }
+  
   .form-title {
     font-size: var(--eco-font-size-xl);
   }
+}
+
+.eco-input {
+  --background: var(--eco-white);
+  --color: var(--eco-gray-800);
+  --border-color: var(--eco-gray-300);
+  --border-radius: var(--eco-radius-md);
+  --padding-start: var(--eco-space-4);
+  --padding-end: var(--eco-space-4);
+  --padding-top: var(--eco-space-3);
+  --padding-bottom: var(--eco-space-3);
+  font-size: var(--eco-font-size-base);
+  border: 1px solid var(--border-color);
+  transition: all var(--eco-transition-normal);
+}
+
+.eco-input:focus {
+  --border-color: var(--eco-primary);
+  box-shadow: 0 0 0 3px rgba(53, 90, 221, 0.1);
 }
 </style> 

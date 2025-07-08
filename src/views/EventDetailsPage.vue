@@ -35,7 +35,7 @@
           <div class="hero-content">
             <div class="status-badge-container">
               <span :class="['status-badge', 'eco-status', getEventStatusClass()]">
-                {{ getEventStatus() }}
+            {{ getEventStatus() }}
               </span>
             </div>
             
@@ -95,18 +95,18 @@
             </div>
           </div>
 
-          <!-- Описание -->
+        <!-- Описание -->
           <div class="description-card eco-card">
             <div class="card-header">
               <ion-icon :icon="documentTextOutline" />
               <h2>Описание</h2>
             </div>
             <div class="description-content">
-              <p>{{ event.description || 'Описание отсутствует' }}</p>
+            <p>{{ event.description || 'Описание отсутствует' }}</p>
             </div>
           </div>
 
-          <!-- Контактная информация -->
+        <!-- Контактная информация -->
           <div v-if="event.owner && (event.owner.phoneNumber || event.owner.email)" class="contacts-card eco-card">
             <div class="card-header">
               <ion-icon :icon="personOutline" />
@@ -150,7 +150,7 @@
             </div>
           </div>
 
-          <!-- Участники (для организаций) -->
+        <!-- Участники (для организаций) -->
           <div v-if="isAdmin && isMyEvent" class="participants-card eco-card">
             <div class="card-header">
               <ion-icon :icon="peopleOutline" />
@@ -166,7 +166,7 @@
                   class="participant-item"
                 >
                   <div class="participant-avatar">
-                    <ion-icon :icon="personCircleOutline" />
+                  <ion-icon :icon="personCircleOutline" />
                   </div>
                   <div class="participant-info">
                     <h4>{{ participant.user.fullName }}</h4>
@@ -208,7 +208,7 @@
           :disabled="isRegistering"
         >
           <ion-icon 
-            :icon="isUserRegistered ? closeOutline : addCircleOutline" 
+            :icon="isUserRegistered ? closeOutline : addOutline" 
             slot="start" 
           />
           {{ isRegistering ? 'Обработка...' : (isUserRegistered ? 'Отменить участие' : 'Принять участие') }}
@@ -272,7 +272,7 @@ import {
   callOutline,
   personCircleOutline,
   alertCircleOutline,
-  addCircleOutline,
+  addOutline,
   closeOutline,
   createOutline,
   trashOutline,
@@ -354,7 +354,7 @@ const toggleRegistration = async () => {
       if (isUserRegistered.value) {
         await participantsStore.unregisterFromEvent(userId, event.value.id);
       } else {
-        await participantsStore.registerForEvent(userId, event.value.id);
+      await participantsStore.registerForEvent(userId, event.value.id);
       }
       
       await loadEvent();
@@ -787,6 +787,13 @@ onMounted(() => {
   --background: var(--eco-gray-50);
 }
 
+.contact-button.disabled {
+  --background: var(--eco-gray-100);
+  --color: var(--eco-gray-600);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Участники */
 .participants-list {
   display: flex;
@@ -844,7 +851,7 @@ onMounted(() => {
 
 .no-participants ion-icon {
   font-size: 48px;
-  color: var(--eco-gray-300);
+  color: var(--eco-gray-600);
 }
 
 .no-participants p {
@@ -926,9 +933,10 @@ onMounted(() => {
 }
 
 .action-button.primary {
-  --background: var(--eco-success);
-  --background-activated: var(--eco-success-dark);
-  --color: white;
+  --background: #F1F4FB;
+  --background-activated: #E3EAFB;
+  --color: #355ADD;
+  --border-color: #D1DBEF;
 }
 
 .admin-button {

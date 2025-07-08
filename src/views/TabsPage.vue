@@ -71,13 +71,13 @@ const isOrganization = computed(() => authStore.isOrganization);
 
 // Отладочная информация (только в development)
 if (import.meta.env.DEV) {
-  watchEffect(() => {
-    console.log('📋 TabsPage состояние:', {
-      isVolunteer: isVolunteer.value,
-      isOrganization: isOrganization.value,
+watchEffect(() => {
+  console.log('📋 TabsPage состояние:', {
+    isVolunteer: isVolunteer.value,
+    isOrganization: isOrganization.value,
       userRole: authStore.user?.role,
-      isAuthenticated: authStore.isAuthenticated
-    });
+    isAuthenticated: authStore.isAuthenticated
   });
+});
 }
 </script>

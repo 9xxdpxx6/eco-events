@@ -19,7 +19,7 @@
           <div class="profile-avatar">
             <ion-icon :icon="personCircleOutline" />
           </div>
-          <div class="profile-info">
+            <div class="profile-info">
             <h1 class="profile-name">{{ user?.fullName || 'Волонтер' }}</h1>
             <p class="profile-role">Экологический волонтер</p>
             <div class="profile-status">
@@ -35,7 +35,7 @@
       <!-- Статистика -->
       <div class="stats-section">
         <h2 class="section-title">Моя активность</h2>
-        <div class="stats-grid">
+          <div class="stats-grid">
           <div class="stat-card eco-card">
             <div class="stat-icon events">
               <ion-icon :icon="calendarOutline" />
@@ -78,14 +78,14 @@
           <div class="events-tabs">
             <ion-segment v-model="selectedTab" class="custom-segment">
               <ion-segment-button value="upcoming" class="segment-button">
-                <ion-label>Предстоящие</ion-label>
+              <ion-label>Предстоящие</ion-label>
                 <span class="tab-count" v-if="upcomingEvents.length > 0">{{ upcomingEvents.length }}</span>
-              </ion-segment-button>
+            </ion-segment-button>
               <ion-segment-button value="past" class="segment-button">
-                <ion-label>Прошедшие</ion-label>
+              <ion-label>Прошедшие</ion-label>
                 <span class="tab-count" v-if="pastEvents.length > 0">{{ pastEvents.length }}</span>
-              </ion-segment-button>
-            </ion-segment>
+            </ion-segment-button>
+          </ion-segment>
           </div>
 
           <div class="events-content">
@@ -165,10 +165,10 @@
                   <div class="completed-badge">
                     <ion-icon :icon="checkmarkCircleOutline" />
                   </div>
-                </div>
-              </div>
-              
-              <div v-else class="empty-state">
+            </div>
+          </div>
+
+            <div v-else class="empty-state">
                 <div class="empty-icon">
                   <ion-icon :icon="trophyOutline" />
                 </div>
@@ -348,7 +348,7 @@ const loadUserEvents = async () => {
       try {
         const event = eventsStore.getEvents.find(e => e.id === eventId);
         if (event) {
-          events.push(event);
+        events.push(event);
         }
       } catch (e) {
         // Игнорируем ошибки отдельных событий
@@ -789,7 +789,7 @@ onMounted(async () => {
 
 .meta-item ion-icon {
   font-size: 14px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
   flex-shrink: 0;
 }
 
@@ -834,8 +834,9 @@ onMounted(async () => {
 }
 
 .empty-icon ion-icon {
-  font-size: 32px;
-  color: var(--eco-gray-400);
+  font-size: 64px;
+  color: var(--eco-gray-600);
+  margin-bottom: var(--eco-space-4);
 }
 
 .empty-title {
@@ -844,6 +845,13 @@ onMounted(async () => {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-700);
   margin: 0 0 var(--eco-space-2) 0;
+}
+
+.empty-text {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-600);
+  line-height: var(--eco-line-height-relaxed);
+  margin: 0 0 var(--eco-space-6) 0;
 }
 
 .empty-subtitle {
@@ -966,7 +974,7 @@ onMounted(async () => {
 
 .setting-arrow {
   font-size: 16px;
-  color: var(--eco-gray-400);
+  color: var(--eco-gray-600);
   flex-shrink: 0;
 }
 
@@ -1013,5 +1021,10 @@ onMounted(async () => {
   .meta-item {
     font-size: var(--eco-font-size-sm);
   }
+}
+
+.refresh-icon {
+  font-size: 20px;
+  color: var(--eco-gray-600);
 }
 </style> 

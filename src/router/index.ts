@@ -122,7 +122,7 @@ router.beforeEach(async (to, from, next) => {
   // Неавторизованные пользователи → на страницы входа
   if (!authStore.isAuthenticated && !isAuthRoute) {
     return next('/login');
-  }
+  } 
   
   // Авторизованные пользователи не должны видеть страницы входа
   if (authStore.isAuthenticated && isAuthRoute) {
@@ -134,7 +134,7 @@ router.beforeEach(async (to, from, next) => {
   if (authStore.isAuthenticated && (to.path === '/' || to.path === '/tabs' || to.path === '/tabs/')) {
     const defaultRoute = authStore.isVolunteer ? '/tabs/events-list' : '/tabs/events-management';
     return next(defaultRoute);
-  }
+    }
   
   // Проверка доступа по ролям
   if (authStore.isAuthenticated) {
@@ -148,9 +148,9 @@ router.beforeEach(async (to, from, next) => {
     if (authStore.isOrganization && volunteerOnlyRoutes.includes(to.name as string)) {
       return next('/tabs/events-management');
     }
-  }
+  } 
   
-  next();
+    next();
 });
 
 export default router;
