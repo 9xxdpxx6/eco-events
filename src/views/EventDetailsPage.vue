@@ -181,6 +181,22 @@
               <p>Пока нет участников</p>
             </div>
           </div>
+
+          <!-- Отмена участия (для зарегистрированных волонтёров) -->
+          <div v-if="event && !isAdmin && isUserRegistered" class="cancel-card eco-card">
+            <div class="cancel-content">
+              <ion-button 
+                fill="clear" 
+                expand="block"
+                class="cancel-button"
+                @click="toggleRegistration"
+                :disabled="isRegistering"
+              >
+                <ion-icon :icon="closeOutline" slot="start" />
+                {{ isRegistering ? 'Обработка...' : 'Отменить участие' }}
+              </ion-button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -197,21 +213,18 @@
       </div>
     </ion-content>
 
-    <!-- Кнопка регистрации/отмены (для волонтёров) -->
-    <ion-footer v-if="event && !isAdmin" class="action-footer">
+    <!-- Кнопка регистрации (только для незарегистрированных волонтёров) -->
+    <ion-footer v-if="event && !isAdmin && !isUserRegistered" class="action-footer">
       <div class="footer-content">
         <ion-button 
           expand="block" 
           size="large"
-          :class="['action-button', isUserRegistered ? 'danger' : 'primary']"
+          class="action-button primary"
           @click="toggleRegistration"
           :disabled="isRegistering"
         >
-          <ion-icon 
-            :icon="isUserRegistered ? closeOutline : addOutline" 
-            slot="start" 
-          />
-          {{ isRegistering ? 'Обработка...' : (isUserRegistered ? 'Отменить участие' : 'Принять участие') }}
+          <ion-icon :icon="addOutline" slot="start" />
+          {{ isRegistering ? 'Обработка...' : 'Принять участие' }}
         </ion-button>
       </div>
     </ion-footer>
@@ -444,23 +457,34 @@ const openPhone = (phone: string) => {
 
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('ru-RU', {
+  const currentYear = new Date().getFullYear();
+  const eventYear = date.getFullYear();
+  const options: Intl.DateTimeFormatOptions = {
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  });
+  };
+  if (eventYear !== currentYear) {
+    options.year = 'numeric';
+  }
+  return date.toLocaleDateString('ru-RU', options);
 };
 
 const formatDateShort = (dateStr: string) => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('ru-RU', {
+  const currentYear = new Date().getFullYear();
+  const eventYear = date.getFullYear();
+  const options: Intl.DateTimeFormatOptions = {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit'
-  });
+  };
+  if (eventYear !== currentYear) {
+    options.year = 'numeric';
+  }
+  return date.toLocaleDateString('ru-RU', options);
 };
 
 const getEventStatus = () => {
@@ -777,14 +801,26 @@ onMounted(() => {
 }
 
 .contact-button {
-  --border-color: var(--eco-gray-300);
+  --background: var(--eco-gray-50);
+  --background-activated: var(--eco-gray-100);
+  --background-hover: var(--eco-gray-100);
   --color: var(--eco-gray-700);
+  --border-width: 0;
+  --border-radius: var(--eco-radius-lg);
+  --box-shadow: none;
   height: 48px;
   font-size: var(--eco-font-size-sm);
+  font-weight: var(--eco-font-weight-medium);
 }
 
 .contact-button:hover {
-  --background: var(--eco-gray-50);
+  --background: var(--eco-gray-100);
+  transform: translateY(-1px);
+  transition: all var(--eco-transition-fast);
+}
+
+.contact-button:active {
+  transform: translateY(0);
 }
 
 .contact-button.disabled {
@@ -925,18 +961,48 @@ onMounted(() => {
 }
 
 .action-button {
-  height: 48px;
+  height: 56px;
   font-size: var(--eco-font-size-base);
   font-weight: var(--eco-font-weight-semibold);
   --border-radius: var(--eco-radius-lg);
-  max-width: 280px;
+  --border-width: 0;
+  --box-shadow: none;
+  max-width: 320px;
+  transition: all var(--eco-transition-fast);
 }
 
 .action-button.primary {
-  --background: #F1F4FB;
-  --background-activated: #E3EAFB;
-  --color: #355ADD;
-  --border-color: #D1DBEF;
+  --background: var(--eco-primary);
+  --background-activated: var(--eco-primary);
+  --color: white;
+}
+
+.action-button.primary:hover {
+  transform: translateY(-2px);
+  --background: var(--eco-primary);
+  box-shadow: 0 8px 24px rgba(53, 90, 221, 0.3);
+}
+
+.action-button.primary:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(53, 90, 221, 0.2);
+}
+
+.action-button.danger {
+  --background: var(--eco-error);
+  --background-activated: var(--eco-error);
+  --color: white;
+}
+
+.action-button.danger:hover {
+  transform: translateY(-2px);
+  --background: var(--eco-error);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
+}
+
+.action-button.danger:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 
 .admin-button {
@@ -944,6 +1010,77 @@ onMounted(() => {
   height: 48px;
   font-weight: var(--eco-font-weight-medium);
   --border-radius: var(--eco-radius-lg);
+  --border-width: 0;
+  --box-shadow: none;
+  transition: all var(--eco-transition-fast);
+}
+
+.admin-button[fill="outline"] {
+  --background: var(--eco-gray-50);
+  --background-activated: var(--eco-gray-100);
+  --color: var(--eco-gray-700);
+}
+
+.admin-button[fill="outline"]:hover {
+  transform: translateY(-1px);
+  --background: var(--eco-gray-100);
+}
+
+.admin-button[color="danger"] {
+  --background: var(--eco-error);
+  --background-activated: var(--eco-error);
+  --color: white;
+}
+
+.admin-button[color="danger"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+}
+
+.admin-button:active {
+  transform: translateY(0);
+}
+
+/* Карточка отмены участия */
+.cancel-card {
+  background: var(--eco-white);
+  border-radius: var(--eco-radius-lg);
+  padding: var(--eco-space-4);
+  border: 1px solid var(--eco-gray-200);
+}
+
+.cancel-content {
+  display: flex;
+  justify-content: center;
+}
+
+.cancel-button {
+  --color: var(--eco-error);
+  --background: var(--eco-gray-50);
+  --background-hover: var(--eco-gray-100);
+  --background-activated: rgba(239, 68, 68, 0.1);
+  --border-width: 0;
+  --box-shadow: none;
+  font-size: var(--eco-font-size-base);
+  font-weight: var(--eco-font-weight-medium);
+  height: 48px;
+  width: 100%;
+  transition: all var(--eco-transition-normal);
+}
+
+.cancel-button:hover {
+  --color: var(--eco-error);
+  transform: translateY(-1px);
+}
+
+.cancel-button:active {
+  transform: translateY(0);
+}
+
+.cancel-button ion-icon {
+  font-size: 18px;
+  margin-right: var(--eco-space-2);
+  color: var(--eco-error);
 }
 
 /* Отзывчивость */
@@ -978,6 +1115,10 @@ onMounted(() => {
   
   .admin-actions {
     flex-direction: column;
+  }
+  
+  .cancel-card {
+    padding: var(--eco-space-3);
   }
 }
 </style> 

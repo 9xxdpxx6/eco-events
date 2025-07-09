@@ -87,6 +87,7 @@
             <div class="event-header">
               <h3 class="event-title" lang="ru">{{ event.title }}</h3>
           <ion-button 
+            v-if="!isUserRegisteredForEvent(event.id)"
             fill="clear" 
                 size="small"
                 class="register-button"
@@ -145,7 +146,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import {
   IonPage,
   IonHeader,
@@ -189,12 +190,14 @@ import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 
 const router = useRouter();
+const route = useRoute();
 const eventsStore = useEventsStore();
 const participantsStore = useParticipantsStore();
 const authStore = useAuthStore();
 
 const events = ref<EventResponseMediumDTO[]>([]);
 const filteredEvents = ref<EventResponseMediumDTO[]>([]);
+const userParticipations = ref<Set<number>>(new Set());
 const searchText = ref('');
 const selectedFilter = ref('all');
 const isLoading = ref(false);
@@ -386,6 +389,26 @@ const filterEvents = () => {
   applySorting();
 };
 
+const isUserRegisteredForEvent = (eventId: number | undefined) => {
+  if (!eventId || !authStore.isAuthenticated) return false;
+  return userParticipations.value.has(eventId);
+};
+
+const loadUserParticipations = async () => {
+  if (!authStore.isAuthenticated || !authStore.user?.id) return;
+  
+  try {
+    await participantsStore.fetchUserParticipants(authStore.user.id);
+    const participantEvents = participantsStore.getUserParticipants;
+    
+    // Создаем Set с ID событий, на которые записан пользователь
+    const eventIds = participantEvents.map(p => p.event.id);
+    userParticipations.value = new Set(eventIds);
+  } catch (error) {
+    console.error('Error loading user participations:', error);
+  }
+};
+
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
   const currentYear = new Date().getFullYear();
@@ -428,14 +451,15 @@ const toggleEventRegistration = async (event: EventResponseMediumDTO) => {
     // В списке кнопка "+" всегда регистрирует на событие
     await participantsStore.registerForEvent(userId, event.id);
     
+    // Обновляем локальное состояние участий
+    userParticipations.value.add(event.id);
+    
     const toast = await toastController.create({
       message: 'Вы успешно записались на мероприятие!',
       duration: 2000,
       color: 'success'
     });
     await toast.present();
-    
-    await loadEvents();
   } catch (error) {
     console.error('Error toggling registration:', error);
     const toast = await toastController.create({
@@ -488,8 +512,19 @@ watch(searchText, () => {
   }, 500);
 });
 
+// Обновляем участия при каждом переходе на эту страницу
+watch(
+  () => route.fullPath,
+  async (newPath) => {
+    if (newPath === '/tabs/events-list' && isInitialized.value) {
+      await loadUserParticipations();
+    }
+  }
+);
+
 onMounted(async () => {
   await loadEvents(true);
+  await loadUserParticipations();
   // Отмечаем что компонент инициализирован, теперь watch может работать
   isInitialized.value = true;
 });
