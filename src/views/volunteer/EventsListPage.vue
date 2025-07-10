@@ -282,6 +282,11 @@ function truncateText(text: string, maxLength: number) {
   return text.slice(0, maxLength) + '...';
 }
 
+function formatDateForApi(date: Date) {
+  // API ожидает формат YYYY-MM-DDTHH:MM:SS без миллисекунд и Z
+  return date.toISOString().slice(0, 19);
+}
+
 const loadEvents = async (reset = true) => {
   isLoading.value = true;
   try {
@@ -298,22 +303,22 @@ const loadEvents = async (reset = true) => {
     
     switch (selectedFilter.value) {
       case 'today':
-        filterParams.startDateFrom = today.toISOString();
-        filterParams.startDateTo = new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        filterParams.startDateFrom = formatDateForApi(today);
+        filterParams.startDateTo = formatDateForApi(new Date(today.getTime() + 24 * 60 * 60 * 1000));
         break;
       case 'upcoming':
-        filterParams.startDateFrom = now.toISOString();
+        filterParams.startDateFrom = formatDateForApi(now);
         break;
       case 'week':
         const startOfWeek = new Date(now);
         startOfWeek.setDate(now.getDate() - now.getDay());
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 7);
-        filterParams.startDateFrom = startOfWeek.toISOString();
-        filterParams.startDateTo = endOfWeek.toISOString();
+        filterParams.startDateFrom = formatDateForApi(startOfWeek);
+        filterParams.startDateTo = formatDateForApi(endOfWeek);
         break;
       case 'finished':
-        filterParams.startDateTo = now.toISOString();
+        filterParams.startDateTo = formatDateForApi(now);
         break;
       // case 'my': // Пока не поддерживается сервером
       //   break;
