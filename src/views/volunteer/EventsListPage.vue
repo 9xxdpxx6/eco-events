@@ -18,30 +18,17 @@
       <!-- Поиск и фильтры -->
       <div :class="['search-filters-container', { 'filters-hidden': !filtersVisible }]">
         <!-- Поиск -->
-        <div class="search-section">
-          <div class="search-wrapper">
-          <ion-searchbar 
-            v-model="searchText" 
-            placeholder="Поиск мероприятий..."
-              class="custom-searchbar"
-              :clear-input="true"
-          ></ion-searchbar>
-            <ion-button 
-              fill="clear" 
-              class="view-toggle-button"
-              @click="toggleViewMode"
-            >
-              <ion-icon :icon="viewMode === 'grid' ? listOutline : gridOutline" />
-            </ion-button>
-            <EcoSelect
-              v-model="sortBy"
-              :options="sortOptions"
-              :trigger-icon="swapVerticalOutline"
-              trigger-id="sortBtn"
-              @update:model-value="selectSort"
-            />
-          </div>
-        </div>
+        <EcoSearchBar
+          v-model="searchText"
+          placeholder="Поиск мероприятий..."
+          :show-view-toggle="true"
+          :view-toggle-icon="viewMode === 'grid' ? listOutline : gridOutline"
+          :show-sort-select="true"
+          :sort-options="sortOptions"
+          :sort-value="sortBy"
+          @toggle-view="toggleViewMode"
+          @update:sort-value="selectSort"
+        />
 
         <!-- Фильтры категорий -->
         <div class="filters-section">
@@ -158,7 +145,6 @@ import {
   IonLabel,
   IonButton,
   IonIcon,
-  IonSearchbar,
   IonChip,
   IonRefresher,
   IonRefresherContent,
@@ -167,7 +153,6 @@ import {
 import {
   calendarOutline,
   addOutline,
-  swapVerticalOutline,
   timeOutline,
   locationOutline,
   peopleOutline,
@@ -186,6 +171,7 @@ import { useParticipantsStore } from '../../stores';
 import { useAuthStore } from '../../stores';
 import EventListLoader from '../EventListLoader.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
+import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 
@@ -605,38 +591,7 @@ onUnmounted(() => {
   visibility: hidden;
 }
 
-.search-section {
-  margin-bottom: var(--eco-space-4);
-}
 
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  gap: var(--eco-space-2);
-}
-
-.custom-searchbar {
-  flex: 1;
-  --background: var(--eco-gray-50);
-  --border-radius: var(--eco-radius-lg);
-  --border-width: 2px;
-  --border-color: var(--eco-gray-200);
-  --border-color-focused: var(--eco-primary);
-  --color: var(--eco-gray-800);
-  --placeholder-color: var(--eco-gray-600);
-  --padding-start: 16px;
-  --padding-end: 48px;
-  --box-shadow: none !important;
-}
-
-.view-toggle-button {
-  --color: var(--eco-gray-600);
-  --background: var(--eco-gray-100);
-  --border-radius: var(--eco-radius-lg);
-  width: 48px;
-  height: 48px;
-  --box-shadow: none !important;
-}
 
 
 
