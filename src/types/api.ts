@@ -94,6 +94,20 @@ export interface EventParticipantDTO {
   event: EventShortDTO;
 }
 
+// Расширенный интерфейс для страницы регистраций с полными данными о событии
+export interface EventParticipantWithEventDetailsDTO {
+  status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
+  createdAt: string;
+  user: UserShortDTO;
+  event: {
+    id: number;
+    title: string;
+    startTime: string;
+    endTime: string;
+    location: string;
+  };
+}
+
 export interface RegisterOrUnregisterRequest {
   userId: number;
   eventId: number;
