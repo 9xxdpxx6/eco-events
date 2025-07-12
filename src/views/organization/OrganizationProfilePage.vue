@@ -152,7 +152,7 @@ const authStore = useAuthStore();
 const eventsStore = useEventsStore();
 const participantsStore = useParticipantsStore();
 
-const user = computed(() => authStore.getUser);
+const user = computed(() => authStore.user);
 const statistics = ref({
   eventsCreated: 0,
   totalParticipants: 0,

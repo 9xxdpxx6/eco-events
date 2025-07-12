@@ -98,16 +98,11 @@
         </div>
 
         <!-- Ошибка -->
-        <div v-else-if="error" class="error-state">
-          <div class="error-icon">
-            <ion-icon :icon="alertCircleOutline" />
-          </div>
-          <h3 class="error-title">Ошибка загрузки</h3>
-          <p class="error-subtitle">{{ error.message }}</p>
-          <ion-button fill="outline" @click="fetchBonusHistory" class="retry-button">
-            Попробовать снова
-          </ion-button>
-        </div>
+        <ErrorState
+          v-else-if="error"
+          :message="error.message"
+          @retry="fetchBonusHistory"
+        />
 
         <!-- Пустое состояние -->
         <div v-else-if="bonusHistory.length === 0" class="empty-state">
@@ -186,6 +181,7 @@ import {
   IonSpinner,
   IonIcon
 } from '@ionic/vue';
+import ErrorState from '../../components/ErrorState.vue';
 import { 
   calendarOutline, 
   trophyOutline,
@@ -573,10 +569,14 @@ onMounted(fetchBonusHistory);
   max-width: 280px;
 }
 
-.retry-button,
+.retry-button {
+  --color: var(--eco-primary);
+  --border-color: var(--eco-primary);
+  font-weight: var(--eco-font-weight-medium);
+}
+
 .clear-button {
-  --border-color: var(--eco-gray-300);
-  --color: var(--eco-gray-700);
+  --color: var(--eco-primary);
 }
 
 .history-title {

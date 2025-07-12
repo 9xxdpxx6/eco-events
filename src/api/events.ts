@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { EventRequestDTO, EventResponseMediumDTO, EventFilterDTO } from '../types/api';
+import type { EventRequestDTO, EventResponseMediumDTO, EventFilterDTO, EventFilterForUserDTO } from '../types/api';
 
 export const eventsApi = {
   getAll: async (): Promise<EventResponseMediumDTO[]> => {
@@ -42,10 +42,34 @@ export const eventsApi = {
     if (filter.eventTypeId) params.eventTypeId = filter.eventTypeId;
     if (filter.startDateFrom) params.startDateFrom = filter.startDateFrom;
     if (filter.startDateTo) params.startDateTo = filter.startDateTo;
+    if (filter.userId) params.userId = filter.userId;
     if (filter.page !== undefined) params.page = filter.page;
     if (filter.size !== undefined) params.size = filter.size;
 
     const { data } = await apiClient.get('/api/events/search', { params });
+    const d: any = data;
+    if (Array.isArray(d)) return d;
+    if (d.content && Array.isArray(d.content)) return d.content;
+    if (d.list && Array.isArray(d.list)) return d.list;
+    if (d.items && Array.isArray(d.items)) return d.items;
+    return [];
+  },
+
+  searchByUser: async (filter: EventFilterForUserDTO): Promise<EventResponseMediumDTO[]> => {
+    const params: any = {};
+    if (filter.title) params.title = filter.title;
+    if (filter.description) params.description = filter.description;
+    if (filter.dateFrom) params.dateFrom = filter.dateFrom;
+    if (filter.dateTo) params.dateTo = filter.dateTo;
+    if (filter.userIdForEventFilter) params.userIdForEventFilter = filter.userIdForEventFilter;
+    if (filter.page !== undefined) params.page = filter.page;
+    if (filter.size !== undefined) params.size = filter.size;
+
+    console.log('API запрос /api/events/user/search с параметрами:', params);
+    
+    const { data } = await apiClient.get('/api/events/user/search', { params });
+    console.log('API ответ:', data);
+    
     const d: any = data;
     if (Array.isArray(d)) return d;
     if (d.content && Array.isArray(d.content)) return d.content;

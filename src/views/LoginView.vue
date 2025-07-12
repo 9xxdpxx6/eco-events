@@ -81,8 +81,8 @@
       <!-- Toast для ошибок -->
       <ion-toast
         :is-open="showError"
-        message="Ошибка входа. Проверьте данные и попробуйте снова."
-        :duration="3000"
+        :message="errorMessage"
+        :duration="4000"
         color="danger"
         position="top"
         @didDismiss="showError = false"
@@ -105,6 +105,7 @@ import {
 import { leafOutline, refreshOutline } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores';
+import { getErrorMessage } from '../utils/network';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -112,6 +113,7 @@ const login = ref('');
 const password = ref('');
 const isLoading = ref(false);
 const showError = ref(false);
+const errorMessage = ref('');
 
 const canSubmit = computed(() => {
   return login.value.trim() && password.value.trim();
@@ -119,6 +121,7 @@ const canSubmit = computed(() => {
 
 const handleLogin = async () => {
   if (!canSubmit.value) {
+    errorMessage.value = 'Заполните все поля';
     showError.value = true;
     return;
   }
@@ -127,13 +130,14 @@ const handleLogin = async () => {
   try {
     await authStore.login({ login: login.value.trim(), password: password.value });
     // Перенаправляем на соответствующую главную страницу в зависимости от роли
-    if (authStore.isAdmin) {
+    if (authStore.isOrganization) {
       router.push('/tabs/events-management');
     } else {
       router.push('/tabs/events-list');
     }
   } catch (error) {
     console.error('Login error:', error);
+    errorMessage.value = getErrorMessage(error, 'login');
     showError.value = true;
   } finally {
     isLoading.value = false;

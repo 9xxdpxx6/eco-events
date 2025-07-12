@@ -117,18 +117,13 @@
         </div>
 
         <!-- Ошибка -->
-        <div v-else-if="error" class="error-state">
-          <div class="error-icon">
-            <ion-icon :icon="alertCircleOutline" />
-          </div>
-          <h3 class="error-title">Ошибка загрузки</h3>
-          <p class="error-subtitle">{{ error.message }}</p>
-          <ion-button fill="outline" @click="fetchRegistrations" class="retry-button">
-            Попробовать снова
-          </ion-button>
-        </div>
+        <ErrorState
+          v-else-if="error"
+          :message="error.message"
+          @retry="fetchRegistrations"
+        />
 
-        <!-- Пустое состояние -->
+        <!-- Пустое состояние когда записей нет вообще -->
         <div v-else-if="registrations.length === 0" class="empty-state">
           <div class="empty-icon">
             <ion-icon :icon="clipboardOutline" />
@@ -192,7 +187,7 @@
           <div v-if="completedEvents.length > 0" class="event-group">
             <h3 class="group-title">
               <ion-icon :icon="checkmarkCircleOutline" />
-              Завершённые мероприятия
+              Завершённые и архивные мероприятия
               <span class="group-count">({{ completedEvents.length }})</span>
             </h3>
             
@@ -328,6 +323,7 @@ import { participantsApi } from '../../api/participants';
 import { useAuthStore } from '../../stores/auth';
 import type { EventParticipantDTO } from '../../types/api';
 import RegistrationStatus from '../../components/RegistrationStatus.vue';
+import ErrorState from '../../components/ErrorState.vue';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
@@ -382,31 +378,48 @@ const filteredRegistrations = computed(() => {
 
 const upcomingEvents = computed(() => {
   const now = new Date();
-  return filteredRegistrations.value.filter(reg => {
+  const result = filteredRegistrations.value.filter(reg => {
     const eventStartTime = (reg.event as any).startTime;
+    // Если нет startTime, не считаем предстоящим
     if (!eventStartTime) return false;
     const eventDate = new Date(eventStartTime);
-    return eventDate > now && reg.status !== 'CANCELLED';
+    // Показываем только VALID регистрации
+    return eventDate > now && reg.status !== 'CANCELLED' && (reg.membershipStatus !== 'INVALID');
   });
+  return result;
 });
 
 const completedEvents = computed(() => {
   const now = new Date();
-  return filteredRegistrations.value.filter(reg => {
+  const result = filteredRegistrations.value.filter(reg => {
     const eventStartTime = (reg.event as any).startTime;
-    if (!eventStartTime) return false;
+    // Если нет startTime, считаем завершённым (или показываем в завершённых)
+    if (!eventStartTime) {
+      return reg.status !== 'CANCELLED' && (reg.membershipStatus !== 'INVALID');
+    }
     const eventDate = new Date(eventStartTime);
-    return eventDate <= now && reg.status !== 'CANCELLED';
+    // Показываем только VALID регистрации
+    return eventDate <= now && reg.status !== 'CANCELLED' && (reg.membershipStatus !== 'INVALID');
   });
+  return result;
 });
 
 const cancelledEvents = computed(() => {
-  return filteredRegistrations.value.filter(reg => reg.status === 'CANCELLED');
+  // Показываем события со статусом CANCELLED или с membershipStatus INVALID
+  const result = filteredRegistrations.value.filter(reg => 
+    reg.status === 'CANCELLED' || reg.membershipStatus === 'INVALID'
+  );
+  return result;
 });
 
 const upcomingCount = computed(() => upcomingEvents.value.length);
 const completedCount = computed(() => completedEvents.value.length);
 const cancelledCount = computed(() => cancelledEvents.value.length);
+
+const hasActiveFilters = computed(() => {
+  const result = !!(searchText.value || dateFrom.value || dateTo.value);
+  return result;
+});
 
 function formatDateInput(dateStr: string) {
   const date = new Date(dateStr);
@@ -607,7 +620,9 @@ onMounted(fetchRegistrations);
   border: 1px solid var(--eco-gray-200);
 }
 
-
+.search-section {
+  margin-bottom: 0 !important;
+}
 
 .filters-header {
   display: flex;
@@ -1001,10 +1016,9 @@ onMounted(fetchRegistrations);
 
 /* Дополнительные стили кнопок */
 .retry-button {
-  --border-color: var(--eco-gray-300);
-  --color: var(--eco-gray-700);
-  border-radius: var(--eco-radius-lg);
-  margin-top: var(--eco-space-2);
+  --color: var(--eco-primary);
+  --border-color: var(--eco-primary);
+  font-weight: var(--eco-font-weight-medium);
 }
 
 .clear-button {

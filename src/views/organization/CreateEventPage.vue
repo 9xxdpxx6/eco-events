@@ -103,7 +103,7 @@
                   <ion-input
                 v-model="form.time"
                     placeholder="23:59"
-                    maxlength="5"
+                    :maxlength="5"
                     class="eco-input time-input"
                     :class="{ 'error': !form.time && showErrors }"
                     @ionInput="formatTimeInput"

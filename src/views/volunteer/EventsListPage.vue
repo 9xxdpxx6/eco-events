@@ -172,8 +172,10 @@ import { useAuthStore } from '../../stores';
 import EventListLoader from '../EventListLoader.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
-import type { EventResponseMediumDTO } from '../../types/api';
+import type { EventResponseMediumDTO, EventParticipantDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
+import { participantsApi } from '../../api/participants';
+import { eventsApi } from '../../api/events';
 
 const router = useRouter();
 const route = useRoute();
@@ -285,29 +287,109 @@ const loadEvents = async (reset = true) => {
 
     // Добавляем фильтры по датам для сервера
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+    now.setUTCMilliseconds(0);
+
     switch (selectedFilter.value) {
       case 'today':
+        const today = new Date(now);
+        today.setUTCHours(0, 0, 0, 0);
+
+        const tomorrow = new Date(today);
+        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
         filterParams.startDateFrom = formatDateForApi(today);
-        filterParams.startDateTo = formatDateForApi(new Date(today.getTime() + 24 * 60 * 60 * 1000));
+        filterParams.startDateTo = formatDateForApi(new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1));
         break;
+
       case 'upcoming':
-        filterParams.startDateFrom = formatDateForApi(now);
+        filterParams.startDateFrom = formatDateForApi(new Date());
         break;
+
       case 'week':
         const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setUTCHours(0, 0, 0, 0);
+        // Находим понедельник текущей недели (1 = понедельник, 0 = воскресенье)
+        const dayOfWeek = startOfWeek.getUTCDay();
+        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // если воскресенье, то 6 дней назад
+        startOfWeek.setUTCDate(startOfWeek.getUTCDate() - daysToMonday);
+
         const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
+
         filterParams.startDateFrom = formatDateForApi(startOfWeek);
-        filterParams.startDateTo = formatDateForApi(endOfWeek);
+        filterParams.startDateTo = formatDateForApi(new Date(endOfWeek.getTime() - 1));
         break;
       case 'finished':
         filterParams.startDateTo = formatDateForApi(now);
         break;
-      // case 'my': // Пока не поддерживается сервером
-      //   break;
+      case 'my':
+        // Для фильтра "Мои мероприятия" получаем только мероприятия с VALID статусом
+        if (authStore.isAuthenticated && authStore.user?.id) {
+          console.log('Загружаем мои мероприятия (только VALID) для пользователя:', authStore.user.id);
+          
+          // Получаем участия пользователя через API участников с фильтром по статусу
+          const participantFilter = {
+            userId: authStore.user.id,
+            membershipStatus: 'VALID' as const,
+            page: reset ? 0 : page.value,
+            size: size
+          };
+          
+          try {
+            const validParticipants = await participantsApi.search(participantFilter);
+            
+            if (validParticipants.length === 0) {
+              events.value = [];
+              filteredEvents.value = [];
+              hasMore.value = false;
+              return;
+            }
+            // Получаем ID мероприятий
+            const eventIds = validParticipants.map((p: EventParticipantDTO) => p.event.id);
+            
+            // Загружаем полные данные мероприятий
+            const eventPromises = eventIds.map(async (eventId: number) => {
+              try {
+                return await eventsApi.getById(eventId);
+              } catch (error) {
+                console.error('Ошибка загрузки мероприятия', eventId, error);
+                return null;
+              }
+            });
+             
+            const loadedEvents = (await Promise.all(eventPromises)).filter((event: EventResponseMediumDTO | null) => event !== null) as EventResponseMediumDTO[];
+            
+            if (reset) {
+              events.value = loadedEvents;
+              page.value = 0;
+            } else {
+              events.value = [...events.value, ...loadedEvents];
+              page.value += 1;
+            }
+            
+            hasMore.value = validParticipants.length === size;
+            console.log('Получено мероприятий:', events.value.length);
+            
+            // Применяем поиск по тексту если есть
+            if (searchText.value) {
+              const searchLower = searchText.value.toLowerCase();
+              events.value = events.value.filter(event => 
+                event.title.toLowerCase().includes(searchLower) ||
+                event.description.toLowerCase().includes(searchLower)
+              );
+            }
+            
+            // Применяем сортировку на клиенте
+            applySorting();
+            return; // Выходим из функции, чтобы не выполнять обычный запрос
+          } catch (error) {
+            console.error('Ошибка загрузки моих мероприятий:', error);
+            events.value = [];
+            filteredEvents.value = [];
+            return;
+          }
+        }
+        break;
     }
 
     if (reset) {
@@ -392,8 +474,10 @@ const loadUserParticipations = async () => {
     await participantsStore.fetchUserParticipants(authStore.user.id);
     const participantEvents = participantsStore.getUserParticipants;
     
-    // Создаем Set с ID событий, на которые записан пользователь
-    const eventIds = participantEvents.map(p => p.event.id);
+    // Создаем Set с ID событий, на которые записан пользователь (только с VALID статусом)
+    const eventIds = participantEvents
+      .filter(p => p.membershipStatus === 'VALID')
+      .map(p => p.event.id);
     userParticipations.value = new Set(eventIds);
   } catch (error) {
     console.error('Error loading user participations:', error);
@@ -590,10 +674,6 @@ onUnmounted(() => {
   pointer-events: none;
   visibility: hidden;
 }
-
-
-
-
 
 .filters-section {
   overflow: hidden;

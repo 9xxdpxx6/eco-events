@@ -66,7 +66,7 @@ import { useAuthStore } from '../stores/auth';
 
 const authStore = useAuthStore();
 
-const isVolunteer = computed(() => authStore.isVolunteer);
+const isVolunteer = computed(() => authStore.isUser);
 const isOrganization = computed(() => authStore.isOrganization);
 
 // Отладочная информация (только в development)

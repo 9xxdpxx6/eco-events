@@ -5,6 +5,7 @@ const API_URL = 'http://localhost:8080';
 
 export const apiClient = axios.create({
   baseURL: API_URL,
+  timeout: 10000, // 10 секунд таймаут
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,11 +27,29 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Логируем ошибку для отладки
+    if (import.meta.env.DEV) {
+      console.error('API Error:', error);
+    }
+    
+    // Обрабатываем ошибки авторизации
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('userType');
+      localStorage.removeItem('userId');
       router.push('/login');
     }
+    
+    // Для сетевых ошибок добавляем дополнительную информацию
+    if (!error.response) {
+      // Сетевая ошибка или таймаут
+      if (error.code === 'ECONNABORTED') {
+        error.message = 'Превышено время ожидания ответа от сервера';
+      } else if (error.message === 'Network Error') {
+        error.message = 'Ошибка соединения с сервером';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );

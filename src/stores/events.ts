@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { eventsApi } from '../api/events';
-import type { EventRequestDTO, EventResponseMediumDTO, EventFilterDTO } from '../types/api';
+import type { EventRequestDTO, EventResponseMediumDTO, EventFilterDTO, EventFilterForUserDTO } from '../types/api';
 import { useParticipantsStore } from './participants';
 
 interface EventsState {
@@ -153,6 +153,21 @@ export const useEventsStore = defineStore('events', {
         this.events = events;
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при поиске событий';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async fetchEventsSearchByUser(filter: EventFilterForUserDTO) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const events = await eventsApi.searchByUser(filter);
+        this.events = events;
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Произошла ошибка при поиске событий пользователя';
+        throw error;
       } finally {
         this.isLoading = false;
       }

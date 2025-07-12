@@ -31,10 +31,10 @@
                     <span>Волонтёр</span>
                   </div>
                 </ion-segment-button>
-                <ion-segment-button value="ADMIN">
+                <ion-segment-button value="ORGANIZATION">
                   <div class="role-option">
                     <ion-icon :icon="businessOutline" />
-                    <span>Организатор</span>
+                    <span>Организация</span>
                   </div>
                 </ion-segment-button>
               </ion-segment>
@@ -44,14 +44,14 @@
             <div class="form-fields">
               <div class="input-group">
                 <ion-label class="input-label">
-                  {{ userRole === 'ADMIN' ? 'Название организации' : 'Полное имя' }} *
+                  {{ userRole === 'ORGANIZATION' ? 'Название организации' : 'Полное имя' }} *
                 </ion-label>
                 <ion-input 
                   class="eco-input"
                   fill="outline"
                   type="text" 
                   v-model="fullName" 
-                  :placeholder="userRole === 'ADMIN' ? 'Введите название организации' : 'Введите ваше ФИО'"
+                  :placeholder="userRole === 'ORGANIZATION' ? 'Введите название организации' : 'Введите ваше ФИО'"
                   :clear-input="true"
                 ></ion-input>
               </div>
@@ -187,10 +187,11 @@ import {
 } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores';
+import { getErrorMessage } from '../utils/network';
 
 const router = useRouter();
 const authStore = useAuthStore();
-const userRole = ref<'USER' | 'ADMIN'>('USER'); // По умолчанию волонтёр
+const userRole = ref<'USER' | 'ORGANIZATION'>('USER'); // По умолчанию волонтёр
 const fullName = ref('');
 const login = ref('');
 const email = ref('');
@@ -240,7 +241,7 @@ const canSubmit = computed(() => {
 
 const validateForm = () => {
   if (!fullName.value.trim()) {
-    errorMessage.value = userRole.value === 'ADMIN' ? 'Введите название организации' : 'Введите полное имя';
+    errorMessage.value = userRole.value === 'ORGANIZATION' ? 'Введите название организации' : 'Введите полное имя';
     return false;
   }
 
@@ -286,7 +287,7 @@ const handleRegister = async () => {
     router.push('/tabs/events-list');
   } catch (error) {
     console.error('Registration error:', error);
-    errorMessage.value = 'Ошибка регистрации. Возможно, такой логин уже существует.';
+    errorMessage.value = getErrorMessage(error, 'register');
     showError.value = true;
   } finally {
     isLoading.value = false;
@@ -387,6 +388,7 @@ const goToLogin = () => {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   margin-left: var(--eco-space-2);
   margin-right: var(--eco-space-2);
+  margin-bottom: var(--eco-space-12);
 }
 
 .register-form-content {

@@ -298,7 +298,7 @@ const authStore = useAuthStore();
 const eventsStore = useEventsStore();
 const participantsStore = useParticipantsStore();
 
-const user = computed(() => authStore.getUser);
+const user = computed(() => authStore.user);
 const statistics = ref({
   eventsAttended: 0,
   points: 0,
@@ -484,7 +484,7 @@ onMounted(async () => {
     if (id) {
       try {
         const freshUser = await usersApi.getById(id);
-        authStore.user = { ...freshUser, token: authStore.token ?? '' };
+        authStore.user = { ...freshUser, token: authStore.user?.token ?? '' };
       } catch (e) {
         // ignore
       }

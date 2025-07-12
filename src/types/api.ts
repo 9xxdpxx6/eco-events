@@ -2,7 +2,7 @@ export interface UserRegistrationRequestDto {
   fullName: string;
   login: string;
   password: string;
-  role?: 'USER' | 'ADMIN';
+  role?: 'USER' | 'ORGANIZATION';
   phoneNumber?: string;
   email?: string;
 }
@@ -11,7 +11,7 @@ export interface UserRegistrationResponseDto {
   id: number;
   fullName: string;
   login: string;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'ORGANIZATION';
 }
 
 export interface UserShortDTO {
@@ -33,7 +33,7 @@ export interface UserFilterDTO {
   login?: string;
   registeredEventsCount?: number;
   totalBonusPoints?: number;
-  role?: 'USER' | 'ADMIN';
+  role?: 'USER' | 'ORGANIZATION';
   page?: number;
   size?: number;
 }
@@ -76,6 +76,7 @@ export interface EventFilterDTO {
   eventTypeId?: number;
   startDateFrom?: string;
   startDateTo?: string;
+  userId?: number;
   page?: number;
   size?: number;
 }
@@ -90,6 +91,7 @@ export interface EventTypeDTO {
 export interface EventParticipantDTO {
   status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
   createdAt: string;
+  membershipStatus: 'VALID' | 'INVALID';
   user: UserShortDTO;
   event: EventShortDTO;
 }
@@ -175,4 +177,50 @@ export interface Page<T = any> {
   numberOfElements: number;
   pageable: PageableObject;
   empty: boolean;
+}
+
+// Новые фильтры из API схемы
+export interface UserBonusHistoryFilterDTO {
+  userId?: number;
+  bonusTypeId?: number;
+  createdAtFrom?: string;
+  createdAtTo?: string;
+  isActive?: boolean;
+  page?: number;
+  size?: number;
+}
+
+export interface EventParticipantFilterDTO {
+  userId?: number;
+  eventId?: number;
+  status?: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
+  membershipStatus?: 'VALID' | 'INVALID';
+  createdAtFrom?: string;
+  createdAtTo?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface EventFilterForUserDTO {
+  title?: string;
+  description?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  userIdForEventFilter?: number;
+  page?: number;
+  size?: number;
+}
+
+export interface EventTypeFilterDTO {
+  name?: string;
+  description?: string;
+  page?: number;
+  size?: number;
+}
+
+export interface BonusTypeFilterDTO {
+  name?: string;
+  description?: string;
+  page?: number;
+  size?: number;
 } 

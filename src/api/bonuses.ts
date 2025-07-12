@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { BonusTypeDTO, UserBonusHistoryRequestDTO, UserBonusHistoryResponseShortDTO } from '../types/api';
+import type { BonusTypeDTO, UserBonusHistoryRequestDTO, UserBonusHistoryResponseShortDTO, BonusTypeFilterDTO, UserBonusHistoryFilterDTO } from '../types/api';
 
 export const bonusTypesApi = {
   getAll: async (): Promise<BonusTypeDTO[]> => {
@@ -24,6 +24,22 @@ export const bonusTypesApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/api/bonus-types/${id}`);
+  },
+
+  search: async (filter: BonusTypeFilterDTO): Promise<BonusTypeDTO[]> => {
+    const params: any = {};
+    if (filter.name) params.name = filter.name;
+    if (filter.description) params.description = filter.description;
+    if (filter.page !== undefined) params.page = filter.page;
+    if (filter.size !== undefined) params.size = filter.size;
+
+    const { data } = await apiClient.get('/api/bonus-types/search', { params });
+    const d: any = data;
+    if (Array.isArray(d)) return d;
+    if (d.content && Array.isArray(d.content)) return d.content;
+    if (d.list && Array.isArray(d.list)) return d.list;
+    if (d.items && Array.isArray(d.items)) return d.items;
+    return [];
   }
 };
 
@@ -58,5 +74,24 @@ export const bonusHistoryApi = {
 
   deactivate: async (id: number): Promise<void> => {
     await apiClient.post(`/api/user-bonus-history/${id}/deactivate`);
+  },
+
+  search: async (filter: UserBonusHistoryFilterDTO): Promise<UserBonusHistoryResponseShortDTO[]> => {
+    const params: any = {};
+    if (filter.userId) params.userId = filter.userId;
+    if (filter.bonusTypeId) params.bonusTypeId = filter.bonusTypeId;
+    if (filter.createdAtFrom) params.createdAtFrom = filter.createdAtFrom;
+    if (filter.createdAtTo) params.createdAtTo = filter.createdAtTo;
+    if (filter.isActive !== undefined) params.isActive = filter.isActive;
+    if (filter.page !== undefined) params.page = filter.page;
+    if (filter.size !== undefined) params.size = filter.size;
+
+    const { data } = await apiClient.get('/api/user-bonus-history/search', { params });
+    const d: any = data;
+    if (Array.isArray(d)) return d;
+    if (d.content && Array.isArray(d.content)) return d.content;
+    if (d.list && Array.isArray(d.list)) return d.list;
+    if (d.items && Array.isArray(d.items)) return d.items;
+    return [];
   }
 }; 

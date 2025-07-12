@@ -151,7 +151,7 @@
           </div>
 
         <!-- Участники (для организаций) -->
-          <div v-if="isAdmin && isMyEvent" class="participants-card eco-card">
+          <div v-if="isOrganization && isMyEvent" class="participants-card eco-card">
             <div class="card-header">
               <ion-icon :icon="peopleOutline" />
               <h2>Участники</h2>
@@ -183,7 +183,7 @@
           </div>
 
           <!-- Отмена участия (для зарегистрированных волонтёров) -->
-          <div v-if="event && !isAdmin && isUserRegistered" class="cancel-card eco-card">
+          <div v-if="event && !isOrganization && isUserRegistered" class="cancel-card eco-card">
             <div class="cancel-content">
               <ion-button 
                 fill="clear" 
@@ -214,7 +214,7 @@
     </ion-content>
 
     <!-- Кнопка регистрации (только для незарегистрированных волонтёров) -->
-    <ion-footer v-if="event && !isAdmin && !isUserRegistered" class="action-footer">
+            <ion-footer v-if="event && !isOrganization && !isUserRegistered" class="action-footer">
       <div class="footer-content">
         <ion-button 
           expand="block" 
@@ -230,7 +230,7 @@
     </ion-footer>
 
     <!-- Кнопки управления (для организаций) -->
-    <ion-footer v-if="event && isAdmin && isMyEvent" class="admin-footer">
+          <ion-footer v-if="event && isOrganization && isMyEvent" class="admin-footer">
       <div class="admin-actions">
         <ion-button 
           fill="outline" 
@@ -312,6 +312,7 @@ const isLoading = ref(false);
 const isRegistering = ref(false);
 
 const isAdmin = computed(() => authStore.isAdmin);
+const isOrganization = computed(() => authStore.isOrganization);
 const isMyEvent = computed(() => {
   if (!event.value || !authStore.user) return false;
   // Проверяем по owner.id
@@ -320,7 +321,9 @@ const isMyEvent = computed(() => {
 
 const isUserRegistered = computed(() => {
   if (!event.value || !authStore.user) return false;
-  return participants.value.some(p => p.user.id === authStore.user?.id);
+  return participants.value.some(p => 
+    p.user.id === authStore.user?.id && p.membershipStatus === 'VALID'
+  );
 });
 
 const loadEvent = async () => {
@@ -334,7 +337,7 @@ const loadEvent = async () => {
     await participantsStore.fetchEventParticipants(eventId);
     participants.value = participantsStore.getEventParticipants;
 
-    if (isAdmin.value && isMyEvent.value) {
+    if (isOrganization.value && isMyEvent.value) {
       // Дополнительные данные для организаторов
     }
   } catch (error) {

@@ -138,6 +138,7 @@ ion-searchbar :deep(.searchbar-clear-button) {
   margin: 0;
   height: 48px;
   padding-left: 2px !important;
+  padding-right: 2px !important;
   --padding-top: 0 !important;
   --padding-bottom: 0 !important;
   min-height: 48px;

@@ -73,9 +73,23 @@ export const useParticipantsStore = defineStore('participants', {
       try {
         const request: RegisterOrUnregisterRequest = { userId, eventId };
         const participant = await participantsApi.register(request);
-        this.participants.push(participant);
-        this.userParticipants.push(participant);
-        this.eventParticipants.push(participant);
+        
+        // Проверяем, есть ли уже такой участник в списках
+        const updateOrAdd = (list: EventParticipantDTO[]) => {
+          const existingIndex = list.findIndex(p => p.user.id === userId && p.event.id === eventId);
+          if (existingIndex !== -1) {
+            // Обновляем существующую запись
+            list[existingIndex] = participant;
+          } else {
+            // Добавляем новую запись
+            list.push(participant);
+          }
+        };
+        
+        updateOrAdd(this.participants);
+        updateOrAdd(this.userParticipants);
+        updateOrAdd(this.eventParticipants);
+        
         return participant;
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при регистрации на событие';
@@ -91,7 +105,21 @@ export const useParticipantsStore = defineStore('participants', {
       try {
         const request: RegisterOrUnregisterRequest = { userId, eventId };
         await participantsApi.unregister(request);
-        this._removeParticipantFromLists(userId, eventId);
+        
+        // API теперь изменяет membershipStatus на INVALID вместо удаления записи
+        // Обновляем статус в локальных данных
+        const updateStatus = (list: EventParticipantDTO[]) => {
+          const participant = list.find(p => p.user.id === userId && p.event.id === eventId);
+          if (participant) {
+            participant.membershipStatus = 'INVALID';
+          }
+        };
+        
+        updateStatus(this.participants);
+        updateStatus(this.userParticipants);
+        updateStatus(this.eventParticipants);
+        
+        return true;
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при отмене регистрации';
         throw error;

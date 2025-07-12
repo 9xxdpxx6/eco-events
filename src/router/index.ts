@@ -103,20 +103,6 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
-  // Ждем завершения проверки авторизации
-  if (authStore.isAuthLoading) {
-    await new Promise<void>((resolve) => {
-      const checkLoading = () => {
-        if (!authStore.isAuthLoading) {
-          resolve();
-        } else {
-          setTimeout(checkLoading, 50);
-        }
-      };
-      checkLoading();
-    });
-  }
-  
   const isAuthRoute = ['Login', 'Register'].includes(to.name as string);
   
   // Неавторизованные пользователи → на страницы входа
@@ -126,13 +112,13 @@ router.beforeEach(async (to, from, next) => {
   
   // Авторизованные пользователи не должны видеть страницы входа
   if (authStore.isAuthenticated && isAuthRoute) {
-    const defaultRoute = authStore.isVolunteer ? '/tabs/events-list' : '/tabs/events-management';
+    const defaultRoute = authStore.isUser ? '/tabs/events-list' : '/tabs/events-management';
     return next(defaultRoute);
   }
   
   // Перенаправление с корневых путей
   if (authStore.isAuthenticated && (to.path === '/' || to.path === '/tabs' || to.path === '/tabs/')) {
-    const defaultRoute = authStore.isVolunteer ? '/tabs/events-list' : '/tabs/events-management';
+    const defaultRoute = authStore.isUser ? '/tabs/events-list' : '/tabs/events-management';
     return next(defaultRoute);
     }
   
@@ -141,7 +127,7 @@ router.beforeEach(async (to, from, next) => {
     const volunteerOnlyRoutes = ['EventsList', 'MyRegistrations', 'Bonuses', 'VolunteerProfile'];
     const organizationOnlyRoutes = ['EventsManagement', 'OrganizationProfile', 'CreateEvent', 'EditEvent'];
     
-    if (authStore.isVolunteer && organizationOnlyRoutes.includes(to.name as string)) {
+    if (authStore.isUser && organizationOnlyRoutes.includes(to.name as string)) {
       return next('/tabs/events-list');
     }
     
