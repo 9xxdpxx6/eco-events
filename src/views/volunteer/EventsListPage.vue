@@ -55,7 +55,7 @@
       <div v-else-if="filteredEvents.length > 0" :class="['events-container', `events-${viewMode}`]">
         <div 
           v-for="event in filteredEvents" 
-          :key="event.id ?? Math.random()"
+          :key="event.id"
           class="event-card eco-card eco-list-item"
           @click="openEventDetails(Number(event.id))"
         >
@@ -127,12 +127,24 @@
       </div>
 
 
+      <!-- Бесконечная прокрутка -->
+      <ion-infinite-scroll 
+        @ionInfinite="loadMoreEvents" 
+        :disabled="!hasMore"
+        threshold="100px"
+      >
+        <ion-infinite-scroll-content
+          loading-spinner="bubbles"
+          loading-text="Загрузка..."
+        ></ion-infinite-scroll-content>
+      </ion-infinite-scroll>
+
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   IonPage,
@@ -148,7 +160,9 @@ import {
   IonChip,
   IonRefresher,
   IonRefresherContent,
-  toastController
+  toastController,
+  IonInfiniteScroll,
+  IonInfiniteScrollContent
 } from '@ionic/vue';
 import {
   calendarOutline,
@@ -189,6 +203,7 @@ const userParticipations = ref<Set<number>>(new Set());
 const searchText = ref('');
 const selectedFilter = ref('all');
 const isLoading = ref(false);
+const isLoadingMore = ref(false);
 const isRegistering = ref(false);
 const sortBy = ref('newest');
 const viewMode = ref('grid');
@@ -276,14 +291,26 @@ function formatDateForApi(date: Date) {
 }
 
 const loadEvents = async (reset = true) => {
-  isLoading.value = true;
+  if (reset) {
+    isLoading.value = true;
+    page.value = 0;
+  } else {
+    page.value += 1; // Увеличиваем страницу ДО создания filterParams
+  }
+  
+  // ЛОГИРУЕМ откуда вызывается функция
+  // console.log('[EventsListPage] Загрузка событий вызвана из:', new Error().stack?.split('\n')[2]?.trim());
+  
   try {
     // Подготавливаем параметры фильтрации для сервера
     const filterParams: any = {
       keyword: searchText.value,
-      page: reset ? 0 : page.value,
+      page: page.value,
       size: size
     };
+
+    // УБРАН вывод параметров запроса
+    // console.log('[EventsListPage] Загрузка событий:', filterParams);
 
     // Добавляем фильтры по датам для сервера
     const now = new Date();
@@ -331,7 +358,7 @@ const loadEvents = async (reset = true) => {
           const participantFilter = {
             userId: authStore.user.id,
             membershipStatus: 'VALID' as const,
-            page: reset ? 0 : page.value,
+            page: page.value,
             size: size
           };
           
@@ -361,10 +388,8 @@ const loadEvents = async (reset = true) => {
             
             if (reset) {
               events.value = loadedEvents;
-              page.value = 0;
             } else {
               events.value = [...events.value, ...loadedEvents];
-              page.value += 1;
             }
             
             hasMore.value = validParticipants.length === size;
@@ -393,16 +418,20 @@ const loadEvents = async (reset = true) => {
     }
 
     if (reset) {
-      page.value = 0;
       await eventsStore.fetchEventsSearch(filterParams);
       events.value = eventsStore.getEvents;
       hasMore.value = events.value.length === size;
     } else {
-      page.value += 1;
       await eventsStore.fetchEventsSearch(filterParams);
       const newEvents = eventsStore.getEvents;
       if (newEvents.length > 0) {
-        events.value = [...events.value, ...newEvents];
+        // Фильтруем новые события, чтобы избежать дублирования
+        const existingIds = new Set(events.value.map(e => e.id));
+        const uniqueNewEvents = newEvents.filter(event => !existingIds.has(event.id));
+        
+        if (uniqueNewEvents.length > 0) {
+          events.value = [...events.value, ...uniqueNewEvents];
+        }
         hasMore.value = newEvents.length === size;
       } else {
         hasMore.value = false;
@@ -420,12 +449,31 @@ const loadEvents = async (reset = true) => {
     });
     await toast.present();
   } finally {
-    isLoading.value = false;
+    if (reset) {
+      isLoading.value = false;
+    }
   }
 };
 
 const handleRefresh = async (event: any) => {
   await loadEvents(true);
+  event.target.complete();
+};
+
+const loadMoreEvents = async (event: any) => {
+  if (isLoading.value || isLoadingMore.value || !hasMore.value) {
+    event.target.complete();
+    return;
+  }
+  isLoadingMore.value = true;
+  try {
+    await Promise.all([
+      loadEvents(false),
+      new Promise(resolve => setTimeout(resolve, 300))
+    ]);
+  } finally {
+    isLoadingMore.value = false;
+  }
   event.target.complete();
 };
 
