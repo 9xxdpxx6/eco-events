@@ -298,9 +298,6 @@ const loadEvents = async (reset = true) => {
     page.value += 1; // Увеличиваем страницу ДО создания filterParams
   }
   
-  // ЛОГИРУЕМ откуда вызывается функция
-  // console.log('[EventsListPage] Загрузка событий вызвана из:', new Error().stack?.split('\n')[2]?.trim());
-  
   try {
     // Подготавливаем параметры фильтрации для сервера
     const filterParams: any = {
@@ -308,9 +305,6 @@ const loadEvents = async (reset = true) => {
       page: page.value,
       size: size
     };
-
-    // УБРАН вывод параметров запроса
-    // console.log('[EventsListPage] Загрузка событий:', filterParams);
 
     // Добавляем фильтры по датам для сервера
     const now = new Date();
@@ -352,25 +346,29 @@ const loadEvents = async (reset = true) => {
       case 'my':
         // Для фильтра "Мои мероприятия" получаем только мероприятия с VALID статусом
         if (authStore.isAuthenticated && authStore.user?.id) {
-          console.log('Загружаем мои мероприятия (только VALID) для пользователя:', authStore.user.id);
           
-          // Получаем участия пользователя через API участников с фильтром по статусу
+          // Получаем участия пользователя через API участников с фильтром membershipStatus=VALID
           const participantFilter = {
             userId: authStore.user.id,
-            membershipStatus: 'VALID' as const,
+            status: 'CONFIRMED',
+            membershipStatus: 'VALID',
             page: page.value,
             size: size
           };
           
           try {
-            const validParticipants = await participantsApi.search(participantFilter);
+            const result = await participantsApi.search(participantFilter) as { content: any[]; last: boolean };
+            const validParticipants = result?.content ?? [];
             
             if (validParticipants.length === 0) {
-              events.value = [];
-              filteredEvents.value = [];
-              hasMore.value = false;
+              if (reset) {
+                events.value = [];
+                filteredEvents.value = [];
+              }
+              hasMore.value = !result?.last;
               return;
             }
+            
             // Получаем ID мероприятий
             const eventIds = validParticipants.map((p: EventParticipantDTO) => p.event.id);
             
@@ -392,8 +390,7 @@ const loadEvents = async (reset = true) => {
               events.value = [...events.value, ...loadedEvents];
             }
             
-            hasMore.value = validParticipants.length === size;
-            console.log('Получено мероприятий:', events.value.length);
+            hasMore.value = !result.last;
             
             // Применяем поиск по тексту если есть
             if (searchText.value) {
@@ -409,8 +406,11 @@ const loadEvents = async (reset = true) => {
             return; // Выходим из функции, чтобы не выполнять обычный запрос
           } catch (error) {
             console.error('Ошибка загрузки моих мероприятий:', error);
-            events.value = [];
-            filteredEvents.value = [];
+            if (reset) {
+              events.value = [];
+              filteredEvents.value = [];
+            }
+            hasMore.value = false;
             return;
           }
         }
@@ -519,14 +519,36 @@ const loadUserParticipations = async () => {
   if (!authStore.isAuthenticated || !authStore.user?.id) return;
   
   try {
-    await participantsStore.fetchUserParticipants(authStore.user.id);
-    const participantEvents = participantsStore.getUserParticipants;
-    
-    // Создаем Set с ID событий, на которые записан пользователь (только с VALID статусом)
-    const eventIds = participantEvents
-      .filter(p => p.membershipStatus === 'VALID')
-      .map(p => p.event.id);
-    userParticipations.value = new Set(eventIds);
+    const allValidEventIds = new Set<number>();
+    let page = 0;
+    const size = 100; // Увеличим размер страницы для ускорения
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+      const participantFilter = {
+        userId: authStore.user.id,
+        status: 'CONFIRMED',
+        membershipStatus: 'VALID',
+        page: page,
+        size: size
+      };
+      
+      const result = await participantsApi.search(participantFilter) as { content: EventParticipantDTO[], last: boolean };
+      const participants = result?.content ?? [];
+      
+      participants.forEach((p) => {
+        if (p.event?.id) {
+          allValidEventIds.add(p.event.id);
+        }
+      });
+
+      hasMorePages = !result.last;
+      if (hasMorePages) {
+        page++;
+      }
+    }
+
+    userParticipations.value = allValidEventIds;
   } catch (error) {
     console.error('Error loading user participations:', error);
   }

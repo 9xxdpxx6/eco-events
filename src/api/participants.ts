@@ -7,8 +7,10 @@ export const participantsApi = {
     return data;
   },
 
-  getByUser: async (userId: number): Promise<EventParticipantDTO[]> => {
-    const { data } = await apiClient.get<EventParticipantDTO[]>(`/api/participants/user/${userId}`);
+  getByUser: async (userId: number) => {
+    const url = `/api/participants/user/${userId}`;
+    console.log('[participantsApi.getByUser] URL:', url);
+    const { data } = await apiClient.get(url);
     return data;
   },
 
@@ -31,23 +33,9 @@ export const participantsApi = {
     return data;
   },
 
-  search: async (filter: EventParticipantFilterDTO): Promise<EventParticipantDTO[]> => {
-    const params: any = {};
-    if (filter.userId) params.userId = filter.userId;
-    if (filter.eventId) params.eventId = filter.eventId;
-    if (filter.status) params.status = filter.status;
-    if (filter.membershipStatus) params.membershipStatus = filter.membershipStatus;
-    if (filter.createdAtFrom) params.createdAtFrom = filter.createdAtFrom;
-    if (filter.createdAtTo) params.createdAtTo = filter.createdAtTo;
-    if (filter.page !== undefined) params.page = filter.page;
-    if (filter.size !== undefined) params.size = filter.size;
-
-    const { data } = await apiClient.get('/api/participants/search', { params });
-    const d: any = data;
-    if (Array.isArray(d)) return d;
-    if (d.content && Array.isArray(d.content)) return d.content;
-    if (d.list && Array.isArray(d.list)) return d.list;
-    if (d.items && Array.isArray(d.items)) return d.items;
-    return [];
+  search: async (filter: any) => {
+    const url = '/api/participants/search';
+    const { data } = await apiClient.get(url, { params: filter });
+    return data;
   }
 }; 

@@ -7,6 +7,14 @@
     </ion-header>
 
     <ion-content class="registrations-content">
+      <!-- Pull-to-refresh -->
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content
+          pulling-text="Потяните для обновления"
+          refreshing-text="Обновляем записи..."
+        ></ion-refresher-content>
+      </ion-refresher>
+
       <!-- Статистика -->
       <div class="stats-section">
         <div class="stats-card eco-card">
@@ -16,7 +24,7 @@
             </div>
             <div class="stats-info">
               <h2>Мои мероприятия</h2>
-              <p>{{ registrations.length }} записей всего</p>
+              <p>{{ allUserRegistrations.length }} записей всего</p>
             </div>
           </div>
           
@@ -120,11 +128,11 @@
         <ErrorState
           v-else-if="error"
           :message="error.message"
-          @retry="fetchRegistrations"
+          @retry="loadRegistrations(true)"
         />
 
-        <!-- Пустое состояние когда записей нет вообще -->
-        <div v-else-if="registrations.length === 0" class="empty-state">
+        <!-- Пустое состояние -->
+        <div v-else-if="filteredRegistrations.length === 0" class="empty-state">
           <div class="empty-icon">
             <ion-icon :icon="clipboardOutline" />
           </div>
@@ -135,166 +143,43 @@
           </ion-button>
         </div>
 
-        <!-- Группированный список -->
-        <div v-else-if="filteredRegistrations.length > 0" class="grouped-registrations">
-          <!-- Предстоящие -->
-          <div v-if="upcomingEvents.length > 0" class="event-group">
-            <h3 class="group-title">
-              <ion-icon :icon="timeOutline" />
-              Предстоящие мероприятия
-              <span class="group-count">({{ upcomingEvents.length }})</span>
-            </h3>
-            
-            <div class="events-list">
-              <div 
-                v-for="reg in upcomingEvents" 
-                :key="reg.event.id"
-                class="event-card eco-card eco-list-item"
-                @click="goToEvent(reg.event.id ?? 0)"
-              >
-                <div class="event-image">
-                  <img :src="getEventPlaceholder(reg.event.id ?? 0)" alt="Event image" />
-                  <div class="registration-status">
-                    <RegistrationStatus :status="reg.status" />
-                  </div>
-                </div>
-                
-                <div class="event-content">
-                  <div class="event-header">
-                    <h4 class="event-title">{{ reg.event.title }}</h4>
-                  </div>
-                  
-                  <div class="event-meta">
-                    <div class="meta-item">
-                      <ion-icon :icon="calendarOutline" />
-                      <span>{{ formatEventDate((reg.event as any).startTime || '') }}</span>
-                    </div>
-                    <div class="meta-item">
-                      <ion-icon :icon="locationOutline" />
-                      <span>{{ (reg.event as any).location || 'Место не указано' }}</span>
-                    </div>
-                    <div class="meta-item">
-                      <ion-icon :icon="checkmarkCircleOutline" />
-                      <span>Записан {{ formatDate(reg.createdAt) }}</span>
-                    </div>
-                  </div>
-                </div>
+        <!-- ОДИН СПЛОШНОЙ СПИСОК -->
+        <div v-else class="all-registrations-list">
+          <div 
+            v-for="reg in filteredRegistrations" 
+            :key="reg.event.id + '-' + reg.createdAt"
+            class="event-card eco-card eco-list-item"
+            @click="goToEvent(reg.event.id ?? 0)"
+          >
+            <div class="event-content">
+              <div class="event-header">
+                <h4 class="event-title">{{ reg.event.title }}</h4>
               </div>
-            </div>
-          </div>
-
-          <!-- Завершённые -->
-          <div v-if="completedEvents.length > 0" class="event-group">
-            <h3 class="group-title">
-              <ion-icon :icon="checkmarkCircleOutline" />
-              Завершённые и архивные мероприятия
-              <span class="group-count">({{ completedEvents.length }})</span>
-            </h3>
-            
-            <div class="events-list">
-              <div 
-                v-for="reg in completedEvents" 
-                :key="reg.event.id"
-                class="event-card eco-card eco-list-item completed"
-                @click="goToEvent(reg.event.id ?? 0)"
-              >
-                <div class="event-image">
-                  <img :src="getEventPlaceholder(reg.event.id ?? 0)" alt="Event image" />
-                  <div class="registration-status">
-            <RegistrationStatus :status="reg.status" />
-                  </div>
+              <div class="event-meta">
+                <div class="meta-row">
+                  <span :class="['status-label', reg.membershipStatus === 'VALID' ? 'status-green' : 'status-red']">
+                    {{ reg.membershipStatus === 'VALID' ? 'Записан' : 'Отменён' }}
+                  </span>
+                  <span class="created-at-label">Запись: {{ formatEventDate(reg.createdAt) }}</span>
                 </div>
-                
-                <div class="event-content">
-                  <div class="event-header">
-                    <h4 class="event-title">{{ reg.event.title }}</h4>
-                  </div>
-                  
-                  <div class="event-meta">
-                    <div class="meta-item">
-              <ion-icon :icon="calendarOutline" />
-                      <span>{{ formatEventDate((reg.event as any).startTime || '') }}</span>
-                    </div>
-                    <div class="meta-item">
-                      <ion-icon :icon="locationOutline" />
-                      <span>{{ (reg.event as any).location || 'Место не указано' }}</span>
-                    </div>
-                    <div class="meta-item">
-                      <ion-icon :icon="checkmarkCircleOutline" />
-                      <span>Записан {{ formatDate(reg.createdAt) }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Отменённые -->
-          <div v-if="cancelledEvents.length > 0" class="event-group">
-            <h3 class="group-title">
-              <ion-icon :icon="closeCircleOutline" />
-              Отменённые мероприятия
-              <span class="group-count">({{ cancelledEvents.length }})</span>
-            </h3>
-
-            <div class="events-list">
-              <div 
-                v-for="reg in cancelledEvents" 
-                :key="reg.event.id"
-                class="event-card eco-card eco-list-item cancelled"
-                @click="goToEvent(reg.event.id ?? 0)"
-              >
-                <div class="event-image">
-                  <img :src="getEventPlaceholder(reg.event.id ?? 0)" alt="Event image" />
-                  <div class="registration-status">
-                    <RegistrationStatus :status="reg.status" />
-                  </div>
-      </div>
-
-                <div class="event-content">
-                  <div class="event-header">
-                    <h4 class="event-title">{{ reg.event.title }}</h4>
-      </div>
-
-                  <div class="event-meta">
-                    <div class="meta-item">
-                      <ion-icon :icon="calendarOutline" />
-                      <span>{{ formatEventDate((reg.event as any).startTime || '') }}</span>
-                    </div>
-                    <div class="meta-item">
-                      <ion-icon :icon="locationOutline" />
-                      <span>{{ (reg.event as any).location || 'Место не указано' }}</span>
-                    </div>
-                    <div class="meta-item">
-                      <ion-icon :icon="checkmarkCircleOutline" />
-                      <span>Записан {{ formatDate(reg.createdAt) }}</span>
-                    </div>
-                  </div>
+                <div class="event-start-time">
+                  <span class="start-time-label">Начало: {{ (reg.event as any).startTime ? formatEventDate((reg.event as any).startTime) : 'Не указано' }}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <!-- Нет результатов фильтрации -->
-        <div v-else class="no-results">
-          <div class="no-results-icon">
-            <ion-icon :icon="searchOutline" />
-          </div>
-          <h3 class="no-results-title">Записи не найдены</h3>
-          <p class="no-results-subtitle">Попробуйте изменить критерии поиска или сбросить фильтр</p>
-          <ion-button fill="outline" @click="clearFilters" class="clear-button">
-            Сбросить фильтр
-          </ion-button>
-        </div>
       </div>
+      <ion-infinite-scroll @ionInfinite="loadMoreRegistrations" :disabled="!hasMore">
+        <ion-infinite-scroll-content loading-spinner="bubbles" loading-text="Загрузка..."></ion-infinite-scroll-content>
+      </ion-infinite-scroll>
     </ion-content>
   </ion-page>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, computed, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { 
   IonPage, 
   IonHeader, 
@@ -305,7 +190,11 @@ import {
   IonInput,
   IonButton,
   IonSpinner,
-  IonIcon
+  IonIcon,
+  IonInfiniteScroll,
+  IonInfiniteScrollContent,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/vue';
 import { 
   calendarOutline,
@@ -330,8 +219,10 @@ import EcoSearchBar from '../../components/EcoSearchBar.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 const registrations = ref<EventParticipantDTO[]>([]);
+const allUserRegistrations = ref<EventParticipantDTO[]>([]);
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
 
@@ -340,6 +231,10 @@ const dateFrom = ref<string>('');
 const dateTo = ref<string>('');
 const showDatePicker = ref(false);
 const currentDateType = ref<'from' | 'to'>('from');
+
+const page = ref(0);
+const size = 50;
+const hasMore = ref(true);
 
 const dateFromDisplay = computed(() => dateFrom.value ? formatDateInput(dateFrom.value) : '');
 const dateToDisplay = computed(() => dateTo.value ? formatDateInput(dateTo.value) : '');
@@ -412,9 +307,33 @@ const cancelledEvents = computed(() => {
   return result;
 });
 
-const upcomingCount = computed(() => upcomingEvents.value.length);
-const completedCount = computed(() => completedEvents.value.length);
-const cancelledCount = computed(() => cancelledEvents.value.length);
+const upcomingCount = computed(() => {
+  const now = new Date();
+  return allUserRegistrations.value.filter(reg => {
+    const eventStartTime = (reg.event as any).startTime;
+    if (!eventStartTime) return false;
+    const eventDate = new Date(eventStartTime);
+    return eventDate > now && reg.status !== 'CANCELLED' && reg.membershipStatus !== 'INVALID';
+  }).length;
+});
+
+const completedCount = computed(() => {
+  const now = new Date();
+  return allUserRegistrations.value.filter(reg => {
+    const eventStartTime = (reg.event as any).startTime;
+    if (!eventStartTime) {
+      return reg.status !== 'CANCELLED' && reg.membershipStatus !== 'INVALID';
+    }
+    const eventDate = new Date(eventStartTime);
+    return eventDate <= now && reg.status !== 'CANCELLED' && reg.membershipStatus !== 'INVALID';
+  }).length;
+});
+
+const cancelledCount = computed(() => {
+  return allUserRegistrations.value.filter(reg => 
+    reg.status === 'CANCELLED' || reg.membershipStatus === 'INVALID'
+  ).length;
+});
 
 const hasActiveFilters = computed(() => {
   const result = !!(searchText.value || dateFrom.value || dateTo.value);
@@ -437,21 +356,24 @@ function onDateSelect(dateString: string) {
   } else {
     dateTo.value = dateString;
   }
-  applyDateFilter();
+  loadRegistrations(true); // Применяем фильтр и загружаем заново
 }
 
 const clearDateFrom = () => {
   dateFrom.value = '';
+  loadRegistrations(true); // Перезагружаем данные
 };
 
 const clearDateTo = () => {
   dateTo.value = '';
+  loadRegistrations(true); // Перезагружаем данные
 };
 
 const clearFilters = () => {
   dateFrom.value = '';
   dateTo.value = '';
   searchText.value = '';
+  loadRegistrations(true); // Сбрасываем фильтр и загружаем заново
 };
 
 const applyDateFilter = () => {};
@@ -485,22 +407,64 @@ const formatEventDate = (dateStr: string) => {
   return date.toLocaleDateString('ru-RU', options);
 };
 
-const fetchRegistrations = async () => {
+const loadRegistrations = async (reset = false) => {
   if (!authStore.user?.id) {
     error.value = new Error('Пользователь не авторизован.');
     isLoading.value = false;
     return;
   }
-
+  if (reset) {
+    page.value = 0;
+    registrations.value = [];
+    hasMore.value = true;
+  }
+  if (!hasMore.value) return;
+  isLoading.value = true;
+  error.value = null;
+  const filter: any = {
+    userId: authStore.user.id,
+    status: 'CONFIRMED',
+    page: page.value,
+    size,
+  };
+  
+  // Добавляем пользовательские фильтры только если они заданы
+  if (dateFrom.value) filter.createdAtFrom = dateFrom.value + 'T00:00:00';
+  if (dateTo.value) filter.createdAtTo = dateTo.value + 'T23:59:59';
+  
+  // Поиск по названию (если поддерживается API)
+  // if (searchText.value) filter.title = searchText.value;
   try {
-    isLoading.value = true;
-    error.value = null;
-    registrations.value = await participantsApi.getByUser(authStore.user.id);
+    const result = await participantsApi.search(filter) as { content: any[]; last: boolean };
+    const items = result?.content ?? [];
+    if (items.length > 0) {
+      registrations.value = [...registrations.value, ...items];
+      hasMore.value = !result.last;
+      page.value += 1;
+    } else {
+      hasMore.value = false;
+    }
   } catch (e) {
-    console.error('Ошибка при загрузке записей:', e);
     error.value = e as Error;
+    hasMore.value = false;
   } finally {
     isLoading.value = false;
+  }
+};
+
+const loadMoreRegistrations = async (event: any) => {
+  await loadRegistrations();
+  event.target.complete();
+};
+
+const loadUserStats = async () => {
+  if (!authStore.user?.id) return;
+  
+  try {
+    const result = await participantsApi.getByUser(authStore.user.id) as EventParticipantDTO[];
+    allUserRegistrations.value = result || [];
+  } catch (e) {
+    console.error('Ошибка загрузки статистики:', e);
   }
 };
 
@@ -512,7 +476,31 @@ const goToEvents = () => {
   router.push('/tabs/events-list');
 };
 
-onMounted(fetchRegistrations);
+const handleRefresh = async (event: any) => {
+  await Promise.all([
+    loadUserStats(),
+    loadRegistrations(true)
+  ]);
+  event.target.complete();
+};
+
+// Обновляем данные при каждом переходе на эту страницу
+watch(
+  () => route.fullPath,
+  async (newPath) => {
+    if (newPath === '/tabs/my-registrations') {
+      await Promise.all([
+        loadUserStats(),
+        loadRegistrations(true)
+      ]);
+    }
+  }
+);
+
+onMounted(() => {
+  loadUserStats();
+  loadRegistrations(true);
+});
 </script>
 
 <style scoped>
@@ -531,7 +519,7 @@ onMounted(fetchRegistrations);
 
 /* Статистика */
 .stats-section {
-  padding: var(--eco-space-4);
+  padding: var(--eco-space-3);
 }
 
 .stats-card {
@@ -608,7 +596,8 @@ onMounted(fetchRegistrations);
 
 /* Поиск и фильтры */
 .search-filters-section {
-  padding: 0 var(--eco-space-4) var(--eco-space-4);
+  padding: 0 var(--eco-space-3);
+  margin-bottom: var(--eco-space-3);
   display: flex;
   flex-direction: column;
   gap: var(--eco-space-4);
@@ -618,6 +607,7 @@ onMounted(fetchRegistrations);
 .filters-card {
   background: var(--eco-white);
   border: 1px solid var(--eco-gray-200);
+  margin-bottom: var(--eco-space-2);
 }
 
 .search-section {
@@ -683,7 +673,7 @@ onMounted(fetchRegistrations);
 .clear-date-button {
   position: absolute;
   right: 8px;
-  top: 50%;
+  top: 40%;
   transform: translateY(-50%);
   --color: var(--eco-gray-500);
   --background: transparent;
@@ -701,126 +691,18 @@ onMounted(fetchRegistrations);
 }
 
 .clear-date-button ion-icon {
-  font-size: 16px;
+  font-size: 32px;
 }
 
-/* Секция регистраций */
+/* Список регистраций */
 .registrations-section {
-  padding: 0 var(--eco-space-4) var(--eco-space-6);
+  padding: 0 var(--eco-space-3) var(--eco-space-3);
 }
 
-.loading-container {
+.all-registrations-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--eco-space-12);
-  text-align: center;
-}
-
-.loading-spinner {
-  margin-bottom: var(--eco-space-4);
-}
-
-.loading-text {
-  font-size: var(--eco-font-size-base);
-  color: var(--eco-gray-500);
-  margin: 0;
-}
-
-.error-state,
-.empty-state,
-.no-results {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--eco-space-12) var(--eco-space-6);
-  text-align: center;
-}
-
-.error-icon,
-.empty-icon,
-.no-results-icon {
-  width: 80px;
-  height: 80px;
-  background: var(--eco-gray-100);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: var(--eco-space-6);
-}
-
-.error-icon ion-icon {
-  font-size: 40px;
-  color: var(--eco-error);
-}
-
-.empty-icon ion-icon,
-.no-results-icon ion-icon {
-  font-size: 40px;
-  color: var(--eco-gray-600);
-}
-
-.error-title,
-.empty-title,
-.no-results-title {
-  font-family: var(--eco-font-family);
-  font-size: var(--eco-font-size-xl);
-  font-weight: var(--eco-font-weight-semibold);
-  color: var(--eco-gray-700);
-  margin: 0 0 var(--eco-space-2) 0;
-}
-
-.error-subtitle,
-.empty-subtitle,
-.no-results-subtitle {
-  font-size: var(--eco-font-size-base);
-  color: var(--eco-gray-500);
-  margin: 0 0 var(--eco-space-6) 0;
-  max-width: 280px;
-}
-
-/* Группированный список */
-.grouped-registrations {
-  display: flex;
-  flex-direction: column;
-  gap: var(--eco-space-6);
-}
-
-.event-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--eco-space-4);
-}
-
-.group-title {
-  font-family: var(--eco-font-family);
-  font-size: var(--eco-font-size-lg);
-  font-weight: var(--eco-font-weight-semibold);
-  color: var(--eco-gray-800);
-  margin: 0;
-  display: flex;
-  align-items: center;
   gap: var(--eco-space-2);
-}
-
-.group-title ion-icon {
-  font-size: 20px;
-  color: var(--eco-primary);
-}
-
-.group-count {
-  font-size: var(--eco-font-size-sm);
-  font-weight: var(--eco-font-weight-normal);
-  color: var(--eco-gray-500);
-}
-
-.events-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--eco-space-3);
 }
 
 .event-card {
@@ -831,11 +713,12 @@ onMounted(fetchRegistrations);
   transition: all var(--eco-transition-normal);
   border-radius: var(--eco-radius-lg);
   overflow: hidden;
+  min-height: 80px;
 }
 
 .event-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--eco-shadow-lg);
+  transform: translateY(-1px);
+  box-shadow: var(--eco-shadow-md);
   border-color: var(--eco-gray-300);
 }
 
@@ -871,14 +754,13 @@ onMounted(fetchRegistrations);
 
 .event-content {
   flex: 1;
-  padding: var(--eco-space-4);
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
 .event-header {
-  margin-bottom: var(--eco-space-3);
+  margin-bottom: var(--eco-space-1);
 }
 
 .event-title {
@@ -894,12 +776,20 @@ onMounted(fetchRegistrations);
   display: flex;
   flex-direction: column;
   gap: var(--eco-space-1);
+  align-items: flex-start;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: var(--eco-space-2);
+  gap: var(--eco-space-1);
   font-size: var(--eco-font-size-xs);
   color: var(--eco-gray-500);
 }
@@ -908,6 +798,16 @@ onMounted(fetchRegistrations);
   font-size: 14px;
   color: var(--eco-gray-600);
   flex-shrink: 0;
+}
+
+.event-start-time {
+  font-size: var(--eco-font-size-xs);
+  color: var(--eco-gray-600);
+}
+
+.start-time-label {
+  font-weight: var(--eco-font-weight-medium);
+  color: var(--eco-gray-600);
 }
 
 /* Отзывчивость */
@@ -948,10 +848,6 @@ onMounted(fetchRegistrations);
     height: 28px;
   }
   
-  .clear-date-button ion-icon {
-    font-size: 14px;
-  }
-  
   .event-card {
     flex-direction: column;
     border-radius: var(--eco-radius-lg);
@@ -959,12 +855,9 @@ onMounted(fetchRegistrations);
   
   .event-image {
     width: 100%;
-    height: 120px;
+    height: auto;
+    /* max-height: 320px; */
     border-radius: var(--eco-radius-lg) var(--eco-radius-lg) 0 0;
-  }
-  
-  .event-content {
-    padding: var(--eco-space-4);
   }
   
   .event-meta {
@@ -1035,5 +928,24 @@ onMounted(fetchRegistrations);
   margin-top: var(--eco-space-2);
 }
 
-
+.status-label {
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: inline-block;
+}
+.status-green {
+  background: #e6f9e6;
+  color: #1a8a1a;
+}
+.status-red {
+  background: #ffeaea;
+  color: #d32f2f;
+}
+.created-at-label {
+  color: #888;
+  font-size: 12px;
+  margin-left: 0;
+}
 </style> 
