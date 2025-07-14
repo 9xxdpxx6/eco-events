@@ -186,6 +186,64 @@
             </div>
           </div>
 
+        <!-- Превью мероприятия -->
+          <div class="form-section eco-card">
+            <div class="section-header">
+              <ion-icon :icon="imageOutline" />
+              <h2>Превью мероприятия</h2>
+            </div>
+            
+            <div class="form-fields">
+              <div class="field-group">
+                <label class="field-label">Изображение превью</label>
+                <p class="field-hint">Загрузите изображение для превью мероприятия (JPG, PNG, до 5MB)</p>
+                
+                <div class="image-upload-container">
+                  <!-- Превью изображения -->
+                  <div v-if="previewImageUrl" class="image-preview">
+                    <img :src="previewImageUrl" alt="Превью" class="preview-image" />
+                    <div class="image-overlay">
+                      <ion-button 
+                        fill="clear" 
+                        @click="removePreviewImage"
+                        class="remove-image-button"
+                      >
+                        <ion-icon :icon="trashOutline" />
+                      </ion-button>
+                    </div>
+                  </div>
+                  
+                  <!-- Кнопка загрузки -->
+                  <div v-else class="upload-placeholder" @click="triggerFileUpload">
+                    <ion-icon :icon="imageOutline" />
+                    <p>Нажмите для загрузки изображения</p>
+                    <small>JPG, PNG до 5MB</small>
+                  </div>
+                  
+                  <!-- Скрытый input для файла -->
+                  <input 
+                    ref="fileInput"
+                    type="file" 
+                    accept="image/jpeg,image/png,image/jpg"
+                    @change="handleFileSelect"
+                    style="display: none"
+                  />
+                </div>
+                
+                <!-- Кнопка замены изображения -->
+                <ion-button 
+                  v-if="previewImageUrl" 
+                  fill="outline" 
+                  @click="triggerFileUpload"
+                  class="change-image-button"
+                >
+                  <ion-icon :icon="refreshOutline" slot="start" />
+                  Заменить изображение
+                </ion-button>
+              </div>
+            </div>
+          </div>
+
         <!-- Дополнительные настройки -->
           <div class="form-section eco-card">
             <div class="section-header">
@@ -300,7 +358,7 @@ import {
   toastController,
   alertController
 } from '@ionic/vue';
-import { checkmarkOutline, addCircleOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline } from 'ionicons/icons';
+import { checkmarkOutline, addCircleOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline } from 'ionicons/icons';
 import { useEventsStore } from '../../stores';
 import { useEventTypesStore } from '../../stores';
 import { useAuthStore } from '../../stores/auth';
@@ -332,6 +390,9 @@ const form = ref({
 const showErrors = ref(false);
 const isSaving = ref(false);
 const eventTypes = ref<EventTypeDTO[]>([]);
+const previewImageUrl = ref<string>('');
+const selectedPreviewFile = ref<File | null>(null);
+const fileInput = ref<HTMLInputElement>();
 
 const minDate = new Date().toISOString();
 
@@ -409,7 +470,7 @@ const saveEvent = async () => {
       eventTypeId: eventType.id!,
       userId: authStore.user?.id || 1
     };
-    await eventsStore.createEvent(eventData);
+    await eventsStore.createEvent(eventData, selectedPreviewFile.value || undefined);
     const toast = await toastController.create({
       message: 'Мероприятие успешно создано',
       duration: 2000,
@@ -463,6 +524,59 @@ const handleTimeFocus = (event: any) => {
   // При фокусе показываем placeholder или текущее значение
   if (!form.value.time) {
     event.target.placeholder = '00:00';
+  }
+};
+
+// Методы для работы с изображением
+const triggerFileUpload = () => {
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+  
+  // Валидация типа файла
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  if (!allowedTypes.includes(file.type)) {
+    toastController.create({
+      message: 'Пожалуйста, выберите изображение в формате JPG или PNG',
+      duration: 3000,
+      color: 'warning'
+    }).then(toast => toast.present());
+    return;
+  }
+  
+  // Валидация размера файла (5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB в байтах
+  if (file.size > maxSize) {
+    toastController.create({
+      message: 'Размер файла не должен превышать 5MB',
+      duration: 3000,
+      color: 'warning'
+    }).then(toast => toast.present());
+    return;
+  }
+  
+  selectedPreviewFile.value = file;
+  
+  // Создаем URL для превью
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewImageUrl.value = e.target?.result as string;
+  };
+  reader.readAsDataURL(file);
+};
+
+const removePreviewImage = () => {
+  previewImageUrl.value = '';
+  selectedPreviewFile.value = null;
+  if (fileInput.value) {
+    fileInput.value.value = '';
   }
 };
 
@@ -1182,5 +1296,140 @@ ion-action-sheet .action-sheet-button.action-sheet-cancel {
 .download-placeholder ion-icon {
   font-size: 48px;
   color: var(--eco-gray-600);
+}
+
+/* Стили для загрузки изображения */
+.field-hint {
+  font-size: var(--eco-font-size-sm);
+  color: var(--eco-gray-600);
+  margin-bottom: var(--eco-space-3);
+  line-height: var(--eco-line-height-normal);
+}
+
+.image-upload-container {
+  border: 2px dashed var(--eco-gray-300);
+  border-radius: var(--eco-radius-lg);
+  overflow: hidden;
+  transition: all var(--eco-transition-normal);
+}
+
+.image-upload-container:hover {
+  border-color: var(--eco-primary);
+  background: rgba(53, 90, 221, 0.02);
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--eco-space-8) var(--eco-space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--eco-transition-normal);
+}
+
+.upload-placeholder:hover {
+  background: rgba(53, 90, 221, 0.05);
+}
+
+.upload-placeholder ion-icon {
+  font-size: 48px;
+  color: var(--eco-gray-400);
+  margin-bottom: var(--eco-space-3);
+  transition: color var(--eco-transition-normal);
+}
+
+.upload-placeholder:hover ion-icon {
+  color: var(--eco-primary);
+}
+
+.upload-placeholder p {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-700);
+  margin: 0 0 var(--eco-space-1) 0;
+  font-weight: var(--eco-font-weight-medium);
+}
+
+.upload-placeholder small {
+  font-size: var(--eco-font-size-sm);
+  color: var(--eco-gray-600);
+}
+
+.image-preview {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--eco-gray-50);
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--eco-radius-md);
+}
+
+.image-overlay {
+  position: absolute;
+  top: var(--eco-space-3);
+  right: var(--eco-space-3);
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  backdrop-filter: blur(4px);
+}
+
+.remove-image-button {
+  --color: white;
+  --background: transparent;
+  --background-activated: rgba(255, 255, 255, 0.1);
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --border-radius: 50%;
+  width: 40px;
+  height: 40px;
+}
+
+.remove-image-button ion-icon {
+  font-size: 20px;
+}
+
+.change-image-button {
+  --border-color: var(--eco-primary);
+  --color: var(--eco-primary);
+  --background: transparent;
+  --background-activated: rgba(53, 90, 221, 0.1);
+  --border-radius: var(--eco-radius-md);
+  margin-top: var(--eco-space-3);
+  height: 44px;
+  font-weight: var(--eco-font-weight-medium);
+}
+
+.change-image-button ion-icon {
+  font-size: 18px;
+}
+
+/* Отзывчивость для загрузки изображения */
+@media (max-width: 480px) {
+  .image-preview {
+    min-height: 150px;
+  }
+  
+  .preview-image {
+    max-height: 200px;
+  }
+  
+  .upload-placeholder {
+    padding: var(--eco-space-6) var(--eco-space-3);
+  }
+  
+  .upload-placeholder ion-icon {
+    font-size: 40px;
+  }
 }
 </style> 

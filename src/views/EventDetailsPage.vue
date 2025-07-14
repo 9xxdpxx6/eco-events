@@ -182,19 +182,30 @@
             </div>
           </div>
 
-          <!-- Отмена участия (для зарегистрированных волонтёров) -->
-          <div v-if="event && !isOrganization && isUserRegistered && !isEventFinished" class="cancel-card eco-card">
-            <div class="cancel-content">
-              <ion-button 
-                fill="clear" 
-                expand="block"
-                class="cancel-button"
-                @click="toggleRegistration"
-                :disabled="isRegistering"
-              >
-                <ion-icon :icon="closeOutline" slot="start" />
-                {{ isRegistering ? 'Обработка...' : 'Отменить участие' }}
-              </ion-button>
+          <!-- Статус участия (для зарегистрированных волонтёров) -->
+          <div v-if="event && !isOrganization && isUserRegistered">
+            <!-- Отмена участия (если мероприятие не завершено) -->
+            <div v-if="!isEventFinished" class="cancel-card eco-card">
+              <div class="cancel-content">
+                <ion-button 
+                  fill="clear" 
+                  expand="block"
+                  class="cancel-button"
+                  @click="toggleRegistration"
+                  :disabled="isRegistering"
+                >
+                  <ion-icon :icon="closeOutline" slot="start" />
+                  {{ isRegistering ? 'Обработка...' : 'Отменить участие' }}
+                </ion-button>
+              </div>
+            </div>
+
+            <!-- Статус "Посещено" (если мероприятие завершено) -->
+            <div v-else class="attended-card eco-card">
+              <div class="attended-content">
+                <ion-icon :icon="checkmarkCircleOutline" class="attended-icon" />
+                <span class="attended-text">Вы посетили это мероприятие</span>
+              </div>
             </div>
           </div>
         </div>
@@ -291,7 +302,8 @@ import {
   trashOutline,
   informationCircleOutline,
   documentTextOutline,
-  personOutline
+  personOutline,
+  checkmarkCircleOutline
 } from 'ionicons/icons';
 import { useAuthStore } from '../stores/auth';
 import { useEventsStore } from '../stores';
@@ -1091,6 +1103,33 @@ onMounted(() => {
   font-size: 18px;
   margin-right: var(--eco-space-2);
   color: var(--eco-error);
+}
+
+/* Карточка посещенного мероприятия */
+.attended-card {
+  background: var(--eco-white);
+  border-radius: var(--eco-radius-lg);
+  padding: var(--eco-space-4);
+  border: 1px solid var(--eco-gray-200);
+}
+
+.attended-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--eco-space-3);
+  text-align: center;
+}
+
+.attended-icon {
+  font-size: 24px;
+  color: var(--eco-success);
+}
+
+.attended-text {
+  font-size: var(--eco-font-size-base);
+  font-weight: var(--eco-font-weight-medium);
+  color: var(--eco-gray-700);
 }
 
 /* Отзывчивость */

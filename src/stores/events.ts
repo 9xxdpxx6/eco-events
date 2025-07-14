@@ -72,11 +72,11 @@ export const useEventsStore = defineStore('events', {
       }
     },
 
-    async createEvent(eventData: EventRequestDTO) {
+    async createEvent(eventData: EventRequestDTO, previewFile?: File) {
       this.isLoading = true;
       this.error = null;
       try {
-        const newEvent = await eventsApi.create(eventData);
+        const newEvent = await eventsApi.create(eventData, previewFile);
         this.events.push(newEvent);
         return newEvent;
       } catch (error) {

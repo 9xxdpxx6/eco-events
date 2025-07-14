@@ -12,6 +12,10 @@
     </ion-header>
     
     <ion-content class="profile-content">
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh">
+        <ion-refresher-content></ion-refresher-content>
+      </ion-refresher>
+
       <!-- Hero секция профиля -->
       <div class="profile-hero">
         <div class="hero-background"></div>
@@ -107,20 +111,6 @@
                 <ion-spinner name="crescent" color="primary"></ion-spinner>
               </div>
               <p class="loading-text">Загружаем мероприятия...</p>
-              
-              <!-- Skeleton для мероприятий -->
-              <div class="event-items">
-                <div v-for="n in 3" :key="n" class="event-item loading">
-                  <div class="event-icon">
-                    <ion-skeleton-text :animated="true" style="width: 40px; height: 40px; border-radius: 50%"></ion-skeleton-text>
-                  </div>
-                  <div class="event-content">
-                    <ion-skeleton-text :animated="true" style="width: 70%; height: 18px; margin-bottom: 8px"></ion-skeleton-text>
-                    <ion-skeleton-text :animated="true" style="width: 50%; height: 14px; margin-bottom: 4px"></ion-skeleton-text>
-                    <ion-skeleton-text :animated="true" style="width: 60%; height: 14px"></ion-skeleton-text>
-                  </div>
-                </div>
-              </div>
             </div>
             
             <!-- Данные мероприятий -->
@@ -130,23 +120,23 @@
                 <div v-if="upcomingEvents.length > 0" class="event-items">
                   <div 
                     v-for="event in upcomingEvents" 
-                    :key="event.id"
+                    :key="event.event.id"
                     class="event-item eco-list-item"
-                    @click="openEventDetails(event.id!)"
+                    @click="openEventDetails(event.event.id!)"
                   >
                     <div class="event-icon upcoming">
                       <ion-icon :icon="calendarOutline" />
                     </div>
                     <div class="event-content">
-                      <h4 class="event-title">{{ event.title }}</h4>
+                      <h4 class="event-title">{{ event.event.title }}</h4>
                       <div class="event-meta">
                         <div class="meta-item">
                           <ion-icon :icon="timeOutline" />
-                          <span>{{ formatDate(event.startTime) }}</span>
+                          <span>{{ formatDate(event.event.startTime) }}</span>
                         </div>
                         <div class="meta-item">
                           <ion-icon :icon="locationOutline" />
-                          <span>{{ event.location || 'Место не указано' }}</span>
+                          <span>{{ event.event.location || 'Место не указано' }}</span>
                         </div>
                       </div>
                     </div>
@@ -178,28 +168,28 @@
                 <div v-if="pastEvents.length > 0" class="event-items">
                   <div 
                     v-for="event in pastEvents" 
-                    :key="event.id"
+                    :key="event.event.id"
                     class="event-item eco-list-item completed"
-                    @click="openEventDetails(event.id!)"
+                    @click="openEventDetails(event.event.id!)"
                   >
                     <div class="event-icon completed">
                       <ion-icon :icon="checkmarkCircleOutline" />
                     </div>
                     <div class="event-content">
-                      <h4 class="event-title">{{ event.title }}</h4>
+                      <h4 class="event-title">{{ event.event.title }}</h4>
                       <div class="event-meta">
                         <div class="meta-item">
                           <ion-icon :icon="timeOutline" />
-                          <span>{{ formatDate(event.startTime) }}</span>
+                          <span>{{ formatDate(event.event.startTime) }}</span>
                         </div>
                         <div class="meta-item">
                           <ion-icon :icon="locationOutline" />
-                          <span>{{ event.location || 'Место не указано' }}</span>
+                          <span>{{ event.event.location || 'Место не указано' }}</span>
                         </div>
                       </div>
                     </div>
                     <div class="completed-badge">
-                      <ion-icon :icon="checkmarkCircleOutline" />
+                      <ion-icon :icon="flagOutline" />
                     </div>
                   </div>
                 </div>
@@ -310,7 +300,9 @@ import {
   IonSpinner,
   IonSkeletonText,
   alertController,
-  toastController
+  toastController,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/vue';
 import {
   personCircleOutline,
@@ -324,30 +316,32 @@ import {
   notificationsOutline,
   informationCircleOutline,
   chevronForwardOutline,
-  locationOutline
+  locationOutline,
+  flagOutline
 } from 'ionicons/icons';
 import { useAuthStore } from '../../stores';
-import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
-import type { EventResponseMediumDTO } from '../../types/api';
+import type { EventParticipantWithEventDetailsDTO } from '../../types/api';
 import { usersApi } from '../../api/users';
-import { eventsApi } from '../../api/events';
 import { bonusHistoryApi } from '../../api/bonuses';
+import { participantsApi } from '../../api/participants';
 
 const router = useRouter();
 const authStore = useAuthStore();
-const eventsStore = useEventsStore();
 const participantsStore = useParticipantsStore();
 
-const user = computed(() => authStore.user);
+const user = computed(() => {
+  console.log('User:', authStore.user);
+  return authStore.user;
+});
 const statistics = ref({
   eventsAttended: 0,
   points: 0,
   hoursVolunteered: 0
 });
 const selectedTab = ref('upcoming');
-const upcomingEvents = ref<EventResponseMediumDTO[]>([]);
-const pastEvents = ref<EventResponseMediumDTO[]>([]);
+const upcomingEvents = ref<EventParticipantWithEventDetailsDTO[]>([]);
+const pastEvents = ref<EventParticipantWithEventDetailsDTO[]>([]);
 const upcomingEventsCount = ref(0);
 const pastEventsCount = ref(0);
 
@@ -409,48 +403,48 @@ const loadUserEvents = async () => {
   try {
     console.log('Loading events for user:', userId);
     
-    // Загружаем участия пользователя
-    await participantsStore.fetchUserParticipants(userId);
-    const participants = participantsStore.getUserParticipants;
-    
-    // Получаем уникальные ID событий
-    const eventIds = participants.map(p => p.event.id);
-    const uniqueEventIds = Array.from(new Set(eventIds));
-    
-    console.log(`Found ${uniqueEventIds.length} unique events for user`);
-    
-    // Загружаем только нужные события параллельно (максимум 50)
-    const eventsToLoad = uniqueEventIds.slice(0, 50);
-    const eventPromises = eventsToLoad.map(eventId => 
-      eventsApi.getById(eventId).catch(error => {
-        console.warn(`Failed to load event ${eventId}:`, error);
-        return null;
-      })
-    );
-    
-    const loadedEvents = await Promise.all(eventPromises);
-    const userEvents = loadedEvents.filter(event => event !== null) as EventResponseMediumDTO[];
+    // Форматируем дату в YYYY-MM-DDTHH:mm:ss
+    const now = new Date().toISOString().slice(0, 19);
 
-    console.log('Successfully loaded', userEvents.length, 'events');
+    // Загружаем данные параллельно
+    const [
+      upcomingData,
+      pastData,
+    ] = await Promise.all([
+      // Получаем 10 предстоящих событий
+      participantsApi.search({ 
+        userId: userId, 
+        eventStartTimeFrom: now,
+        status: 'CONFIRMED',
+        membershipStatus: 'VALID',
+        sortBy: 'event.startTime',
+        sortOrder: 'ASC',
+        page: 0,
+        size: 10
+      }),
+      // Получаем 10 прошедших событий
+      participantsApi.search({
+        userId: userId, 
+        eventStartTimeTo: now,
+        status: 'CONFIRMED',
+        membershipStatus: 'VALID',
+        sortBy: 'event.startTime',
+        sortOrder: 'DESC',
+        page: 0,
+        size: 10
+      }),
+    ]);
 
-    // Сортируем по дате начала
-    userEvents.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    // Обновляем общее количество для badge из результатов поиска
+    upcomingEventsCount.value = upcomingData.totalElements;
+    pastEventsCount.value = pastData.totalElements;
     
-    const now = new Date();
-    
-    // Фильтруем
-    const upcoming = userEvents.filter(event => new Date(event.startTime) > now);
-    const past = userEvents.filter(event => new Date(event.startTime) <= now);
-    
-    // Сохраняем общее количество
-    upcomingEventsCount.value = upcoming.length;
-    pastEventsCount.value = past.length;
-    
-    // Ограничиваем количество для отображения
-    upcomingEvents.value = upcoming.slice(0, 10);
-    pastEvents.value = past.slice(-10).reverse(); // Последние 10 в обратном порядке
+    upcomingEvents.value = upcomingData.content;
+    pastEvents.value = pastData.content;
 
     console.log('Total Upcoming:', upcomingEventsCount.value, 'Total Past:', pastEventsCount.value);
+    console.log('Displayed Upcoming:', upcomingEvents.value.length, 'Displayed Past:', pastEvents.value.length);
+
   } catch (error: any) {
     console.error('Error loading user events:', error);
     if (error?.response?.status === 401) {
@@ -477,11 +471,11 @@ const goToEvents = () => {
   router.push('/tabs/events-list');
 };
 
-const leaveEvent = async (event: EventResponseMediumDTO) => {
-  if (!event.id) return;
+const leaveEvent = async (event: EventParticipantWithEventDetailsDTO) => {
+  if (!event.event.id) return;
   const alert = await alertController.create({
     header: 'Отменить участие',
-    message: `Вы уверены, что хотите отменить участие в "${event.title}"?`,
+    message: `Вы уверены, что хотите отменить участие в "${event.event.title}"?`,
     buttons: [
       {
         text: 'Отмена',
@@ -492,12 +486,12 @@ const leaveEvent = async (event: EventResponseMediumDTO) => {
         handler: async () => {
           try {
             const userId = user.value?.id;
-            if (!userId || !event.id) return;
+            if (!userId || !event.event.id) return;
             
-            await participantsStore.unregisterFromEvent(userId, event.id);
+            await participantsStore.unregisterFromEvent(userId, event.event.id);
             
             // Быстро обновляем UI - удаляем событие из списка
-            upcomingEvents.value = upcomingEvents.value.filter(e => e.id !== event.id);
+            upcomingEvents.value = upcomingEvents.value.filter(e => e.event.id !== event.event.id);
             
             // Перезагружаем статистику в фоне
             loadStatistics();
@@ -572,6 +566,11 @@ const logout = async () => {
   await alert.present();
 };
 
+const handleRefresh = async (event: any) => {
+  await Promise.all([loadStatistics(), loadUserEvents()]);
+  event.target.complete();
+};
+
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('ru-RU', {
     day: 'numeric',
@@ -592,7 +591,7 @@ onMounted(async () => {
     }
 
     // Загружаем свежую информацию о пользователе, если её нет
-    if (!user.value?.fullName || !user.value?.login) {
+    if (!user.value?.fullName) {
       const id = user.value?.id;
       if (id) {
         try {
@@ -752,30 +751,30 @@ onMounted(async () => {
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+  width: auto;
+  height: auto;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: var(--eco-space-3);
+  background: none;
 }
 
-.stat-icon.events {
-  background: var(--eco-primary);
+.stat-icon.events ion-icon {
+  color: var(--eco-primary);
 }
 
-.stat-icon.points {
-  background: var(--eco-warning);
+.stat-icon.points ion-icon {
+  color: var(--eco-warning);
 }
 
-.stat-icon.hours {
-  background: var(--eco-success);
+.stat-icon.hours ion-icon {
+  color: var(--eco-success);
 }
 
 .stat-icon ion-icon {
-  font-size: 24px;
-  color: white;
+  font-size: 48px;
 }
 
 .stat-number {
@@ -918,7 +917,7 @@ onMounted(async () => {
 
 .event-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--eco-space-3);
   padding: var(--eco-space-4);
   background: var(--eco-gray-50);
@@ -940,26 +939,26 @@ onMounted(async () => {
 }
 
 .event-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  width: auto;
+  height: auto;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: none;
 }
 
-.event-icon.upcoming {
-  background: var(--eco-primary);
+.event-icon.upcoming ion-icon {
+  color: var(--eco-primary);
 }
 
-.event-icon.completed {
-  background: var(--eco-success);
+.event-icon.completed ion-icon {
+  color: var(--eco-success);
 }
 
 .event-icon ion-icon {
-  font-size: 20px;
-  color: white;
+  font-size: 40px;
 }
 
 .event-content {
@@ -984,7 +983,7 @@ onMounted(async () => {
 
 .meta-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--eco-space-2);
   font-size: var(--eco-font-size-xs);
   color: var(--eco-gray-500);
@@ -1005,9 +1004,9 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: var(--eco-success);
+  width: auto;
+  height: auto;
+  color: var(--eco-info);
   flex-shrink: 0;
 }
 
@@ -1026,10 +1025,6 @@ onMounted(async () => {
 }
 
 .empty-icon {
-  width: 64px;
-  height: 64px;
-  background: var(--eco-gray-100);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1037,9 +1032,8 @@ onMounted(async () => {
 }
 
 .empty-icon ion-icon {
-  font-size: 64px;
-  color: var(--eco-gray-600);
-  margin-bottom: var(--eco-space-4);
+  font-size: 48px;
+  color: var(--eco-gray-500);
 }
 
 .empty-title {
@@ -1134,7 +1128,7 @@ onMounted(async () => {
 }
 
 .setting-item.danger .setting-icon {
-  background: var(--eco-error);
+  background: none;
 }
 
 .setting-item.danger .setting-title {
@@ -1142,15 +1136,16 @@ onMounted(async () => {
 }
 
 .setting-item.danger:hover .setting-title,
-.setting-item.danger:hover .setting-subtitle {
+.setting-item.danger:hover .setting-subtitle,
+.setting-item.danger:hover .setting-icon ion-icon {
   color: white;
 }
 
 .setting-icon {
-  width: 40px;
-  height: 40px;
-  background: var(--eco-primary);
-  border-radius: 50%;
+  width: auto;
+  height: auto;
+  background: none;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1158,8 +1153,12 @@ onMounted(async () => {
 }
 
 .setting-icon ion-icon {
-  font-size: 20px;
-  color: white;
+  font-size: 40px;
+  color: var(--eco-primary);
+}
+
+.setting-item.danger .setting-icon ion-icon {
+    color: var(--eco-error);
 }
 
 .setting-content {

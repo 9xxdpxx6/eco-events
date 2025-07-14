@@ -206,6 +206,8 @@ export interface EventParticipantFilterDTO {
   eventStartTimeTo?: string;
   page?: number;
   size?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 export interface EventFilterForUserDTO {
@@ -214,6 +216,8 @@ export interface EventFilterForUserDTO {
   dateFrom?: string;
   dateTo?: string;
   userIdForEventFilter?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
   page?: number;
   size?: number;
 }
