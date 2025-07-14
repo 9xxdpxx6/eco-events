@@ -56,19 +56,16 @@ export const eventsApi = {
   },
 
   searchByUser: async (filter: EventFilterForUserDTO): Promise<EventResponseMediumDTO[]> => {
-    const params: any = {};
-    if (filter.title) params.title = filter.title;
-    if (filter.description) params.description = filter.description;
-    if (filter.dateFrom) params.dateFrom = filter.dateFrom;
-    if (filter.dateTo) params.dateTo = filter.dateTo;
+    const params: any = {
+      filter: filter // Передаем весь объект filter как обязательный параметр
+    };
+    
+    // Дублируем основные параметры на верхнем уровне для совместимости
     if (filter.userIdForEventFilter) params.userIdForEventFilter = filter.userIdForEventFilter;
     if (filter.page !== undefined) params.page = filter.page;
     if (filter.size !== undefined) params.size = filter.size;
 
-    console.log('API запрос /api/events/user/search с параметрами:', params);
-    
     const { data } = await apiClient.get('/api/events/user/search', { params });
-    console.log('API ответ:', data);
     
     const d: any = data;
     if (Array.isArray(d)) return d;

@@ -103,6 +103,11 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   
+  // Восстанавливаем авторизацию из localStorage при каждой навигации
+  if (!authStore.isAuthenticated) {
+    authStore.restoreAuth();
+  }
+  
   const isAuthRoute = ['Login', 'Register'].includes(to.name as string);
   
   // Неавторизованные пользователи → на страницы входа

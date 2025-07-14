@@ -35,7 +35,22 @@
       <!-- Статистика -->
       <div class="stats-section">
         <h2 class="section-title">Моя активность</h2>
-          <div class="stats-grid">
+        
+        <!-- Загрузка статистики -->
+        <div v-if="isLoadingStatistics" class="stats-grid">
+          <div v-for="n in 3" :key="n" class="stat-card eco-card loading">
+            <div class="stat-icon">
+              <ion-skeleton-text :animated="true" style="width: 32px; height: 32px; border-radius: 50%"></ion-skeleton-text>
+            </div>
+            <div class="stat-content">
+              <ion-skeleton-text :animated="true" style="width: 60px; height: 24px; margin-bottom: 8px"></ion-skeleton-text>
+              <ion-skeleton-text :animated="true" style="width: 80px; height: 14px"></ion-skeleton-text>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Данные статистики -->
+        <div v-else class="stats-grid">
           <div class="stat-card eco-card">
             <div class="stat-icon events">
               <ion-icon :icon="calendarOutline" />
@@ -71,109 +86,131 @@
       <!-- Мероприятия -->
       <div class="events-section">
         <div class="events-card eco-card">
-          <div class="card-header">
-            <h2 class="section-title">Мои мероприятия</h2>
-          </div>
           
           <div class="events-tabs">
             <ion-segment v-model="selectedTab" class="custom-segment">
               <ion-segment-button value="upcoming" class="segment-button">
-              <ion-label>Предстоящие</ion-label>
-                <span class="tab-count" v-if="upcomingEvents.length > 0">{{ upcomingEvents.length }}</span>
-            </ion-segment-button>
+                <ion-label>Предстоящие</ion-label>
+                <span class="tab-count upcoming-count" v-if="upcomingEventsCount > 0">{{ upcomingEventsCount }}</span>
+              </ion-segment-button>
               <ion-segment-button value="past" class="segment-button">
-              <ion-label>Прошедшие</ion-label>
-                <span class="tab-count" v-if="pastEvents.length > 0">{{ pastEvents.length }}</span>
-            </ion-segment-button>
-          </ion-segment>
+                <ion-label>Прошедшие</ion-label>
+                <span class="tab-count past-count" v-if="pastEventsCount > 0">{{ pastEventsCount }}</span>
+              </ion-segment-button>
+            </ion-segment>
           </div>
 
           <div class="events-content">
-            <!-- Предстоящие мероприятия -->
-            <div v-if="selectedTab === 'upcoming'" class="events-list">
-              <div v-if="upcomingEvents.length > 0" class="event-items">
-                <div 
-                  v-for="event in upcomingEvents" 
-                  :key="event.id"
-                  class="event-item eco-list-item"
-                  @click="openEventDetails(event.id!)"
-                >
-                  <div class="event-icon upcoming">
-                    <ion-icon :icon="calendarOutline" />
+            <!-- Загрузка мероприятий -->
+            <div v-if="isLoadingEvents" class="loading-events">
+              <div class="loading-spinner">
+                <ion-spinner name="crescent" color="primary"></ion-spinner>
+              </div>
+              <p class="loading-text">Загружаем мероприятия...</p>
+              
+              <!-- Skeleton для мероприятий -->
+              <div class="event-items">
+                <div v-for="n in 3" :key="n" class="event-item loading">
+                  <div class="event-icon">
+                    <ion-skeleton-text :animated="true" style="width: 40px; height: 40px; border-radius: 50%"></ion-skeleton-text>
                   </div>
                   <div class="event-content">
-                    <h4 class="event-title">{{ event.title }}</h4>
-                    <div class="event-meta">
-                      <div class="meta-item">
-                        <ion-icon :icon="timeOutline" />
-                        <span>{{ formatDate(event.startTime) }}</span>
-                      </div>
-                      <div class="meta-item">
-                        <ion-icon :icon="locationOutline" />
-                        <span>{{ event.location || 'Место не указано' }}</span>
+                    <ion-skeleton-text :animated="true" style="width: 70%; height: 18px; margin-bottom: 8px"></ion-skeleton-text>
+                    <ion-skeleton-text :animated="true" style="width: 50%; height: 14px; margin-bottom: 4px"></ion-skeleton-text>
+                    <ion-skeleton-text :animated="true" style="width: 60%; height: 14px"></ion-skeleton-text>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Данные мероприятий -->
+            <div v-else>
+              <!-- Предстоящие мероприятия -->
+              <div v-if="selectedTab === 'upcoming'" class="events-list">
+                <div v-if="upcomingEvents.length > 0" class="event-items">
+                  <div 
+                    v-for="event in upcomingEvents" 
+                    :key="event.id"
+                    class="event-item eco-list-item"
+                    @click="openEventDetails(event.id!)"
+                  >
+                    <div class="event-icon upcoming">
+                      <ion-icon :icon="calendarOutline" />
+                    </div>
+                    <div class="event-content">
+                      <h4 class="event-title">{{ event.title }}</h4>
+                      <div class="event-meta">
+                        <div class="meta-item">
+                          <ion-icon :icon="timeOutline" />
+                          <span>{{ formatDate(event.startTime) }}</span>
+                        </div>
+                        <div class="meta-item">
+                          <ion-icon :icon="locationOutline" />
+                          <span>{{ event.location || 'Место не указано' }}</span>
+                        </div>
                       </div>
                     </div>
+                    <ion-button 
+                      fill="clear" 
+                      size="small"
+                      class="leave-button" 
+                      @click.stop="leaveEvent(event)"
+                    >
+                      <ion-icon :icon="closeOutline" />
+                    </ion-button>
                   </div>
-                  <ion-button 
-                    fill="clear" 
-                    size="small"
-                    class="leave-button" 
-                    @click.stop="leaveEvent(event)"
-                  >
-                    <ion-icon :icon="closeOutline" />
+                </div>
+                
+                <div v-else class="empty-state">
+                  <div class="empty-icon">
+                    <ion-icon :icon="calendarOutline" />
+                  </div>
+                  <h3 class="empty-title">Нет предстоящих мероприятий</h3>
+                  <p class="empty-subtitle">Найдите интересные экологические мероприятия и запишитесь!</p>
+                  <ion-button fill="outline" @click="goToEvents" class="action-button">
+                    Найти мероприятия
                   </ion-button>
                 </div>
               </div>
-              
-              <div v-else class="empty-state">
-                <div class="empty-icon">
-                  <ion-icon :icon="calendarOutline" />
-                </div>
-                <h3 class="empty-title">Нет предстоящих мероприятий</h3>
-                <p class="empty-subtitle">Найдите интересные экологические мероприятия и запишитесь!</p>
-                <ion-button fill="outline" @click="goToEvents" class="action-button">
-                  Найти мероприятия
-                </ion-button>
-              </div>
-            </div>
 
-            <!-- Прошедшие мероприятия -->
-            <div v-if="selectedTab === 'past'" class="events-list">
-              <div v-if="pastEvents.length > 0" class="event-items">
-                <div 
-                  v-for="event in pastEvents" 
-                  :key="event.id"
-                  class="event-item eco-list-item completed"
-                  @click="openEventDetails(event.id!)"
-                >
-                  <div class="event-icon completed">
-                    <ion-icon :icon="checkmarkCircleOutline" />
-                  </div>
-                  <div class="event-content">
-                    <h4 class="event-title">{{ event.title }}</h4>
-                    <div class="event-meta">
-                      <div class="meta-item">
-                        <ion-icon :icon="timeOutline" />
-                        <span>{{ formatDate(event.startTime) }}</span>
-                      </div>
-                      <div class="meta-item">
-                        <ion-icon :icon="locationOutline" />
-                        <span>{{ event.location || 'Место не указано' }}</span>
+              <!-- Прошедшие мероприятия -->
+              <div v-if="selectedTab === 'past'" class="events-list">
+                <div v-if="pastEvents.length > 0" class="event-items">
+                  <div 
+                    v-for="event in pastEvents" 
+                    :key="event.id"
+                    class="event-item eco-list-item completed"
+                    @click="openEventDetails(event.id!)"
+                  >
+                    <div class="event-icon completed">
+                      <ion-icon :icon="checkmarkCircleOutline" />
+                    </div>
+                    <div class="event-content">
+                      <h4 class="event-title">{{ event.title }}</h4>
+                      <div class="event-meta">
+                        <div class="meta-item">
+                          <ion-icon :icon="timeOutline" />
+                          <span>{{ formatDate(event.startTime) }}</span>
+                        </div>
+                        <div class="meta-item">
+                          <ion-icon :icon="locationOutline" />
+                          <span>{{ event.location || 'Место не указано' }}</span>
+                        </div>
                       </div>
                     </div>
+                    <div class="completed-badge">
+                      <ion-icon :icon="checkmarkCircleOutline" />
+                    </div>
                   </div>
-                  <div class="completed-badge">
-                    <ion-icon :icon="checkmarkCircleOutline" />
-                  </div>
-            </div>
-          </div>
-
-            <div v-else class="empty-state">
-                <div class="empty-icon">
-                  <ion-icon :icon="trophyOutline" />
                 </div>
-                <h3 class="empty-title">Нет завершённых мероприятий</h3>
-                <p class="empty-subtitle">Участвуйте в мероприятиях и зарабатывайте достижения!</p>
+
+                <div v-else class="empty-state">
+                  <div class="empty-icon">
+                    <ion-icon :icon="trophyOutline" />
+                  </div>
+                  <h3 class="empty-title">Нет завершённых мероприятий</h3>
+                  <p class="empty-subtitle">Участвуйте в мероприятиях и зарабатывайте достижения!</p>
+                </div>
               </div>
             </div>
           </div>
@@ -270,6 +307,8 @@ import {
   IonLabel,
   IonSegment,
   IonSegmentButton,
+  IonSpinner,
+  IonSkeletonText,
   alertController,
   toastController
 } from '@ionic/vue';
@@ -292,6 +331,8 @@ import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
 import type { EventResponseMediumDTO } from '../../types/api';
 import { usersApi } from '../../api/users';
+import { eventsApi } from '../../api/events';
+import { bonusHistoryApi } from '../../api/bonuses';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -307,19 +348,41 @@ const statistics = ref({
 const selectedTab = ref('upcoming');
 const upcomingEvents = ref<EventResponseMediumDTO[]>([]);
 const pastEvents = ref<EventResponseMediumDTO[]>([]);
+const upcomingEventsCount = ref(0);
+const pastEventsCount = ref(0);
+
+// Состояния загрузки
+const isLoadingProfile = ref(true);
+const isLoadingStatistics = ref(true);
+const isLoadingEvents = ref(true);
 
 const loadStatistics = async () => {
   const userId = user.value?.id;
-  if (!userId) return;
+  if (!userId) {
+    isLoadingStatistics.value = false;
+    return;
+  }
+  
+  isLoadingStatistics.value = true;
   try {
-    await participantsStore.fetchUserParticipants(userId);
-    const participants = participantsStore.getUserParticipants;
+    // Загружаем статистику параллельно
+    const [participants, bonusHistory] = await Promise.all([
+      participantsStore.fetchUserParticipants(userId).then(() => participantsStore.getUserParticipants),
+      bonusHistoryApi.getByUserId(userId)
+    ]);
+
+    // Подсчитываем статистику
+    const totalBonusPoints = bonusHistory
+      .filter(bonus => bonus.active)
+      .reduce((sum, bonus) => sum + bonus.amount, 0);
+
     statistics.value = {
       eventsAttended: participants.length,
-      points: 0,
+      points: totalBonusPoints,
       hoursVolunteered: participants.length * 2 // Примерно 2 часа на мероприятие
     };
   } catch (error: any) {
+    console.error('Error loading statistics:', error);
     if (error?.response?.status === 401) {
       const toast = await toastController.create({
         message: 'Не авторизован',
@@ -330,34 +393,66 @@ const loadStatistics = async () => {
     } else if (error?.response?.status !== 404) {
       // Игнорируем 404 ошибки
     }
+  } finally {
+    isLoadingStatistics.value = false;
   }
 };
 
 const loadUserEvents = async () => {
   const userId = user.value?.id;
-  if (!userId) return;
+  if (!userId) {
+    isLoadingEvents.value = false;
+    return;
+  }
+  
+  isLoadingEvents.value = true;
   try {
+    console.log('Loading events for user:', userId);
+    
+    // Загружаем участия пользователя
     await participantsStore.fetchUserParticipants(userId);
     const participants = participantsStore.getUserParticipants;
-    const now = new Date();
+    
+    // Получаем уникальные ID событий
     const eventIds = participants.map(p => p.event.id);
     const uniqueEventIds = Array.from(new Set(eventIds));
-    const events: EventResponseMediumDTO[] = [];
     
-    for (const eventId of uniqueEventIds) {
-      try {
-        const event = eventsStore.getEvents.find(e => e.id === eventId);
-        if (event) {
-        events.push(event);
-        }
-      } catch (e) {
-        // Игнорируем ошибки отдельных событий
-      }
-    }
+    console.log(`Found ${uniqueEventIds.length} unique events for user`);
     
-    upcomingEvents.value = events.filter(event => new Date(event.startTime) > now);
-    pastEvents.value = events.filter(event => new Date(event.startTime) <= now);
+    // Загружаем только нужные события параллельно (максимум 50)
+    const eventsToLoad = uniqueEventIds.slice(0, 50);
+    const eventPromises = eventsToLoad.map(eventId => 
+      eventsApi.getById(eventId).catch(error => {
+        console.warn(`Failed to load event ${eventId}:`, error);
+        return null;
+      })
+    );
+    
+    const loadedEvents = await Promise.all(eventPromises);
+    const userEvents = loadedEvents.filter(event => event !== null) as EventResponseMediumDTO[];
+
+    console.log('Successfully loaded', userEvents.length, 'events');
+
+    // Сортируем по дате начала
+    userEvents.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    
+    const now = new Date();
+    
+    // Фильтруем
+    const upcoming = userEvents.filter(event => new Date(event.startTime) > now);
+    const past = userEvents.filter(event => new Date(event.startTime) <= now);
+    
+    // Сохраняем общее количество
+    upcomingEventsCount.value = upcoming.length;
+    pastEventsCount.value = past.length;
+    
+    // Ограничиваем количество для отображения
+    upcomingEvents.value = upcoming.slice(0, 10);
+    pastEvents.value = past.slice(-10).reverse(); // Последние 10 в обратном порядке
+
+    console.log('Total Upcoming:', upcomingEventsCount.value, 'Total Past:', pastEventsCount.value);
   } catch (error: any) {
+    console.error('Error loading user events:', error);
     if (error?.response?.status === 401) {
       const toast = await toastController.create({
         message: 'Не авторизован',
@@ -367,7 +462,10 @@ const loadUserEvents = async () => {
       await toast.present();
     } else if (error?.response?.status !== 404) {
       // Игнорируем 404 ошибки
+      console.warn('API returned 404, no events found for user');
     }
+  } finally {
+    isLoadingEvents.value = false;
   }
 };
 
@@ -395,8 +493,14 @@ const leaveEvent = async (event: EventResponseMediumDTO) => {
           try {
             const userId = user.value?.id;
             if (!userId || !event.id) return;
+            
             await participantsStore.unregisterFromEvent(userId, event.id);
+            
+            // Быстро обновляем UI - удаляем событие из списка
             upcomingEvents.value = upcomingEvents.value.filter(e => e.id !== event.id);
+            
+            // Перезагружаем статистику в фоне
+            loadStatistics();
             
             const toast = await toastController.create({
               message: 'Участие отменено',
@@ -478,20 +582,45 @@ const formatDate = (date: string) => {
 };
 
 onMounted(async () => {
-  // Загружаем свежую информацию о пользователе
-  if (!user.value?.fullName || !user.value?.login) {
-    const id = user.value?.id;
-    if (id) {
-      try {
-        const freshUser = await usersApi.getById(id);
-        authStore.user = { ...freshUser, token: authStore.user?.token ?? '' };
-      } catch (e) {
-        // ignore
+  isLoadingProfile.value = true;
+  
+  try {
+    // Проверяем, что пользователь авторизован (router guard уже восстановил данные)
+    if (!user.value) {
+      router.push('/login');
+      return;
+    }
+
+    // Загружаем свежую информацию о пользователе, если её нет
+    if (!user.value?.fullName || !user.value?.login) {
+      const id = user.value?.id;
+      if (id) {
+        try {
+          const freshUser = await usersApi.getById(id);
+          authStore.user = { ...freshUser, token: authStore.user?.token ?? '' };
+        } catch (e) {
+          console.error('Error loading user data:', e);
+          // Если не удалось загрузить данные пользователя, возможно токен истек
+          if (e && typeof e === 'object' && 'response' in e && (e as any).response?.status === 401) {
+            authStore.logout();
+            router.push('/login');
+            return;
+          }
+        }
       }
     }
+
+    // Загружаем данные профиля параллельно для максимального ускорения
+    const startTime = Date.now();
+    await Promise.all([
+      loadStatistics(),
+      loadUserEvents()
+    ]);
+    const loadTime = Date.now() - startTime;
+    console.log(`Profile data loaded in ${loadTime}ms`);
+  } finally {
+    isLoadingProfile.value = false;
   }
-  await loadStatistics();
-  await loadUserEvents();
 });
 </script>
 
@@ -516,8 +645,8 @@ onMounted(async () => {
 /* Hero секция */
 .profile-hero {
   position: relative;
-  padding: var(--eco-space-8) var(--eco-space-4) var(--eco-space-6);
-  margin-bottom: var(--eco-space-4);
+  padding: var(--eco-space-8) var(--eco-space-3) var(--eco-space-6);
+  margin-bottom: var(--eco-space-3);
 }
 
 .hero-background {
@@ -528,6 +657,7 @@ onMounted(async () => {
   bottom: 0;
   background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-secondary) 100%);
   border-radius: 0 0 var(--eco-radius-xl) var(--eco-radius-xl);
+  z-index: 1;
 }
 
 .hero-content {
@@ -537,6 +667,7 @@ onMounted(async () => {
   align-items: center;
   text-align: center;
   color: white;
+  z-index: 2;
 }
 
 .profile-avatar {
@@ -585,7 +716,7 @@ onMounted(async () => {
 
 /* Статистика */
 .stats-section {
-  padding: 0 var(--eco-space-4) var(--eco-space-6);
+  padding: var(--eco-space-3);
 }
 
 .section-title {
@@ -593,7 +724,7 @@ onMounted(async () => {
   font-size: var(--eco-font-size-xl);
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
-  margin: 0 0 var(--eco-space-4) 0;
+  margin: var(--eco-space-2) 0 var(--eco-space-4) 0;
 }
 
 .stats-grid {
@@ -610,6 +741,8 @@ onMounted(async () => {
   padding: var(--eco-space-5);
   background: var(--eco-white);
   border: 1px solid var(--eco-gray-200);
+  border-radius: var(--eco-radius-lg);
+  margin-bottom: var(--eco-space-2);
   transition: all var(--eco-transition-normal);
 }
 
@@ -660,58 +793,127 @@ onMounted(async () => {
   font-weight: var(--eco-font-weight-medium);
 }
 
+/* Загрузка статистики */
+.stat-card.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 /* Мероприятия */
 .events-section {
-  padding: 0 var(--eco-space-4) var(--eco-space-6);
+  padding: 0 var(--eco-space-3) var(--eco-space-3);
+  margin-top: var(--eco-space-3);
 }
 
-.events-card {
+/* === EVENTS TABS === */
+.events-card.eco-card {
   background: var(--eco-white);
+  border-radius: var(--eco-radius-xl);
   border: 1px solid var(--eco-gray-200);
-}
-
-.card-header {
-  margin-bottom: var(--eco-space-6);
+  padding: 0; /* убираем отступы */
+  box-shadow: none; /* убираем тень */
 }
 
 .custom-segment {
-  --background: var(--eco-gray-100);
-  --indicator-color: var(--eco-primary);
-  --color-checked: var(--eco-primary);
-  margin-bottom: var(--eco-space-6);
+  --background: transparent;
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: var(--eco-space-3);
 }
 
 .segment-button {
+  flex: 1;
+  min-height: auto;
+  --padding-top: 0.6rem;
+  --padding-bottom: 0.6rem;
+  --border-radius: 0px; /* Убираем глобальное скругление */
+  --indicator-color: transparent !important;
+  transition: all 0.2s ease-in-out;
   position: relative;
-  --color: var(--eco-gray-600);
-  --color-checked: white;
-  --background-checked: var(--eco-primary);
-  min-height: 40px;
+  overflow: visible;
+}
+
+.segment-button:first-of-type {
+  border-top-left-radius: var(--eco-radius-lg);
+  border-bottom-left-radius: var(--eco-radius-lg);
+}
+
+.segment-button:last-of-type {
+  border-top-right-radius: var(--eco-radius-lg);
+  border-bottom-right-radius: var(--eco-radius-lg);
+}
+
+.segment-button:not(.segment-button-checked) {
+  --background: var(--eco-gray-100);
+  --color: var(--eco-gray-700);
+}
+
+.segment-button-checked {
+  --background: var(--eco-primary);
+  --color: white;
+  font-weight: var(--eco-font-weight-semibold);
+  transform: none; /* убираем эффект поднятия */
+  box-shadow: none; /* убираем тень */
+}
+
+.events-content {
+  padding: 0;
 }
 
 .tab-count {
+  color: var(--eco-white);
   position: absolute;
-  top: -8px;
-  right: -8px;
-  background: var(--eco-error);
-  color: white;
+  top: 2px; /* поднимаем */
+  right: 2px; /* сдвигаем вправо */
+  z-index: 2;
   font-size: var(--eco-font-size-xs);
-  font-weight: var(--eco-font-weight-bold);
-  padding: 2px 6px;
-  border-radius: 10px;
   min-width: 18px;
-  text-align: center;
-  line-height: 1.2;
+  padding: 2px 5px;
+  border-radius: 9px;
+  line-height: 1.3;
+}
+
+.tab-count.upcoming-count {
+  background: var(--eco-info);
+}
+
+.tab-count.past-count {
+  background: var(--eco-success);
 }
 
 .events-content {
   min-height: 200px;
+  padding: 0 var(--eco-space-4) var(--eco-space-4);
+}
+
+/* Загрузка мероприятий */
+.loading-events {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--eco-space-6) 0;
+}
+
+.loading-spinner {
+  margin-bottom: var(--eco-space-4);
+}
+
+.loading-text {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-600);
+  margin: 0 0 var(--eco-space-6) 0;
+  text-align: center;
+}
+
+.event-item.loading {
+  opacity: 0.7;
+  pointer-events: none;
+  cursor: default;
 }
 
 .event-items {
   display: flex;
   flex-direction: column;
-  gap: var(--eco-space-3);
 }
 
 .event-item {
@@ -722,6 +924,7 @@ onMounted(async () => {
   background: var(--eco-gray-50);
   border-radius: var(--eco-radius-lg);
   border: 1px solid var(--eco-gray-200);
+  margin-bottom: var(--eco-space-2);
   cursor: pointer;
   transition: all var(--eco-transition-normal);
 }
@@ -818,7 +1021,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--eco-space-12) var(--eco-space-6);
+  padding: var(--eco-space-8) var(--eco-space-4);
   text-align: center;
 }
 
@@ -857,7 +1060,7 @@ onMounted(async () => {
 .empty-subtitle {
   font-size: var(--eco-font-size-base);
   color: var(--eco-gray-500);
-  margin: 0 0 var(--eco-space-6) 0;
+  margin: 0 0 var(--eco-space-4) 0;
   max-width: 280px;
 }
 
@@ -868,20 +1071,26 @@ onMounted(async () => {
 
 /* Настройки */
 .settings-section {
-  padding: 0 var(--eco-space-4) var(--eco-space-6);
+  padding: 0 var(--eco-space-3) var(--eco-space-3);
+  margin-top: var(--eco-space-3);
 }
 
 .settings-card {
   background: var(--eco-white);
   border: 1px solid var(--eco-gray-200);
+  margin-bottom: var(--eco-space-2);
 }
 
 .settings-group {
-  margin-bottom: var(--eco-space-6);
+  margin-bottom: var(--eco-space-4);
 }
 
 .settings-group:last-child {
   margin-bottom: 0;
+}
+
+.settings-content {
+  padding: 0 var(--eco-space-4) var(--eco-space-4);
 }
 
 .group-title {
@@ -897,7 +1106,6 @@ onMounted(async () => {
 .settings-items {
   display: flex;
   flex-direction: column;
-  gap: var(--eco-space-1);
 }
 
 .setting-item {
@@ -907,6 +1115,7 @@ onMounted(async () => {
   padding: var(--eco-space-4);
   background: var(--eco-gray-50);
   border-radius: var(--eco-radius-lg);
+  margin-bottom: var(--eco-space-2);
   cursor: pointer;
   transition: all var(--eco-transition-normal);
 }
@@ -982,7 +1191,7 @@ onMounted(async () => {
 @media (max-width: 480px) {
   .stats-grid {
     grid-template-columns: 1fr;
-    gap: var(--eco-space-4);
+    gap: var(--eco-space-3);
   }
   
   .stat-card {
@@ -993,10 +1202,12 @@ onMounted(async () => {
   .stat-icon {
     margin-bottom: 0;
     margin-right: var(--eco-space-3);
+    flex-shrink: 0;
   }
   
   .profile-hero {
     padding: var(--eco-space-6) var(--eco-space-3) var(--eco-space-4);
+    margin-bottom: var(--eco-space-3);
   }
   
   .profile-avatar {
@@ -1019,6 +1230,15 @@ onMounted(async () => {
   }
   
   .meta-item {
+    font-size: var(--eco-font-size-sm);
+  }
+  
+  /* Адаптация загрузчиков для мобильных */
+  .loading-events {
+    padding: var(--eco-space-4) 0;
+  }
+  
+  .loading-text {
     font-size: var(--eco-font-size-sm);
   }
 }
