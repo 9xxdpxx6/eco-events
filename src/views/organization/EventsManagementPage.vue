@@ -11,7 +11,7 @@
       </ion-toolbar>
     </ion-header>
     
-    <ion-content class="events-content">
+    <ion-content ref="contentRef" class="events-content" :scroll-events="true" @ionScroll="onScroll">
       <!-- Hero секция со статистикой -->
       <div class="stats-hero">
         <div class="hero-background"></div>
@@ -43,44 +43,26 @@
         </div>
       </div>
 
-      <!-- Поиск -->
-      <div class="search-section">
-        <div class="search-card eco-card">
-          <ion-searchbar 
-            v-model="searchText" 
-            placeholder="Поиск мероприятий..."
-            class="custom-searchbar"
-            :clear-input="true"
-          ></ion-searchbar>
-        </div>
-      </div>
-
-      <!-- Фильтры -->
-      <div class="filters-section">
-        <div class="filters-card eco-card">
-          <div class="filters-header">
-            <ion-icon :icon="optionsOutline" />
-            <span>Фильтр по статусу</span>
+      <!-- Поиск и фильтры -->
+      <div :class="['search-filters-container', { 'filters-hidden': !filtersVisible }]">
+        <EcoSearchBar
+          v-model="searchText"
+          placeholder="Поиск мероприятий..."
+          :show-view-toggle="false"
+          :show-sort-select="false"
+        />
+        <div class="filters-section">
+          <div class="filters-scroll">
+            <ion-chip
+              v-for="filter in filters"
+              :key="filter.value"
+              :class="['filter-chip', { 'active': selectedFilter === filter.value }]"
+              @click="setFilter(filter.value)"
+            >
+              <ion-label>{{ filter.label }}</ion-label>
+              <div v-if="filter.count > 0" class="chip-count">{{ filter.count }}</div>
+            </ion-chip>
           </div>
-          
-          <ion-segment v-model="selectedFilter" @ionChange="filterEvents" class="custom-segment">
-            <ion-segment-button value="all" class="segment-button">
-          <ion-label>Все</ion-label>
-              <span class="tab-count" v-if="events.length > 0">{{ events.length }}</span>
-        </ion-segment-button>
-            <ion-segment-button value="upcoming" class="segment-button">
-          <ion-label>Предстоящие</ion-label>
-              <span class="tab-count" v-if="upcomingEventsCount > 0">{{ upcomingEventsCount }}</span>
-            </ion-segment-button>
-            <ion-segment-button value="active" class="segment-button">
-              <ion-label>Активные</ion-label>
-              <span class="tab-count" v-if="activeEventsCount > 0">{{ activeEventsCount }}</span>
-        </ion-segment-button>
-            <ion-segment-button value="past" class="segment-button">
-              <ion-label>Завершённые</ion-label>
-              <span class="tab-count" v-if="completedEventsCount > 0">{{ completedEventsCount }}</span>
-        </ion-segment-button>
-      </ion-segment>
         </div>
       </div>
 
@@ -213,13 +195,11 @@ import {
   IonButton,
   IonButtons,
   IonIcon,
-  IonSegment,
-  IonSegmentButton,
+  IonChip,
   IonLabel,
   IonSpinner,
   IonFab,
   IonFabButton,
-  IonSearchbar,
   alertController,
   toastController
 } from '@ionic/vue';
@@ -231,13 +211,13 @@ import {
   trashOutline,
   searchOutline,
   businessOutline,
-  optionsOutline,
   locationOutline,
   layersOutline
 } from 'ionicons/icons';
 import { useEventsStore, useAuthStore } from '../../stores';
 import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
+import EcoSearchBar from '../../components/EcoSearchBar.vue';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -251,6 +231,20 @@ const page = ref(0);
 const size = 50;
 const searchText = ref('');
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+const contentRef = ref();
+const filtersVisible = ref(true);
+const lastScrollY = ref(0);
+
+const filters = computed(() => [
+  { value: 'all', label: 'Все', count: events.value.length },
+  { value: 'upcoming', label: 'Предстоящие', count: upcomingEventsCount.value },
+  { value: 'active', label: 'Активные', count: activeEventsCount.value },
+  { value: 'past', label: 'Завершённые', count: completedEventsCount.value },
+]);
+
+const setFilter = (value: string) => {
+  selectedFilter.value = value;
+};
 
 const upcomingEventsCount = computed(() => {
   const now = new Date();
@@ -277,6 +271,20 @@ const completedEventsCount = computed(() => {
     return eventEndTime <= now;
   }).length;
 });
+
+const onScroll = (event: any) => {
+  const currentScrollY = event.detail.scrollTop;
+  
+  if (currentScrollY > lastScrollY.value + 20 && currentScrollY > 50) {
+    // Скролл вниз - скрываем фильтры
+    filtersVisible.value = false;
+  } else if (currentScrollY < lastScrollY.value - 20) {
+    // Скролл вверх - показываем фильтры
+    filtersVisible.value = true;
+  }
+  
+  lastScrollY.value = currentScrollY;
+};
 
 const loadEvents = async (hotSearch = false) => {
   isLoading.value = true;
@@ -462,6 +470,8 @@ watch(searchText, () => {
   }, 400);
 });
 
+watch(selectedFilter, filterEvents);
+
 onMounted(() => {
   loadEvents();
 });
@@ -575,70 +585,66 @@ onMounted(() => {
   letter-spacing: 0.5px;
 }
 
-/* Поиск */
-.search-section {
-  padding: 0 var(--eco-space-4) var(--eco-space-4);
-}
-
-.search-card {
+/* Поиск и фильтры */
+.search-filters-container {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   background: var(--eco-white);
-  border: 1px solid var(--eco-gray-200);
+  border-bottom: 1px solid var(--eco-gray-200);
+  padding: var(--eco-space-4);
+  transform: translateY(0);
+  transition: transform var(--eco-transition-normal), opacity var(--eco-transition-normal);
+  opacity: 1;
+  margin-bottom: var(--eco-space-4);
 }
 
-.custom-searchbar {
-  --background: transparent;
-  --border-radius: 0;
-  --box-shadow: none;
-  --icon-color: var(--eco-gray-500);
-  --color: var(--eco-gray-800);
-  --placeholder-color: var(--eco-gray-600);
-  --clear-button-color: var(--eco-gray-500);
-  margin: 0;
+.search-filters-container.filters-hidden {
+  transform: translateY(-120px);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
-/* Фильтры */
 .filters-section {
-  padding: 0 var(--eco-space-4) var(--eco-space-4);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  margin-top: var(--eco-space-3);
 }
 
-.filters-card {
-  background: var(--eco-white);
-  border: 1px solid var(--eco-gray-200);
+.filters-section::-webkit-scrollbar {
+  display: none;
 }
 
-.filters-header {
+.filters-scroll {
+  display: flex;
+  gap: var(--eco-space-2);
+}
+
+.filter-chip {
+  flex-shrink: 0;
+  --background: var(--eco-gray-100);
+  --color: var(--eco-gray-600);
+  border-radius: var(--eco-radius-lg);
+  font-weight: var(--eco-font-weight-medium);
+  font-size: var(--eco-font-size-sm);
+  transition: all var(--eco-transition-normal);
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: var(--eco-space-2);
-  margin-bottom: var(--eco-space-4);
-  color: var(--eco-gray-700);
-  font-weight: var(--eco-font-weight-medium);
 }
 
-.filters-header ion-icon {
-  font-size: 18px;
-  color: var(--eco-primary);
+.filter-chip.active {
+  --background: var(--eco-primary);
+  --color: white;
+  transform: scale(1.05);
 }
 
-.custom-segment {
-  --background: var(--eco-gray-100);
-  --indicator-color: var(--eco-primary);
-  --color-checked: var(--eco-primary);
-}
-
-.segment-button {
-  position: relative;
-  --color: var(--eco-gray-600);
-  --color-checked: white;
-  --background-checked: var(--eco-primary);
-  min-height: 40px;
-}
-
-.tab-count {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: var(--eco-error);
+.chip-count {
+  background: var(--eco-gray-500);
   color: white;
   font-size: var(--eco-font-size-xs);
   font-weight: var(--eco-font-weight-bold);
@@ -647,6 +653,11 @@ onMounted(() => {
   min-width: 18px;
   text-align: center;
   line-height: 1.2;
+}
+
+.filter-chip.active .chip-count {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--eco-primary);
 }
 
 /* События */
@@ -759,8 +770,9 @@ onMounted(() => {
 
 .event-image {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 100%;
+  height: 100%;
+  max-height: 300px;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -895,12 +907,7 @@ onMounted(() => {
   .event-card {
     flex-direction: column;
   }
-  
-  .event-image {
-    width: 100%;
-    height: 160px;
-  }
-  
+
   .event-header {
     flex-direction: column;
     align-items: flex-start;

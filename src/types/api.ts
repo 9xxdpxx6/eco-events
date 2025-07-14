@@ -12,6 +12,8 @@ export interface UserRegistrationResponseDto {
   fullName: string;
   login: string;
   role: 'USER' | 'ORGANIZATION';
+  email?: string;
+  phoneNumber?: string;
 }
 
 export interface UserShortDTO {

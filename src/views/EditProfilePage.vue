@@ -141,7 +141,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { 
   IonPage, 
   IonHeader, 
@@ -165,16 +165,16 @@ import {
 } from 'ionicons/icons';
 import { useAuthStore } from '../stores/auth';
 import { usersApi } from '../api/users';
-import type { UserRegistrationRequestDto } from '../types/api';
+import type { UserRegistrationRequestDto, UserRegistrationResponseDto } from '../types/api';
 
 const authStore = useAuthStore();
 const user = authStore.user;
 
 const form = ref<UserRegistrationRequestDto>({
-  fullName: user?.fullName || '',
-  login: user?.login || '',
+  fullName: '',
+  login: '',
   password: '',
-  role: user?.role || 'USER',
+  role: 'USER',
   email: '',
   phoneNumber: '',
 });
@@ -183,16 +183,35 @@ const isLoading = ref(false);
 const showToast = ref(false);
 const toastMessage = ref('');
 
+onMounted(async () => {
+  if (user?.id) {
+    try {
+      const userData = await usersApi.getById(user.id);
+      form.value.fullName = userData.fullName;
+      form.value.login = userData.login;
+      form.value.role = userData.role;
+      form.value.email = userData.email || '';
+      form.value.phoneNumber = userData.phoneNumber || '';
+    } catch (error) {
+      toastMessage.value = 'Ошибка при загрузке данных профиля';
+      showToast.value = true;
+    }
+  }
+});
+
 const handleSave = async () => {
   if (!user) return;
   isLoading.value = true;
   try {
-    // Если пароль не введён, не отправляем его
-    const payload: any = { ...form.value };
+    const payload: Partial<UserRegistrationRequestDto> = { ...form.value };
     if (!payload.password) {
       delete payload.password;
     }
-    await usersApi.update(user.id, payload);
+    const updatedUser = await usersApi.update(user.id, payload as UserRegistrationRequestDto);
+    
+    // Обновляем данные в хранилище
+    authStore.updateUser(updatedUser);
+
     toastMessage.value = 'Профиль успешно обновлён';
     showToast.value = true;
   } catch (e) {

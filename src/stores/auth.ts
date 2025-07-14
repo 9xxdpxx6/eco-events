@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { authApi } from '../api';
 import { usersApi } from '../api';
 import type { AuthRequestDTO, AuthResponseDTO, UserRegistrationRequestDto } from '../types/api';
+import type { UserRegistrationResponseDto } from '../types/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthResponseDTO | null>(null);
@@ -101,6 +102,15 @@ export const useAuthStore = defineStore('auth', () => {
     authApi.logout();
   };
 
+  const updateUser = (updatedUser: AuthResponseDTO | UserRegistrationResponseDto) => {
+    if (user.value) {
+      user.value = { ...user.value, ...updatedUser };
+      localStorage.setItem('userFullName', user.value.fullName);
+      localStorage.setItem('userLogin', user.value.login);
+      localStorage.setItem('userType', user.value.role);
+    }
+  };
+
   const createUser = async (fullName: string, login: string, password: string, role: 'USER' | 'ORGANIZATION') => {
     return {
       id: Date.now(), // Временный ID
@@ -125,6 +135,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     createUser,
-    restoreAuth
+    restoreAuth,
+    updateUser
   };
 }); 
