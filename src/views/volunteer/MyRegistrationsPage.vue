@@ -24,21 +24,31 @@
             </div>
             <div class="stats-info">
               <h2>Мои мероприятия</h2>
-              <p>{{ allUserRegistrations.length }} записей всего</p>
+              <p v-if="!statsLoading">{{ totalCount }} записей всего</p>
+              <p v-else>Обновляем статистику...</p>
             </div>
           </div>
           
           <div class="stats-grid">
             <div class="stat-item">
-              <div class="stat-value upcoming">{{ upcomingCount }}</div>
+              <div class="stat-value upcoming">
+                <ion-spinner v-if="statsLoading" name="dots"></ion-spinner>
+                <span v-else>{{ upcomingCount }}</span>
+              </div>
               <div class="stat-label">Предстоящие</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value completed">{{ completedCount }}</div>
+              <div class="stat-value completed">
+                <ion-spinner v-if="statsLoading" name="dots"></ion-spinner>
+                <span v-else>{{ completedCount }}</span>
+              </div>
               <div class="stat-label">Завершённые</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value cancelled">{{ cancelledCount }}</div>
+              <div class="stat-value cancelled">
+                <ion-spinner v-if="statsLoading" name="dots"></ion-spinner>
+                <span v-else>{{ cancelledCount }}</span>
+              </div>
               <div class="stat-label">Отменённые</div>
             </div>
           </div>
@@ -57,7 +67,7 @@
         <div class="filters-card eco-card">
           <div class="filters-header">
             <ion-icon :icon="funnelOutline" />
-            <span>Фильтр по дате записи</span>
+            <span>Фильтр по дате события</span>
           </div>
           
           <div class="filters-content">
@@ -117,7 +127,7 @@
       <!-- Список регистраций -->
       <div class="registrations-section">
         <!-- Лоадер -->
-        <div v-if="isLoading" class="loading-container">
+        <div v-if="isLoading && registrations.length === 0" class="loading-container">
           <div class="loading-spinner">
             <ion-spinner name="crescent" color="primary"></ion-spinner>
           </div>
@@ -134,7 +144,7 @@
         <!-- Пустое состояние -->
         <div v-else-if="filteredRegistrations.length === 0" class="empty-state">
           <div class="empty-icon">
-            <ion-icon :icon="clipboardOutline" />
+            <ion-icon :icon="calendarClearOutline" />
           </div>
           <h3 class="empty-title">Нет записей на мероприятия</h3>
           <p class="empty-subtitle">Найдите интересные экологические мероприятия и запишитесь на участие!</p>
@@ -158,12 +168,12 @@
               <div class="event-meta">
                 <div class="meta-row">
                   <span :class="['status-label', reg.membershipStatus === 'VALID' ? 'status-green' : 'status-red']">
-                    {{ reg.membershipStatus === 'VALID' ? 'Записан' : 'Отменён' }}
+                    {{ reg.membershipStatus === 'VALID' ? 'Участвую' : 'Отменено' }}
                   </span>
                   <span class="created-at-label">Запись: {{ formatEventDate(reg.createdAt) }}</span>
                 </div>
                 <div class="event-start-time">
-                  <span class="start-time-label">Начало: {{ (reg.event as any).startTime ? formatEventDate((reg.event as any).startTime) : 'Не указано' }}</span>
+                  <span class="start-time-label">Начало: {{ reg.event.startTime ? formatEventDate(reg.event.startTime) : 'Не указано' }}</span>
                 </div>
               </div>
             </div>
@@ -201,7 +211,7 @@ import {
   funnelOutline,
   closeOutline,
   alertCircleOutline,
-  clipboardOutline,
+  calendarClearOutline,
   timeOutline,
   checkmarkCircleOutline,
   closeCircleOutline,
@@ -209,8 +219,9 @@ import {
   searchOutline
 } from 'ionicons/icons';
 import { participantsApi } from '../../api/participants';
+import { eventsApi } from '../../api/events';
 import { useAuthStore } from '../../stores/auth';
-import type { EventParticipantDTO } from '../../types/api';
+import type { EventParticipantDTO, EventParticipantWithEventDetailsDTO } from '../../types/api';
 import RegistrationStatus from '../../components/RegistrationStatus.vue';
 import ErrorState from '../../components/ErrorState.vue';
 import { getEventPlaceholder } from '../../utils/eventImages';
@@ -221,9 +232,9 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
-const registrations = ref<EventParticipantDTO[]>([]);
-const allUserRegistrations = ref<EventParticipantDTO[]>([]);
+const registrations = ref<EventParticipantWithEventDetailsDTO[]>([]);
 const isLoading = ref(true);
+const statsLoading = ref(true);
 const error = ref<Error | null>(null);
 
 const searchText = ref('');
@@ -233,106 +244,26 @@ const showDatePicker = ref(false);
 const currentDateType = ref<'from' | 'to'>('from');
 
 const page = ref(0);
-const size = 50;
+const size = 20;
 const hasMore = ref(true);
+
+// Stats
+const upcomingCount = ref(0);
+const completedCount = ref(0);
+const cancelledCount = ref(0);
+const totalCount = computed(() => upcomingCount.value + completedCount.value + cancelledCount.value);
 
 const dateFromDisplay = computed(() => dateFrom.value ? formatDateInput(dateFrom.value) : '');
 const dateToDisplay = computed(() => dateTo.value ? formatDateInput(dateTo.value) : '');
 
 const filteredRegistrations = computed(() => {
-  // Если нет активных фильтров, показываем все записи
-  const hasActiveFilters = searchText.value || dateFrom.value || dateTo.value;
-  
-  if (!hasActiveFilters) {
+  if (!searchText.value) {
     return registrations.value;
   }
-  
   return registrations.value.filter(reg => {
     // Поиск по названию
-    const matchesSearch = !searchText.value || reg.event.title?.toLowerCase().includes(searchText.value.toLowerCase());
-    
-    // Фильтр по дате
-    let matchesDateFrom = true;
-    let matchesDateTo = true;
-    
-    if (dateFrom.value && reg.createdAt) {
-      const fromDate = new Date(dateFrom.value + 'T00:00:00');
-      const regDate = new Date(reg.createdAt);
-      matchesDateFrom = regDate >= fromDate;
-    }
-    
-    if (dateTo.value && reg.createdAt) {
-      const toDate = new Date(dateTo.value + 'T23:59:59');
-      const regDate = new Date(reg.createdAt);
-      matchesDateTo = regDate <= toDate;
-    }
-    
-    return matchesSearch && matchesDateFrom && matchesDateTo;
+    return reg.event.title?.toLowerCase().includes(searchText.value.toLowerCase());
   });
-});
-
-const upcomingEvents = computed(() => {
-  const now = new Date();
-  const result = filteredRegistrations.value.filter(reg => {
-    const eventStartTime = (reg.event as any).startTime;
-    // Если нет startTime, не считаем предстоящим
-    if (!eventStartTime) return false;
-    const eventDate = new Date(eventStartTime);
-    // Показываем только VALID регистрации
-    return eventDate > now && reg.status !== 'CANCELLED' && (reg.membershipStatus !== 'INVALID');
-  });
-  return result;
-});
-
-const completedEvents = computed(() => {
-  const now = new Date();
-  const result = filteredRegistrations.value.filter(reg => {
-    const eventStartTime = (reg.event as any).startTime;
-    // Если нет startTime, считаем завершённым (или показываем в завершённых)
-    if (!eventStartTime) {
-      return reg.status !== 'CANCELLED' && (reg.membershipStatus !== 'INVALID');
-    }
-    const eventDate = new Date(eventStartTime);
-    // Показываем только VALID регистрации
-    return eventDate <= now && reg.status !== 'CANCELLED' && (reg.membershipStatus !== 'INVALID');
-  });
-  return result;
-});
-
-const cancelledEvents = computed(() => {
-  // Показываем события со статусом CANCELLED или с membershipStatus INVALID
-  const result = filteredRegistrations.value.filter(reg => 
-    reg.status === 'CANCELLED' || reg.membershipStatus === 'INVALID'
-  );
-  return result;
-});
-
-const upcomingCount = computed(() => {
-  const now = new Date();
-  return allUserRegistrations.value.filter(reg => {
-    const eventStartTime = (reg.event as any).startTime;
-    if (!eventStartTime) return false;
-    const eventDate = new Date(eventStartTime);
-    return eventDate > now && reg.status !== 'CANCELLED' && reg.membershipStatus !== 'INVALID';
-  }).length;
-});
-
-const completedCount = computed(() => {
-  const now = new Date();
-  return allUserRegistrations.value.filter(reg => {
-    const eventStartTime = (reg.event as any).startTime;
-    if (!eventStartTime) {
-      return reg.status !== 'CANCELLED' && reg.membershipStatus !== 'INVALID';
-    }
-    const eventDate = new Date(eventStartTime);
-    return eventDate <= now && reg.status !== 'CANCELLED' && reg.membershipStatus !== 'INVALID';
-  }).length;
-});
-
-const cancelledCount = computed(() => {
-  return allUserRegistrations.value.filter(reg => 
-    reg.status === 'CANCELLED' || reg.membershipStatus === 'INVALID'
-  ).length;
 });
 
 const hasActiveFilters = computed(() => {
@@ -375,6 +306,52 @@ const clearFilters = () => {
   searchText.value = '';
   loadRegistrations(true); // Сбрасываем фильтр и загружаем заново
 };
+
+async function augmentWithEventDetails(participations: EventParticipantDTO[]): Promise<EventParticipantWithEventDetailsDTO[]> {
+  if (!participations || participations.length === 0) {
+    return [];
+  }
+
+  const eventIds = participations.map(p => p.event.id).filter(id => id != null);
+  const uniqueEventIds = [...new Set(eventIds)];
+
+  if (uniqueEventIds.length === 0) {
+    return participations.map(reg => ({
+      ...reg,
+      event: { ...reg.event, startTime: '', endTime: '', location: '' }
+    }));
+  }
+
+  const eventDetailsMap = new Map();
+  const batchSize = 10; // Обрабатываем по 10 запросов за раз
+
+  for (let i = 0; i < uniqueEventIds.length; i += batchSize) {
+    const batchIds = uniqueEventIds.slice(i, i + batchSize);
+    try {
+      const batchPromises = batchIds.map(id => eventsApi.getById(id!));
+      const batchResults = await Promise.all(batchPromises);
+      for (const event of batchResults) {
+        if (event) eventDetailsMap.set(event.id, event);
+      }
+    } catch (error) {
+      console.error(`Ошибка при загрузке пакета деталей событий (IDs: ${batchIds.join(', ')}):`, error);
+    }
+  }
+
+  return participations.map(reg => {
+    const fullEvent = eventDetailsMap.get(reg.event.id);
+    return {
+      ...reg,
+      event: {
+        id: reg.event.id,
+        title: reg.event.title,
+        startTime: fullEvent?.startTime || '',
+        endTime: fullEvent?.endTime || '',
+        location: fullEvent?.location || ''
+      }
+    };
+  });
+}
 
 const applyDateFilter = () => {};
 
@@ -423,22 +400,24 @@ const loadRegistrations = async (reset = false) => {
   error.value = null;
   const filter: any = {
     userId: authStore.user.id,
-    status: 'CONFIRMED',
     page: page.value,
     size,
+    sortBy: 'createdAt',
+    sortOrder: 'DESC'
   };
   
   // Добавляем пользовательские фильтры только если они заданы
-  if (dateFrom.value) filter.createdAtFrom = dateFrom.value + 'T00:00:00';
-  if (dateTo.value) filter.createdAtTo = dateTo.value + 'T23:59:59';
+  if (dateFrom.value) filter.eventStartTimeFrom = dateFrom.value + 'T00:00:00';
+  if (dateTo.value) filter.eventStartTimeTo = dateTo.value + 'T23:59:59';
   
   // Поиск по названию (если поддерживается API)
   // if (searchText.value) filter.title = searchText.value;
   try {
-    const result = await participantsApi.search(filter) as { content: any[]; last: boolean };
+    const result = await participantsApi.search(filter) as { content: EventParticipantDTO[]; last: boolean };
     const items = result?.content ?? [];
     if (items.length > 0) {
-      registrations.value = [...registrations.value, ...items];
+      const augmentedItems = await augmentWithEventDetails(items);
+      registrations.value = [...registrations.value, ...augmentedItems];
       hasMore.value = !result.last;
       page.value += 1;
     } else {
@@ -457,14 +436,50 @@ const loadMoreRegistrations = async (event: any) => {
   event.target.complete();
 };
 
-const loadUserStats = async () => {
+const loadStats = async () => {
   if (!authStore.user?.id) return;
-  
+  statsLoading.value = true;
+  const userId = authStore.user.id;
+  const now = new Date().toISOString();
+
   try {
-    const result = await participantsApi.getByUser(authStore.user.id) as EventParticipantDTO[];
-    allUserRegistrations.value = result || [];
+    const upcomingPromise = participantsApi.search({
+      userId,
+      membershipStatus: 'VALID',
+      eventStartTimeFrom: now,
+      size: 1,
+    });
+
+    const completedPromise = participantsApi.search({
+      userId,
+      membershipStatus: 'VALID',
+      eventStartTimeTo: now,
+      size: 1,
+    });
+
+    const cancelledPromise = participantsApi.search({
+      userId,
+      membershipStatus: 'INVALID',
+      size: 1,
+    });
+
+    const [upcomingResult, completedResult, cancelledResult] = await Promise.all([
+      upcomingPromise,
+      completedPromise,
+      cancelledPromise,
+    ]);
+
+    upcomingCount.value = upcomingResult.totalElements || 0;
+    completedCount.value = completedResult.totalElements || 0;
+    cancelledCount.value = cancelledResult.totalElements || 0;
+
   } catch (e) {
     console.error('Ошибка загрузки статистики:', e);
+    upcomingCount.value = 0;
+    completedCount.value = 0;
+    cancelledCount.value = 0;
+  } finally {
+    statsLoading.value = false;
   }
 };
 
@@ -478,7 +493,7 @@ const goToEvents = () => {
 
 const handleRefresh = async (event: any) => {
   await Promise.all([
-    loadUserStats(),
+    loadStats(),
     loadRegistrations(true)
   ]);
   event.target.complete();
@@ -490,7 +505,7 @@ watch(
   async (newPath) => {
     if (newPath === '/tabs/my-registrations') {
       await Promise.all([
-        loadUserStats(),
+        loadStats(),
         loadRegistrations(true)
       ]);
     }
@@ -498,7 +513,7 @@ watch(
 );
 
 onMounted(() => {
-  loadUserStats();
+  loadStats();
   loadRegistrations(true);
 });
 </script>
@@ -901,10 +916,44 @@ onMounted(() => {
 }
 
 /* Улучшения для empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--eco-space-12) var(--eco-space-6);
+}
+
+.empty-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--eco-gray-100);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--eco-space-6);
+}
+
 .empty-state ion-icon {
-  font-size: 64px;
+  font-size: 48px;
   color: var(--eco-gray-600);
-  margin-bottom: var(--eco-space-4);
+}
+
+.empty-title {
+  font-family: var(--eco-font-family);
+  font-size: var(--eco-font-size-xl);
+  font-weight: var(--eco-font-weight-semibold);
+  color: var(--eco-gray-700);
+  margin: 0 0 var(--eco-space-2) 0;
+}
+
+.empty-subtitle {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-500);
+  margin: 0 0 var(--eco-space-6) 0;
+  max-width: 320px;
 }
 
 /* Дополнительные стили кнопок */
@@ -926,6 +975,7 @@ onMounted(() => {
   --color: white;
   border-radius: var(--eco-radius-lg);
   margin-top: var(--eco-space-2);
+  --box-shadow: none;
 }
 
 .status-label {

@@ -183,7 +183,7 @@
           </div>
 
           <!-- Отмена участия (для зарегистрированных волонтёров) -->
-          <div v-if="event && !isOrganization && isUserRegistered" class="cancel-card eco-card">
+          <div v-if="event && !isOrganization && isUserRegistered && !isEventFinished" class="cancel-card eco-card">
             <div class="cancel-content">
               <ion-button 
                 fill="clear" 
@@ -214,7 +214,7 @@
     </ion-content>
 
     <!-- Кнопка регистрации (только для незарегистрированных волонтёров) -->
-            <ion-footer v-if="event && !isOrganization && !isUserRegistered" class="action-footer">
+            <ion-footer v-if="event && !isOrganization && !isUserRegistered && !isEventFinished" class="action-footer">
       <div class="footer-content">
         <ion-button 
           expand="block" 
@@ -324,6 +324,13 @@ const isUserRegistered = computed(() => {
   return participants.value.some(p => 
     p.user.id === authStore.user?.id && p.membershipStatus === 'VALID'
   );
+});
+
+const isEventFinished = computed(() => {
+  if (!event.value) return false;
+  const now = new Date();
+  const eventDate = new Date(event.value.startTime);
+  return eventDate < now;
 });
 
 const loadEvent = async () => {

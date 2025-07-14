@@ -251,7 +251,13 @@ function formatDate(dateStr: string) {
 const loadAllBonuses = async () => {
   if (!authStore.user?.id) return;
   try {
-    const all = await bonusHistoryApi.search({ userId: authStore.user.id, page: 0, size: 10000 });
+    const all = await bonusHistoryApi.search({
+      userId: authStore.user.id,
+      page: 0,
+      size: 10000,
+      sortBy: 'createdAt',
+      sortOrder: 'DESC',
+    });
     allBonuses.value = all;
   } catch (e) {
     // не критично для UI
@@ -286,6 +292,8 @@ const loadBonuses = async (reset = false) => {
     userId: authStore.user.id,
     page: page.value,
     size,
+    sortBy: 'createdAt',
+    sortOrder: 'DESC',
   };
   if (dateFrom.value) filter.createdAtFrom = dateFrom.value + 'T00:00:00';
   if (dateTo.value) filter.createdAtTo = dateTo.value + 'T23:59:59';

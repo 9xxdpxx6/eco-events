@@ -79,6 +79,8 @@ export interface EventFilterDTO {
   userId?: number;
   page?: number;
   size?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 export interface EventTypeDTO {
@@ -100,6 +102,7 @@ export interface EventParticipantDTO {
 export interface EventParticipantWithEventDetailsDTO {
   status: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
   createdAt: string;
+  membershipStatus: 'VALID' | 'INVALID';
   user: UserShortDTO;
   event: {
     id: number;
@@ -188,6 +191,8 @@ export interface UserBonusHistoryFilterDTO {
   isActive?: boolean;
   page?: number;
   size?: number;
+  sortBy?: string;
+  sortOrder?: 'ASC' | 'DESC';
 }
 
 export interface EventParticipantFilterDTO {
@@ -197,6 +202,8 @@ export interface EventParticipantFilterDTO {
   membershipStatus?: 'VALID' | 'INVALID';
   createdAtFrom?: string;
   createdAtTo?: string;
+  eventStartTimeFrom?: string;
+  eventStartTimeTo?: string;
   page?: number;
   size?: number;
 }

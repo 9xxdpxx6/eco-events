@@ -45,6 +45,11 @@ export const eventsApi = {
     if (filter.userId) params.userId = filter.userId;
     if (filter.page !== undefined) params.page = filter.page;
     if (filter.size !== undefined) params.size = filter.size;
+    if (filter.sortBy) params.sortBy = filter.sortBy;
+    if (filter.sortOrder) params.sortOrder = filter.sortOrder;
+
+    const queryString = new URLSearchParams(params).toString();
+    console.log(`Выполняется запрос: ${apiClient.defaults.baseURL}/api/events/search?${queryString}`);
 
     const { data } = await apiClient.get('/api/events/search', { params });
     const d: any = data;

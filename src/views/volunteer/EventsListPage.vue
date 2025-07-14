@@ -186,7 +186,7 @@ import { useAuthStore } from '../../stores';
 import EventListLoader from '../EventListLoader.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
-import type { EventResponseMediumDTO, EventParticipantDTO } from '../../types/api';
+import type { EventResponseMediumDTO, EventParticipantDTO, EventParticipantFilterDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import { participantsApi } from '../../api/participants';
 import { eventsApi } from '../../api/events';
@@ -205,7 +205,7 @@ const selectedFilter = ref('all');
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
 const isRegistering = ref(false);
-const sortBy = ref('newest');
+const sortBy = ref('startTime_DESC');
 const viewMode = ref('grid');
 const contentRef = ref();
 const filtersVisible = ref(true);
@@ -214,9 +214,9 @@ let searchTimeout: NodeJS.Timeout | null = null;
 const isInitialized = ref(false);
 
 const sortOptions = [
-  { value: 'newest', label: 'Сначала новые', icon: arrowDownOutline },
-  { value: 'oldest', label: 'Сначала старые', icon: arrowUpOutline },
-  { value: 'title', label: 'По алфавиту', icon: textOutline }
+  { value: 'startTime_DESC', label: 'Сначала новые', icon: arrowDownOutline },
+  { value: 'startTime_ASC', label: 'Сначала старые', icon: arrowUpOutline },
+  { value: 'title_ASC', label: 'По алфавиту', icon: textOutline }
 ];
 
 const filters = [
@@ -255,7 +255,7 @@ function isEventThisWeek(dateStr: string) {
 function selectSort(value: string) {
   sortBy.value = value;
   if (isInitialized.value) {
-    applySorting(); // Применяем сортировку к уже загруженным данным
+    loadEvents(true); // Перезагружаем данные с сервера с новой сортировкой
   }
 }
 
@@ -299,12 +299,19 @@ const loadEvents = async (reset = true) => {
   }
   
   try {
+    const [sortField, sortOrder] = sortBy.value.split('_');
+    
     // Подготавливаем параметры фильтрации для сервера
     const filterParams: any = {
-      keyword: searchText.value,
       page: page.value,
-      size: size
+      size: size,
+      sortBy: sortField,
+      sortOrder: sortOrder
     };
+
+    if (searchText.value) {
+      filterParams.keyword = searchText.value;
+    }
 
     // Добавляем фильтры по датам для сервера
     const now = new Date();
@@ -342,13 +349,15 @@ const loadEvents = async (reset = true) => {
         break;
       case 'finished':
         filterParams.startDateTo = formatDateForApi(now);
+        filterParams.sortBy = 'startTime';
+        filterParams.sortOrder = 'DESC';
         break;
       case 'my':
         // Для фильтра "Мои мероприятия" получаем только мероприятия с VALID статусом
         if (authStore.isAuthenticated && authStore.user?.id) {
           
           // Получаем участия пользователя через API участников с фильтром membershipStatus=VALID
-          const participantFilter = {
+          const participantFilter: EventParticipantFilterDTO = {
             userId: authStore.user.id,
             status: 'CONFIRMED',
             membershipStatus: 'VALID',
@@ -401,8 +410,8 @@ const loadEvents = async (reset = true) => {
               );
             }
             
-            // Применяем сортировку на клиенте
-            applySorting();
+            // Применяем сортировку на клиенте для фильтра "Мои мероприятия"
+            applyClientSorting();
             return; // Выходим из функции, чтобы не выполнять обычный запрос
           } catch (error) {
             console.error('Ошибка загрузки моих мероприятий:', error);
@@ -438,8 +447,8 @@ const loadEvents = async (reset = true) => {
       }
     }
     
-    // Применяем сортировку на клиенте (пока сервер не поддерживает)
-    applySorting();
+    // Сортировка теперь происходит на сервере
+    filteredEvents.value = events.value;
   } catch (error) {
     console.error('Error loading events:', error);
     const toast = await toastController.create({
@@ -477,19 +486,26 @@ const loadMoreEvents = async (event: any) => {
   event.target.complete();
 };
 
-const applySorting = () => {
+const applyClientSorting = () => {
   const sorted = [...events.value];
   
-  // Применяем сортировку
-  switch (sortBy.value) {
-    case 'newest':
-      sorted.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-      break;
-    case 'oldest':
-      sorted.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  // Применяем сортировку на клиенте (только для фильтра "Мои мероприятия")
+  const [sortField, sortOrder] = sortBy.value.split('_');
+  
+  switch (sortField) {
+    case 'startTime': // Для API это 'startDate', но в объекте события это 'startTime'
+      if (sortOrder === 'DESC') {
+        sorted.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      } else {
+        sorted.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+      }
       break;
     case 'title':
-      sorted.sort((a, b) => a.title.localeCompare(b.title, 'ru'));
+      if (sortOrder === 'DESC') {
+        sorted.sort((a, b) => b.title.localeCompare(a.title, 'ru'));
+      } else {
+        sorted.sort((a, b) => a.title.localeCompare(b.title, 'ru'));
+      }
       break;
   }
   
@@ -497,17 +513,8 @@ const applySorting = () => {
 };
 
 const filterEvents = () => {
-  // Фильтрация теперь происходит на сервере, 
-  // но оставляем для фильтра 'my' который пока не поддерживается сервером
-  let filtered = [...events.value];
-  
-  if (selectedFilter.value === 'my') {
-    // filtered = filtered.filter(event => event.isRegistered);
-    // Пока не реализовано
-  }
-  
-  // Применяем сортировку
-  applySorting();
+  // Фильтрация и сортировка теперь происходят на сервере
+  filteredEvents.value = events.value;
 };
 
 const isUserRegisteredForEvent = (eventId: number | undefined) => {
@@ -525,7 +532,7 @@ const loadUserParticipations = async () => {
     let hasMorePages = true;
 
     while (hasMorePages) {
-      const participantFilter = {
+      const participantFilter: EventParticipantFilterDTO = {
         userId: authStore.user.id,
         status: 'CONFIRMED',
         membershipStatus: 'VALID',

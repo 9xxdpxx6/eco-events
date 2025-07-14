@@ -153,6 +153,7 @@ export const useEventsStore = defineStore('events', {
         this.events = events;
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при поиске событий';
+        console.error('Ошибка при поиске событий:', error);
         throw error;
       } finally {
         this.isLoading = false;

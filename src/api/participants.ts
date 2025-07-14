@@ -1,41 +1,25 @@
 import { apiClient } from './client';
-import type { EventParticipantDTO, RegisterOrUnregisterRequest, EventParticipantFilterDTO } from '../types/api';
+import type { EventParticipantDTO, EventParticipantFilterDTO, RegisterOrUnregisterRequest, Page } from '../types/api';
 
 export const participantsApi = {
-  getAll: async (): Promise<EventParticipantDTO[]> => {
-    const { data } = await apiClient.get<EventParticipantDTO[]>('/api/participants/');
+  search: async (filter: EventParticipantFilterDTO): Promise<Page<EventParticipantDTO>> => {
+    const { data } = await apiClient.get<Page<EventParticipantDTO>>('/api/participants/search', { params: filter });
+    return data;
+  },
+  
+  getByUser: async (userId: number): Promise<EventParticipantDTO[]> => {
+    const { data } = await apiClient.get<EventParticipantDTO[]>(`/api/participants/user/${userId}`);
     return data;
   },
 
-  getByUser: async (userId: number) => {
-    const url = `/api/participants/user/${userId}`;
-    console.log('[participantsApi.getByUser] URL:', url);
-    const { data } = await apiClient.get(url);
-    return data;
-  },
-
-  getByEvent: async (eventId: number): Promise<EventParticipantDTO[]> => {
-    const { data } = await apiClient.get<EventParticipantDTO[]>(`/api/participants/event/${eventId}`);
-    return data;
-  },
-
-  register: async (request: RegisterOrUnregisterRequest): Promise<EventParticipantDTO> => {
+  registerForEvent: async (userId: number, eventId: number): Promise<EventParticipantDTO> => {
+    const request: RegisterOrUnregisterRequest = { userId, eventId };
     const { data } = await apiClient.post<EventParticipantDTO>('/api/participants/register', request);
     return data;
   },
-
-  unregister: async (request: RegisterOrUnregisterRequest): Promise<void> => {
+  
+  unregisterFromEvent: async (userId: number, eventId: number): Promise<void> => {
+    const request: RegisterOrUnregisterRequest = { userId, eventId };
     await apiClient.post('/api/participants/unregister', request);
-  },
-
-  updateStatus: async (userId: number, eventId: number, status: string): Promise<EventParticipantDTO> => {
-    const { data } = await apiClient.post<EventParticipantDTO>(`/api/participants/${userId}/${eventId}?status=${status}`);
-    return data;
-  },
-
-  search: async (filter: any) => {
-    const url = '/api/participants/search';
-    const { data } = await apiClient.get(url, { params: filter });
-    return data;
   }
 }; 
