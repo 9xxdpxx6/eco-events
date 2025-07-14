@@ -24,6 +24,7 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@types/react-router-dom": "^5.3.3",
+    "@yeger/vue-masonry-wall": "^5.0.21",
     "axios": "^1.10.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",

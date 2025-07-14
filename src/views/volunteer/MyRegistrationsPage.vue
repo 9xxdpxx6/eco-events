@@ -440,7 +440,7 @@ const loadStats = async () => {
   if (!authStore.user?.id) return;
   statsLoading.value = true;
   const userId = authStore.user.id;
-  const now = new Date().toISOString();
+  const now = new Date().toISOString().slice(0, 19);
 
   try {
     const upcomingPromise = participantsApi.search({
@@ -909,6 +909,7 @@ onMounted(() => {
 .search-card {
   padding: var(--eco-space-2);
   box-shadow: var(--eco-shadow-sm);
+  margin-bottom: 0;
 }
 
 .filters-card {

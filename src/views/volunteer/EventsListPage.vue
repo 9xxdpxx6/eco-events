@@ -52,65 +52,118 @@
       </div>
 
       <!-- Список мероприятий -->
-      <div v-else-if="filteredEvents.length > 0" :class="['events-container', `events-${viewMode}`]">
-        <div 
-          v-for="event in filteredEvents" 
-          :key="event.id"
-          class="event-card eco-card eco-list-item"
-          @click="openEventDetails(Number(event.id))"
+      <div v-else-if="filteredEvents.length > 0" :class="['events-container']">
+        <!-- Masonry Grid View -->
+        <masonry-wall
+          v-if="viewMode === 'grid'"
+          :items="filteredEvents"
+          :column-width="180"
+          :gap="12"
+          class="events-grid"
         >
-          <div class="event-image">
-            <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
-            <div class="event-status">
-              <span :class="['status-badge', getEventStatus(event.startTime)]">
-                {{ getEventStatusText(event.startTime) }}
-              </span>
-            </div>
-          </div>
+          <template #default="{ item: event }">
+            <div
+              :key="event.id"
+              class="event-card eco-card"
+              @click="openEventDetails(Number(event.id))"
+            >
+              <div class="event-image">
+                <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+                <div class="event-status">
+                  <span :class="['status-badge', getEventStatus(event.startTime)]">
+                    {{ getEventStatusText(event.startTime) }}
+                  </span>
+                </div>
+              </div>
 
-          <div class="event-content">
-            
-            
-            <div class="event-header">
-              <h3 class="event-title" lang="ru">{{ event.title }}</h3>
-          <ion-button 
-            v-if="!isUserRegisteredForEvent(event.id)"
-            fill="clear" 
-                size="small"
-                class="register-button"
-            @click.stop="toggleEventRegistration(event)"
-            :disabled="isRegistering"
+              <div class="event-content">
+                <div class="event-header">
+                  <h3 class="event-title" lang="ru">{{ event.title }}</h3>
+                  <ion-button
+                    v-if="!isUserRegisteredForEvent(event.id)"
+                    fill="clear"
+                    size="small"
+                    class="register-button"
+                    @click.stop="toggleEventRegistration(event)"
+                    :disabled="isRegistering"
+                  >
+                    <ion-icon :icon="addOutline" />
+                  </ion-button>
+                </div>
+
+                <div class="event-meta">
+                  <div class="meta-item">
+                    <ion-icon :icon="timeOutline" />
+                    <span>{{ formatDate(event.startTime) }}</span>
+                  </div>
+                  <div class="meta-item">
+                    <ion-icon :icon="locationOutline" />
+                    <span>{{ event.location || 'Место не указано' }}</span>
+                  </div>
+                </div>
+
+                <p class="event-description" v-if="event.description">
+                  {{ truncateText(event.description, 60) }}
+                </p>
+              </div>
+            </div>
+          </template>
+        </masonry-wall>
+        
+        <!-- List View -->
+        <div v-else class="events-list">
+           <div 
+            v-for="event in filteredEvents" 
+            :key="event.id"
+            class="event-card eco-card eco-list-item"
+            @click="openEventDetails(Number(event.id))"
           >
-                <ion-icon :icon="addOutline" />
-          </ion-button>
-            </div>
-
-            <!-- Статус для списочного режима -->
-            <div v-if="viewMode === 'list'" class="event-status-text">
-              <span :class="['status-badge-text', getEventStatus(event.startTime)]">
-                {{ getEventStatusText(event.startTime) }}
-              </span>
-            </div>
-
-            <div class="event-meta">
-              <div class="meta-item">
-                <ion-icon :icon="timeOutline" />
-                <span>{{ formatDate(event.startTime) }}</span>
+            <div class="event-image">
+              <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+              <div class="event-status">
+                <span :class="['status-badge', getEventStatus(event.startTime)]">
+                  {{ getEventStatusText(event.startTime) }}
+                </span>
               </div>
-              <div class="meta-item">
-                <ion-icon :icon="locationOutline" />
-                <span>{{ event.location || 'Место не указано' }}</span>
-              </div>
-              <!-- Участники будут добавлены когда появятся в API -->
-              <!--<div class="meta-item">
-                <ion-icon :icon="peopleOutline" />
-                <span>Участники: -</span>
-              </div>-->
             </div>
 
-            <p class="event-description" v-if="event.description">
-              {{ truncateText(event.description, viewMode === 'grid' ? 60 : 120) }}
-            </p>
+            <div class="event-content">
+              <div class="event-header">
+                <h3 class="event-title" lang="ru">{{ event.title }}</h3>
+                <ion-button 
+                  v-if="!isUserRegisteredForEvent(event.id)"
+                  fill="clear" 
+                  size="small"
+                  class="register-button"
+                  @click.stop="toggleEventRegistration(event)"
+                  :disabled="isRegistering"
+                >
+                  <ion-icon :icon="addOutline" />
+                </ion-button>
+              </div>
+
+              <!-- Статус для списочного режима -->
+              <div class="event-status-text">
+                <span :class="['status-badge-text', getEventStatus(event.startTime)]">
+                  {{ getEventStatusText(event.startTime) }}
+                </span>
+              </div>
+
+              <div class="event-meta">
+                <div class="meta-item">
+                  <ion-icon :icon="timeOutline" />
+                  <span>{{ formatDate(event.startTime) }}</span>
+                </div>
+                <div class="meta-item">
+                  <ion-icon :icon="locationOutline" />
+                  <span>{{ event.location || 'Место не указано' }}</span>
+                </div>
+              </div>
+
+              <p class="event-description" v-if="event.description">
+                {{ truncateText(event.description, 120) }}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -186,6 +239,7 @@ import { useAuthStore } from '../../stores';
 import EventListLoader from '../EventListLoader.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
+import MasonryWall from '@yeger/vue-masonry-wall';
 import type { EventResponseMediumDTO, EventParticipantDTO, EventParticipantFilterDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import { participantsApi } from '../../api/participants';
@@ -802,20 +856,6 @@ onUnmounted(() => {
   padding: 0 var(--eco-space-4) var(--eco-space-4);
 }
 
-/* Плиточный режим (masonry layout) */
-.events-grid {
-  columns: 2;
-  column-gap: var(--eco-space-4);
-  column-fill: balance;
-}
-
-.events-grid .event-card {
-  break-inside: avoid;
-  margin-bottom: var(--eco-space-4);
-  display: inline-block;
-  width: 100%;
-}
-
 /* Списочный режим */
 .events-list {
   display: flex;
@@ -900,6 +940,8 @@ onUnmounted(() => {
   transition: all var(--eco-transition-normal);
   background: var(--eco-white);
   border: 1px solid var(--eco-gray-200);
+  width: 100%; /* Для корректной работы в Masonry */
+  display: inline-block; /* Для корректной работы в Masonry */
 }
 
 .event-card:hover {
@@ -1102,14 +1144,6 @@ onUnmounted(() => {
   }
   
   /* Плиточный режим на мобильных - 2 колонки с квадратными фото */
-  .events-grid {
-    columns: 2;
-    column-gap: var(--eco-space-3);
-  }
-  
-  .events-grid .event-card {
-    margin-bottom: var(--eco-space-3);
-  }
   
   /* Изображения уже квадратные через aspect-ratio */
   
