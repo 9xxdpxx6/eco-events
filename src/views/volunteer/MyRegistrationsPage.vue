@@ -714,6 +714,29 @@ onMounted(() => {
   padding: 0 var(--eco-space-3) var(--eco-space-3);
 }
 
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--eco-space-12) var(--eco-space-6);
+}
+
+.loading-spinner {
+  margin-bottom: var(--eco-space-6);
+}
+
+.loading-spinner ion-spinner {
+  width: 48px;
+  height: 48px;
+}
+
+.loading-text {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-500);
+  margin: 0;
+}
+
 .all-registrations-list {
   display: flex;
   flex-direction: column;

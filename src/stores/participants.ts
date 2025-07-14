@@ -72,7 +72,7 @@ export const useParticipantsStore = defineStore('participants', {
       this.error = null;
       try {
         const request: RegisterOrUnregisterRequest = { userId, eventId };
-        const participant = await participantsApi.register(request);
+        const participant = await participantsApi.registerForEvent(userId, eventId);
         
         // Проверяем, есть ли уже такой участник в списках
         const updateOrAdd = (list: EventParticipantDTO[]) => {
@@ -104,7 +104,7 @@ export const useParticipantsStore = defineStore('participants', {
       this.error = null;
       try {
         const request: RegisterOrUnregisterRequest = { userId, eventId };
-        await participantsApi.unregister(request);
+        await participantsApi.unregisterFromEvent(userId, eventId);
         
         // API теперь изменяет membershipStatus на INVALID вместо удаления записи
         // Обновляем статус в локальных данных

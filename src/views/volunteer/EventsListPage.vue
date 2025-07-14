@@ -657,8 +657,8 @@ const toggleEventRegistration = async (event: EventResponseMediumDTO) => {
     // В списке кнопка "+" всегда регистрирует на событие
     await participantsStore.registerForEvent(userId, event.id);
     
-    // Обновляем локальное состояние участий
-    userParticipations.value.add(event.id);
+    // Обновляем состояние участий, запрашивая свежие данные с сервера
+    await loadUserParticipations();
     
     const toast = await toastController.create({
       message: 'Вы успешно записались на мероприятие!',
