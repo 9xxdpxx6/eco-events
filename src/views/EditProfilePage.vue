@@ -3,7 +3,7 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/tabs/profile" class="back-button"></ion-back-button>
+          <ion-back-button default-href="/tabs/volunteer-profile" class="back-button"></ion-back-button>
         </ion-buttons>
         <ion-title class="page-title">Редактировать профиль</ion-title>
         <ion-buttons slot="end">

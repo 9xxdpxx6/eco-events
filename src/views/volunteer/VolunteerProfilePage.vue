@@ -670,20 +670,15 @@ onMounted(async () => {
 }
 
 .profile-avatar {
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: var(--eco-space-4);
-  backdrop-filter: blur(8px);
-  border: 3px solid rgba(255, 255, 255, 0.3);
 }
 
 .profile-avatar ion-icon {
-  font-size: 48px;
+  font-size: 80px;
   color: white;
 }
 
@@ -1207,15 +1202,6 @@ onMounted(async () => {
   .profile-hero {
     padding: var(--eco-space-6) var(--eco-space-3) var(--eco-space-4);
     margin-bottom: var(--eco-space-3);
-  }
-  
-  .profile-avatar {
-    width: 64px;
-    height: 64px;
-  }
-  
-  .profile-avatar ion-icon {
-    font-size: 40px;
   }
   
   .profile-name {

@@ -3,7 +3,7 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/tabs/profile" class="back-button"></ion-back-button>
+          <ion-back-button default-href="/tabs/volunteer-profile" class="back-button"></ion-back-button>
         </ion-buttons>
         <ion-title class="page-title">Настройки уведомлений</ion-title>
       </ion-toolbar>
@@ -178,7 +178,7 @@ import {
 
 /* Hero секция */
 .hero-section {
-  background: linear-gradient(135deg, var(--eco-tertiary) 0%, var(--eco-secondary) 100%);
+  background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-secondary) 100%);
   padding: var(--eco-space-6) var(--eco-space-4) var(--eco-space-8);
   color: white;
   text-align: center;
@@ -251,7 +251,7 @@ import {
 
 .section-header ion-icon {
   font-size: 24px;
-  color: var(--eco-tertiary);
+  color: var(--eco-secondary);
 }
 
 .section-header h2 {
@@ -271,7 +271,7 @@ import {
 
 .status-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--eco-space-4);
   padding: var(--eco-space-4);
   background: var(--eco-gray-50);
@@ -289,20 +289,21 @@ import {
 }
 
 .status-icon.web {
-  background: var(--eco-gray-200);
-}
-
-.status-icon.mobile {
-  background: var(--eco-tertiary);
-}
-
-.status-icon ion-icon {
-  font-size: 24px;
-  color: white;
+  background: transparent;
 }
 
 .status-icon.web ion-icon {
+  font-size: 40px;
   color: var(--eco-gray-600);
+}
+
+.status-icon.mobile {
+  background: transparent;
+}
+
+.status-icon.mobile ion-icon {
+  font-size: 40px;
+  color: var(--eco-secondary);
 }
 
 .status-info h3 {
@@ -330,7 +331,7 @@ import {
 }
 
 .status-badge.available {
-  background: var(--eco-success);
+  background: var(--eco-secondary);
   color: white;
 }
 
@@ -360,9 +361,9 @@ import {
 }
 
 .type-icon {
-  width: 40px;
-  height: 40px;
-  background: var(--eco-tertiary);
+  width: 48px;
+  height: 48px;
+  background: transparent;
   border-radius: var(--eco-radius-md);
   display: flex;
   align-items: center;
@@ -371,8 +372,8 @@ import {
 }
 
 .type-icon ion-icon {
-  font-size: 20px;
-  color: white;
+  font-size: 32px;
+  color: var(--eco-secondary);
 }
 
 .type-info h4 {
