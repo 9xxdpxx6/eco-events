@@ -116,7 +116,7 @@
             @click="viewEventDetails(Number(event.id))"
           >
             <div class="event-image">
-              <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+              <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
               <div class="event-status">
                 <span :class="['status-badge', 'eco-status', getEventStatusClass(event)]">
                   {{ getEventStatus(event) }}
@@ -218,6 +218,7 @@ import { useEventsStore, useAuthStore } from '../../stores';
 import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
+import { IMAGE_BASE_URL } from '../../api/client';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -772,6 +773,7 @@ onMounted(() => {
   position: relative;
   width: 100%;
   height: 100%;
+  min-height: 200px;
   max-height: 300px;
   flex-shrink: 0;
   overflow: hidden;

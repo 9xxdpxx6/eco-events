@@ -2,13 +2,11 @@ import axios from 'axios';
 import router from '../router';
 
 const API_URL = 'http://localhost:8080';
+export const IMAGE_BASE_URL = `${API_URL}/uploads/previews`;
 
 export const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 10000, // 10 секунд таймаут
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // Добавляем интерцептор для добавления токена авторизации

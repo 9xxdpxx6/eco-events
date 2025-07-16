@@ -59,6 +59,7 @@
           :items="filteredEvents"
           :column-width="180"
           :gap="12"
+          :key="`masonry-${viewMode}-${selectedFilter}`"
           class="events-grid"
         >
           <template #default="{ item: event }">
@@ -68,7 +69,7 @@
               @click="openEventDetails(Number(event.id))"
             >
               <div class="event-image">
-                <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+                <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
                 <div class="event-status">
                   <span :class="['status-badge', getEventStatus(event.startTime)]">
                     {{ getEventStatusText(event.startTime) }}
@@ -119,7 +120,7 @@
             @click="openEventDetails(Number(event.id))"
           >
             <div class="event-image">
-              <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+              <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
               <div class="event-status">
                 <span :class="['status-badge', getEventStatus(event.startTime)]">
                   {{ getEventStatusText(event.startTime) }}
@@ -244,6 +245,7 @@ import type { EventResponseMediumDTO, EventParticipantDTO, EventParticipantFilte
 import { getEventPlaceholder } from '../../utils/eventImages';
 import { participantsApi } from '../../api/participants';
 import { eventsApi } from '../../api/events';
+import { IMAGE_BASE_URL } from '../../api/client';
 
 const router = useRouter();
 const route = useRoute();
@@ -266,6 +268,9 @@ const filtersVisible = ref(true);
 const lastScrollY = ref(0);
 let searchTimeout: NodeJS.Timeout | null = null;
 const isInitialized = ref(false);
+// Добавляем переменные для сохранения позиции скролла
+const savedScrollPosition = ref(0);
+const isLoadingMoreData = ref(false);
 
 const sortOptions = [
   { value: 'startTime_DESC', label: 'Сначала новые', icon: arrowDownOutline },
@@ -348,6 +353,8 @@ const loadEvents = async (reset = true) => {
   if (reset) {
     isLoading.value = true;
     page.value = 0;
+    // При сбросе (не infinite scroll) очищаем флаг загрузки дополнительных данных
+    isLoadingMoreData.value = false;
   } else {
     page.value += 1; // Увеличиваем страницу ДО создания filterParams
   }
@@ -529,11 +536,17 @@ const loadMoreEvents = async (event: any) => {
     return;
   }
   isLoadingMore.value = true;
+  isLoadingMoreData.value = true;
+  
+  // Сохраняем текущую позицию скролла перед загрузкой
+  if (contentRef.value) {
+    contentRef.value.$el.getScrollElement().then((el: any) => {
+      savedScrollPosition.value = el.scrollTop;
+    });
+  }
+  
   try {
-    await Promise.all([
-      loadEvents(false),
-      new Promise(resolve => setTimeout(resolve, 300))
-    ]);
+    await loadEvents(false);
   } finally {
     isLoadingMore.value = false;
   }
@@ -724,6 +737,25 @@ watch(
   async (newPath) => {
     if (newPath === '/tabs/events-list' && isInitialized.value) {
       await loadUserParticipations();
+    }
+  }
+);
+
+// Добавляем watch для восстановления скролла при обновлении событий
+watch(
+  () => filteredEvents.value.length,
+  async (newLength, oldLength) => {
+    // Восстанавливаем скролл только при добавлении новых элементов (infinite scroll)
+    if (isLoadingMoreData.value && newLength > oldLength && savedScrollPosition.value > 0) {
+      await nextTick();
+      // Минимальная задержка для завершения рендеринга masonry
+      setTimeout(async () => {
+        if (contentRef.value && isLoadingMoreData.value) {
+          const scrollElement = await contentRef.value.$el.getScrollElement();
+          scrollElement.scrollTop = savedScrollPosition.value;
+          isLoadingMoreData.value = false;
+        }
+      }, 50);
     }
   }
 );
@@ -954,6 +986,7 @@ onUnmounted(() => {
   position: relative;
   width: 100%;
   overflow: hidden;
+  min-height: 100px;
 }
 
 /* Изображения в плиточном режиме - адаптируются под пропорции фото */

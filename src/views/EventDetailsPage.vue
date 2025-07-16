@@ -28,7 +28,7 @@
         <!-- Hero секция с изображением -->
         <div class="event-hero">
           <div class="hero-image">
-            <img :src="getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+            <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
             <div class="hero-overlay"></div>
           </div>
           
@@ -311,6 +311,7 @@ import { useParticipantsStore } from '../stores';
 import type { EventResponseMediumDTO } from '../types/api';
 import type { EventParticipantDTO } from '../types/api';
 import { getEventPlaceholder } from '../utils/eventImages';
+import { IMAGE_BASE_URL } from '../api/client';
 
 const router = useRouter();
 const route = useRoute();
