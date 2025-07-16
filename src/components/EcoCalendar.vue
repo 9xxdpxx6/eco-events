@@ -1,87 +1,89 @@
 <template>
-  <!-- Модальное окно календаря -->
-  <div v-if="show" class="date-picker-overlay" @click="closeCalendar">
-    <div class="date-picker-modal" @click.stop>
-      <div class="date-picker-header">
-        <h3>Выберите дату</h3>
-        <ion-button fill="clear" @click="closeCalendar" class="close-button">
-          <ion-icon :icon="closeOutline" />
-        </ion-button>
-      </div>
-      
-      <div class="calendar-container">
-        <div class="calendar-header">
-          <ion-button fill="clear" @click="previousPeriod" class="nav-button">
-            <ion-icon :icon="chevronBackOutline" />
-          </ion-button>
-          <div class="calendar-title" @click="switchToUpperLevel">
-            <h4 v-if="calendarMode === 'days'" class="month-year">{{ formatMonthYear(currentCalendarDate) }}</h4>
-            <h4 v-else-if="calendarMode === 'months'" class="month-year">{{ currentCalendarDate.getFullYear() }}</h4>
-            <h4 v-else class="month-year">{{ getYearRange() }}</h4>
-          </div>
-          <ion-button fill="clear" @click="nextPeriod" class="nav-button">
-            <ion-icon :icon="chevronForwardOutline" />
+  <teleport to="body">
+    <!-- Модальное окно календаря -->
+    <div v-if="show" class="date-picker-overlay" @click="closeCalendar">
+      <div class="date-picker-modal" @click.stop>
+        <div class="date-picker-header">
+          <h3>{{ title }}</h3>
+          <ion-button fill="clear" @click="closeCalendar" class="close-button">
+            <ion-icon :icon="closeOutline" />
           </ion-button>
         </div>
         
-        <!-- Сетка дней -->
-        <div v-if="calendarMode === 'days'">
-          <div class="calendar-weekdays">
-            <div class="weekday">Пн</div>
-            <div class="weekday">Вт</div>
-            <div class="weekday">Ср</div>
-            <div class="weekday">Чт</div>
-            <div class="weekday">Пт</div>
-            <div class="weekday">Сб</div>
-            <div class="weekday">Вс</div>
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <ion-button fill="clear" @click="previousPeriod" class="nav-button">
+              <ion-icon :icon="chevronBackOutline" />
+            </ion-button>
+            <div class="calendar-title" @click="switchToUpperLevel">
+              <h4 v-if="calendarMode === 'days'" class="month-year">{{ formatMonthYear(currentCalendarDate) }}</h4>
+              <h4 v-else-if="calendarMode === 'months'" class="month-year">{{ currentCalendarDate.getFullYear() }}</h4>
+              <h4 v-else class="month-year">{{ getYearRange() }}</h4>
+            </div>
+            <ion-button fill="clear" @click="nextPeriod" class="nav-button">
+              <ion-icon :icon="chevronForwardOutline" />
+            </ion-button>
           </div>
           
-          <div class="calendar-days">
-            <div 
-              v-for="day in calendarDays" 
-              :key="day.key"
-              :class="['calendar-day', {
-                'other-month': day.otherMonth,
-                'selected': day.selected,
-                'today': day.isToday
-              }]"
-              @click="selectCalendarDay(day)"
-            >
-              {{ day.date }}
+          <!-- Сетка дней -->
+          <div v-if="calendarMode === 'days'">
+            <div class="calendar-weekdays">
+              <div class="weekday">Пн</div>
+              <div class="weekday">Вт</div>
+              <div class="weekday">Ср</div>
+              <div class="weekday">Чт</div>
+              <div class="weekday">Пт</div>
+              <div class="weekday">Сб</div>
+              <div class="weekday">Вс</div>
+            </div>
+            
+            <div class="calendar-days">
+              <div 
+                v-for="day in calendarDays" 
+                :key="day.key"
+                :class="['calendar-day', {
+                  'other-month': day.otherMonth,
+                  'selected': day.selected,
+                  'today': day.isToday
+                }]"
+                @click="selectCalendarDay(day)"
+              >
+                {{ day.date }}
+              </div>
             </div>
           </div>
-        </div>
-        
-        <!-- Сетка месяцев -->
-        <div v-else-if="calendarMode === 'months'" class="calendar-months">
-          <div 
-            v-for="month in calendarMonths" 
-            :key="month.key"
-            :class="['calendar-month', {
-              'selected': month.selected
-            }]"
-            @click="selectMonth(month)"
-          >
-            {{ month.name }}
+          
+          <!-- Сетка месяцев -->
+          <div v-else-if="calendarMode === 'months'" class="calendar-months">
+            <div 
+              v-for="month in calendarMonths" 
+              :key="month.key"
+              :class="['calendar-month', {
+                'selected': month.selected
+              }]"
+              @click="selectMonth(month)"
+            >
+              {{ month.name }}
+            </div>
           </div>
-        </div>
-        
-        <!-- Сетка годов -->
-        <div v-else class="calendar-years">
-          <div 
-            v-for="year in calendarYears" 
-            :key="year.key"
-            :class="['calendar-year', {
-              'selected': year.selected
-            }]"
-            @click="selectYear(year)"
-          >
-            {{ year.year }}
+          
+          <!-- Сетка годов -->
+          <div v-else class="calendar-years">
+            <div 
+              v-for="year in calendarYears" 
+              :key="year.key"
+              :class="['calendar-year', {
+                'selected': year.selected
+              }]"
+              @click="selectYear(year)"
+            >
+              {{ year.year }}
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </teleport>
 </template>
 
 <script setup lang="ts">

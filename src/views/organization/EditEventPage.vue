@@ -96,13 +96,14 @@
             <div class="form-fields">
               <div class="field-group">
                 <label class="field-label">Дата проведения *</label>
-                <ion-datetime 
-                  v-model="form.date"
-                  presentation="date"
-                  :min="minDate"
-                  class="eco-datetime"
+                <ion-button 
+                  @click="showCalendar = true" 
+                  class="date-button"
                   :class="{ 'error': !form.date && showErrors }"
-                ></ion-datetime>
+                >
+                  <span>{{ form.date ? formatDateForDisplay(form.date) : 'Выберите дату' }}</span>
+                  <ion-icon :icon="calendarOutline" slot="end" />
+                </ion-button>
               </div>
               
               <div class="time-row">
@@ -120,7 +121,7 @@
                 </div>
                 
                 <div class="field-group half-width">
-                  <label class="field-label">Продолжительность (часов)</label>
+                  <label class="field-label">Длительность (часов)</label>
                   <ion-input 
                     type="number" 
                     v-model="form.duration" 
@@ -152,7 +153,7 @@
                 ></ion-input>
               </div>
               
-              <div class="field-group">
+              <!-- <div class="field-group">
                 <label class="field-label">Подробности места</label>
                 <ion-textarea 
                   v-model="form.locationDetails" 
@@ -160,7 +161,7 @@
                   :rows="2"
                   class="eco-textarea"
                 ></ion-textarea>
-              </div>
+              </div> -->
             </div>
           </div>
 
@@ -253,7 +254,7 @@
           </div>
 
           <!-- Дополнительные настройки -->
-          <div class="form-section eco-card">
+          <!-- <div class="form-section eco-card">
             <div class="section-header">
               <ion-icon :icon="settingsOutline" />
               <h2>Дополнительные настройки</h2>
@@ -283,10 +284,10 @@
                 </div>
               </div>
             </div>
-          </div>
+          </div> -->
 
           <!-- Требования к участникам -->
-          <div class="form-section eco-card">
+          <!-- <div class="form-section eco-card">
             <div class="section-header">
               <ion-icon :icon="peopleOutline" />
               <h2>Требования к участникам</h2>
@@ -315,10 +316,12 @@
                 ></ion-textarea>
               </div>
             </div>
-          </div>
+          </div> -->
         </form>
       </div>
     </ion-content>
+
+    <EcoCalendar v-model:show="showCalendar" v-model="form.date" title="Выберите дату проведения" />
 
     <!-- Кнопка действий -->
     <ion-footer v-if="!isLoading" class="action-footer">
@@ -366,12 +369,13 @@ import {
   IonSpinner,
   toastController
 } from '@ionic/vue';
-import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline } from 'ionicons/icons';
+import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline, calendarOutline } from 'ionicons/icons';
 import { useEventsStore } from '../../stores';
 import { useEventTypesStore } from '../../stores';
 import { useAuthStore } from '../../stores/auth';
 import type { EventTypeDTO } from '../../types/api';
 import { IMAGE_BASE_URL } from '../../api/client';
+import EcoCalendar from '../../components/EcoCalendar.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -405,6 +409,7 @@ const eventTypes = ref<EventTypeDTO[]>([]);
 const previewImageUrl = ref<string>('');
 const selectedPreviewFile = ref<File | null>(null);
 const fileInput = ref<HTMLInputElement>();
+const showCalendar = ref(false);
 
 const minDate = new Date().toISOString();
 
@@ -416,6 +421,16 @@ const isFormValid = computed(() => {
          form.value.time &&
          form.value.location;
 });
+
+const formatDateForDisplay = (isoString: string) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  });
+};
 
 const loadEvent = async () => {
   isLoading.value = true;
@@ -479,15 +494,22 @@ const loadEventTypes = async () => {
   }
 };
 
+const loadUserContactInfo = () => {
+  if (authStore.user) {
+    const user = authStore.user as any;
+    if (!form.value.contactEmail && user.email) {
+      form.value.contactEmail = user.email;
+    }
+    if (!form.value.contactPhone && user.phoneNumber) {
+      form.value.contactPhone = user.phoneNumber;
+    }
+  }
+};
+
 // Функции для форматирования времени
 const formatTimeInput = (event: any) => {
   let value = event.target.value.replace(/[^\d]/g, ''); // Оставляем только цифры
-  
-  if (value.length >= 2) {
-    // Добавляем двоеточие после первых двух цифр
-    value = value.substring(0, 2) + ':' + value.substring(2, 4);
-  }
-  
+
   // Валидация часов (00-23)
   if (value.length >= 2) {
     const hours = parseInt(value.substring(0, 2));
@@ -495,17 +517,25 @@ const formatTimeInput = (event: any) => {
       value = '23' + value.substring(2);
     }
   }
-  
+
   // Валидация минут (00-59)
-  if (value.length >= 5) {
-    const minutes = parseInt(value.substring(3, 5));
+  if (value.length >= 4) {
+    const minutes = parseInt(value.substring(2, 4));
     if (minutes > 59) {
-      value = value.substring(0, 3) + '59';
+      value = value.substring(0, 2) + '59';
     }
+    value = value.substring(0, 4); // Limit to 4 digits
   }
-  
-  form.value.time = value;
-  event.target.value = value;
+
+  let formattedValue = value;
+  if (value.length > 2) {
+    formattedValue = value.substring(0, 2) + ':' + value.substring(2);
+  }
+
+  form.value.time = formattedValue;
+  if (event.target.value !== formattedValue) {
+    event.target.value = formattedValue;
+  }
 };
 
 const handleTimeFocus = (event: any) => {
@@ -628,6 +658,7 @@ const saveChanges = async () => {
 onMounted(() => {
   loadEvent();
   loadEventTypes();
+  loadUserContactInfo();
 });
 </script>
 
@@ -807,32 +838,35 @@ onMounted(() => {
 .eco-textarea,
 .eco-select,
 .eco-datetime {
-  --background: var(--eco-white);
+  --background: var(--eco-gray-100);
   --color: var(--eco-gray-800);
-  --border-color: var(--eco-gray-300);
-  --border-radius: var(--eco-radius-md);
+  --border-radius: var(--eco-radius-lg);
   --padding-start: var(--eco-space-4);
   --padding-end: var(--eco-space-4);
   --padding-top: var(--eco-space-3);
   --padding-bottom: var(--eco-space-3);
   font-size: var(--eco-font-size-base);
-  border: 1px solid var(--border-color);
+  border: 1px solid transparent;
   transition: all var(--eco-transition-normal);
+  --highlight-height: 0;
+  --box-shadow: none;
 }
 
 /* iOS стилизация селекта */
 .ios-select {
-  --background: var(--eco-white);
+  --background: var(--eco-gray-100);
   --color: var(--eco-gray-800);
   border-radius: 12px;
-  border: 1px solid var(--eco-gray-200);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid transparent;
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); */
   transition: all 0.2s ease;
+  --box-shadow: none;
 }
 
 .ios-select:hover {
   border-color: var(--eco-secondary);
-  box-shadow: 0 2px 8px rgba(25, 158, 255, 0.15);
+  /* box-shadow: 0 2px 8px rgba(25, 158, 255, 0.15); */
+  --box-shadow: none;
 }
 
 /* Глобальные стили для iOS action sheet */
@@ -879,7 +913,7 @@ ion-action-sheet .action-sheet-group {
   border-radius: 14px !important;
   margin: 0 16px 8px 16px !important;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); */
 }
 
 ion-action-sheet .action-sheet-button {
@@ -920,7 +954,45 @@ ion-action-sheet .action-sheet-button.action-sheet-cancel {
   border-radius: 14px !important;
   margin: 0 16px 16px 16px !important;
   border-bottom: none !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); */
+}
+
+.date-button {
+  --background: var(--eco-gray-100);
+  --color: var(--eco-gray-800);
+  --border-radius: var(--eco-radius-lg);
+  font-size: var(--eco-font-size-base);
+  height: auto;
+  min-height: 48px;
+  text-transform: none;
+  justify-content: space-between;
+  --padding-start: var(--eco-space-4);
+  --padding-end: var(--eco-space-4);
+  --padding-top: var(--eco-space-3);
+  --padding-bottom: var(--eco-space-3);
+  border: 1px solid transparent;
+  transition: all var(--eco-transition-normal);
+  /* box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); */
+  --box-shadow: none;
+}
+
+.date-button.error {
+  border-color: var(--eco-error);
+}
+
+.date-button:hover {
+  --background: var(--eco-gray-200);
+  --box-shadow: none;
+}
+
+.date-button.ion-activated {
+  --background: var(--eco-gray-200);
+  transform: scale(0.98);
+  --box-shadow: none;
+}
+
+.date-button.ion-focused {
+  box-shadow: 0 0 0 2px var(--eco-secondary);
 }
 
 /* Специальные стили для селекта */
@@ -948,19 +1020,12 @@ ion-action-sheet .action-sheet-button.action-sheet-cancel {
   margin: 0 !important;
 }
 
-.eco-input:focus,
-.eco-textarea:focus,
-.eco-select:focus,
-.eco-datetime:focus {
-  --border-color: var(--eco-secondary);
-  box-shadow: 0 0 0 3px rgba(25, 158, 255, 0.1);
-}
-
 .eco-input.error,
 .eco-textarea.error,
 .eco-select.error,
 .eco-datetime.error {
   --border-color: var(--eco-error);
+  border: 1px solid var(--border-color);
 }
 
 .eco-textarea {
