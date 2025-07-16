@@ -464,8 +464,7 @@ const getEventStatusClass = (event: EventResponseMediumDTO) => {
 };
 
 const getParticipantsCount = (event: EventResponseMediumDTO) => {
-  // Заглушка, пока нет данных об участниках в EventResponseMediumDTO
-  return '0';
+  return event.totalVisitors?.toString() ?? '0';
 };
 
 const createEvent = () => {

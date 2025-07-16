@@ -66,6 +66,7 @@ export interface EventResponseMediumDTO {
   conducted: boolean;
   eventType: EventTypeDTO;
   preview?: string;
+  totalVisitors?: number;
   owner: UserMediumDTO;
 }
 

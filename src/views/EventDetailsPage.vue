@@ -155,13 +155,13 @@
             <div class="card-header">
               <ion-icon :icon="peopleOutline" />
               <h2>Участники</h2>
-              <span class="participants-count">{{ participants.length }}</span>
+              <span class="participants-count">{{ event.totalVisitors ?? participants.length }}</span>
             </div>
             
             <div class="participants-content" v-if="participants.length > 0">
               <div class="participants-list">
                 <div 
-                  v-for="participant in participants" 
+                  v-for="participant in displayedParticipants" 
                   :key="participant.user.id"
                   class="participant-item"
                 >
@@ -173,6 +173,9 @@
                     <p>{{ formatDateShort(participant.createdAt) }}</p>
                   </div>
                 </div>
+              </div>
+              <div v-if="event && event.totalVisitors && event.totalVisitors > 5" class="participants-summary">
+                Показаны последние {{ displayedParticipants.length }} из {{ event.totalVisitors }} участников.
               </div>
             </div>
             
@@ -323,6 +326,12 @@ const event = ref<EventResponseMediumDTO | null>(null);
 const participants = ref<EventParticipantDTO[]>([]);
 const isLoading = ref(false);
 const isRegistering = ref(false);
+
+const displayedParticipants = computed(() => {
+  return [...participants.value]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
+});
 
 const isAdmin = computed(() => authStore.isAdmin);
 const isOrganization = computed(() => authStore.isOrganization);
@@ -858,6 +867,16 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--eco-space-4);
+}
+
+.participants-summary {
+  font-size: var(--eco-font-size-sm);
+  color: var(--eco-gray-500);
+  text-align: center;
+  margin-top: var(--eco-space-4);
+  padding: var(--eco-space-2);
+  background: var(--eco-gray-50);
+  border-radius: var(--eco-radius-md);
 }
 
 .participant-item {
