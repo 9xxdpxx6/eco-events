@@ -27,6 +27,9 @@ export const eventsApi = {
       formData.append('preview', previewFile);
     }
     
+    console.log('Sending event data:', eventData);
+    console.log('FormData has preview file:', !!previewFile);
+    
     const { data } = await client.post<EventResponseMediumDTO>('/api/events/', formData);
     return data;
   },

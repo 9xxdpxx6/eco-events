@@ -420,6 +420,34 @@ const formatDateForDisplay = (isoString: string) => {
   });
 };
 
+const resetForm = () => {
+  form.value = {
+    title: '',
+    description: '',
+    eventTypeId: null,
+    date: '',
+    time: '',
+    duration: '2',
+    location: '',
+    locationDetails: '',
+    contactEmail: '',
+    contactPhone: '',
+    maxParticipants: null,
+    requiresRegistration: true,
+    providesEquipment: false,
+    minAge: null,
+    requirements: ''
+  };
+  showErrors.value = false;
+  previewImageUrl.value = '';
+  selectedPreviewFile.value = null;
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
+  // Загружаем контактную информацию пользователя заново
+  loadUserContactInfo();
+};
+
 const loadEventTypes = async () => {
   try {
     await eventTypesStore.fetchEventTypes();
@@ -458,18 +486,39 @@ const saveEvent = async () => {
     // Получаем тип мероприятия полностью
     const eventType = eventTypes.value.find(t => t.id === Number(form.value.eventTypeId));
     if (!eventType) throw new Error('Тип мероприятия не найден');
+    
+    // Формируем дату и время
     let startTime = '';
-    if (form.value.time && form.value.time.includes('T')) {
-      startTime = form.value.time;
-    } else if (form.value.date && form.value.time) {
-      const datePart = form.value.date.split('T')[0];
+    if (form.value.date && form.value.time) {
+      // Проверяем формат даты
+      const datePart = form.value.date;
       let timePart = form.value.time;
-      if (timePart.length <= 5) timePart += ':00';
-      startTime = new Date(`${datePart}T${timePart}`).toISOString();
+      
+      // Убеждаемся, что время в правильном формате
+      if (timePart.length === 5 && timePart.includes(':')) {
+        timePart += ':00'; // Добавляем секунды если их нет
+      }
+      
+      // Создаем полную дату
+      const fullDateTime = `${datePart}T${timePart}`;
+      console.log('Full datetime:', fullDateTime);
+      
+      // Проверяем, что дата корректная
+      const testDate = new Date(fullDateTime);
+      if (isNaN(testDate.getTime())) {
+        throw new Error('Некорректная дата или время');
+      }
+      
+      startTime = testDate.toISOString();
+    } else {
+      throw new Error('Не указана дата или время');
     }
-    if (!startTime || isNaN(Date.parse(startTime))) throw new Error('Некорректная дата/время');
+    
+    console.log('Start time:', startTime);
+    
     const duration = Number(form.value.duration) || 2;
     const endTime = new Date(new Date(startTime).getTime() + duration * 60 * 60 * 1000).toISOString();
+    
     const eventData = {
       title: form.value.title,
       description: form.value.description,
@@ -480,6 +529,9 @@ const saveEvent = async () => {
       eventTypeId: eventType.id!,
       userId: authStore.user?.id || 1
     };
+    
+    console.log('Event data:', eventData);
+    
     await eventsStore.createEvent(eventData, selectedPreviewFile.value || undefined);
     const toast = await toastController.create({
       message: 'Мероприятие успешно создано',
@@ -487,6 +539,10 @@ const saveEvent = async () => {
       color: 'success'
     });
     await toast.present();
+    
+    // Сбрасываем форму после успешного создания
+    resetForm();
+    
     router.push('/tabs/events-management');
   } catch (error) {
     console.error('Error creating event:', error);
@@ -1099,6 +1155,7 @@ ion-action-sheet .action-sheet-button.action-sheet-cancel {
   height: 56px;
   font-size: var(--eco-font-size-base);
   font-weight: var(--eco-font-weight-semibold);
+  --box-shadow: none;
 }
 
 .create-button:disabled {

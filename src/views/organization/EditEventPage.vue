@@ -1258,6 +1258,7 @@ ion-datetime::part(time-button) {
   height: 56px;
   font-size: var(--eco-font-size-base);
   font-weight: var(--eco-font-weight-semibold);
+  --box-shadow: none;
 }
 
 .save-button-main:disabled {
