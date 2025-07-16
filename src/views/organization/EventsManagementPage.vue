@@ -2,7 +2,7 @@
   <ion-page class="events-management-page">
     <ion-header>
       <ion-toolbar>
-        <ion-title class="page-title">Мои мероприятия</ion-title>
+        <ion-title class="page-title" @click="scrollToTop">Мои мероприятия</ion-title>
         <ion-buttons slot="end">
           <ion-button fill="clear" class="create-button" @click="createEvent">
             <ion-icon :icon="addOutline" />
@@ -12,6 +12,14 @@
     </ion-header>
     
     <ion-content ref="contentRef" class="events-content" :scroll-events="true" @ionScroll="onScroll">
+      <!-- Pull-to-refresh -->
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content
+          pulling-text="Потяните для обновления"
+          refreshing-text="Загружаем мероприятия..."
+        ></ion-refresher-content>
+      </ion-refresher>
+      
       <!-- Hero секция со статистикой -->
       <div class="stats-hero">
         <div class="hero-background"></div>
@@ -22,7 +30,7 @@
             </div>
             <div class="stats-info">
               <h2>Управление мероприятиями</h2>
-              <p>{{ events.length }} мероприятий создано</p>
+              <h5>Всего мероприятий: {{ allEvents.length }}</h5>
             </div>
           </div>
           
@@ -69,15 +77,12 @@
       <!-- Список мероприятий -->
       <div class="events-section">
         <!-- Лоадер -->
-      <div v-if="isLoading" class="loading-container">
-          <div class="loading-spinner">
-            <ion-spinner name="crescent" color="primary"></ion-spinner>
-          </div>
-          <p class="loading-text">Загружаем мероприятия...</p>
+        <div v-if="isLoading" class="loader-container">
+          <EventListLoader />
         </div>
 
         <!-- Пустое состояние -->
-        <div v-else-if="events.length === 0" class="empty-state">
+        <div v-else-if="allEvents.length === 0" class="empty-state">
           <div class="empty-icon">
             <ion-icon :icon="calendarOutline" />
           </div>
@@ -110,7 +115,7 @@
         <!-- Список мероприятий -->
         <div v-else class="events-list">
           <div 
-            v-for="event in filteredEvents" 
+            v-for="event in paginatedEvents" 
             :key="event.id ?? Math.random()"
             class="event-card eco-card eco-list-item"
             @click="viewEventDetails(Number(event.id))"
@@ -131,19 +136,19 @@
                   <ion-button 
                     fill="clear" 
                     size="small"
+                    class="action-btn delete-btn" 
+                    @click="confirmDeleteEvent(event)"
+                  >
+                    <ion-icon :icon="trashOutline" />
+                  </ion-button>
+                  <ion-button 
+                    fill="clear" 
+                    size="small"
                     class="action-btn edit-btn" 
                     @click="editEvent(Number(event.id))"
                   >
                     <ion-icon :icon="createOutline" />
                   </ion-button>
-                  <ion-button 
-                    fill="clear" 
-                    size="small"
-                    class="action-btn delete-btn" 
-                    @click="confirmDeleteEvent(event)"
-                  >
-                    <ion-icon :icon="trashOutline" />
-        </ion-button>
                 </div>
               </div>
               
@@ -173,6 +178,18 @@
         </div>
       </div>
 
+      <!-- Бесконечная прокрутка -->
+      <ion-infinite-scroll 
+        @ionInfinite="loadMoreEvents" 
+        :disabled="!hasMore"
+        threshold="100px"
+      >
+        <ion-infinite-scroll-content
+          loading-spinner="bubbles"
+          loading-text="Загрузка..."
+        ></ion-infinite-scroll-content>
+      </ion-infinite-scroll>
+
       <!-- FAB кнопка -->
       <ion-fab vertical="bottom" horizontal="end" slot="fixed">
         <ion-fab-button @click="createEvent" class="create-fab">
@@ -197,11 +214,14 @@ import {
   IonIcon,
   IonChip,
   IonLabel,
-  IonSpinner,
   IonFab,
   IonFabButton,
   alertController,
-  toastController
+  toastController,
+  IonRefresher,
+  IonRefresherContent,
+  IonInfiniteScroll,
+  IonInfiniteScrollContent,
 } from '@ionic/vue';
 import {
   addOutline,
@@ -218,26 +238,53 @@ import { useEventsStore, useAuthStore } from '../../stores';
 import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
+import EventListLoader from '../EventListLoader.vue';
 import { IMAGE_BASE_URL } from '../../api/client';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
 const authStore = useAuthStore();
 
-const events = ref<EventResponseMediumDTO[]>([]);
+const allEvents = ref<EventResponseMediumDTO[]>([]);
 const filteredEvents = ref<EventResponseMediumDTO[]>([]);
 const selectedFilter = ref('all');
 const isLoading = ref(false);
-const page = ref(0);
-const size = 50;
+const page = ref(1);
+const size = 15; // Количество отображаемых за раз
 const searchText = ref('');
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 const contentRef = ref();
 const filtersVisible = ref(true);
 const lastScrollY = ref(0);
 
+const scrollToTop = async () => {
+  if (contentRef.value) {
+    await contentRef.value.$el.scrollToTop(300);
+  }
+};
+
+const handleRefresh = async (event: any) => {
+  await loadAllEvents(true);
+  event.target.complete();
+};
+
+const paginatedEvents = computed(() => {
+  return filteredEvents.value.slice(0, page.value * size);
+});
+
+const hasMore = computed(() => {
+  return paginatedEvents.value.length < filteredEvents.value.length;
+});
+
+const loadMoreEvents = (event: any) => {
+  if (hasMore.value) {
+    page.value++;
+  }
+  event.target.complete();
+};
+
 const filters = computed(() => [
-  { value: 'all', label: 'Все', count: events.value.length },
+  { value: 'all', label: 'Все', count: allEvents.value.length },
   { value: 'upcoming', label: 'Предстоящие', count: upcomingEventsCount.value },
   { value: 'active', label: 'Активные', count: activeEventsCount.value },
   { value: 'past', label: 'Завершённые', count: completedEventsCount.value },
@@ -245,11 +292,12 @@ const filters = computed(() => [
 
 const setFilter = (value: string) => {
   selectedFilter.value = value;
+  page.value = 1; // Сбрасываем пагинацию при смене фильтра
 };
 
 const upcomingEventsCount = computed(() => {
   const now = new Date();
-  return events.value.filter((event: EventResponseMediumDTO) => {
+  return allEvents.value.filter((event: EventResponseMediumDTO) => {
     const eventDate = new Date(event.startTime);
     return eventDate > now;
   }).length;
@@ -257,7 +305,7 @@ const upcomingEventsCount = computed(() => {
 
 const activeEventsCount = computed(() => {
   const now = new Date();
-  return events.value.filter((event: EventResponseMediumDTO) => {
+  return allEvents.value.filter((event: EventResponseMediumDTO) => {
     const eventDate = new Date(event.startTime);
     const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
     return eventDate <= now && eventEndTime > now;
@@ -266,7 +314,7 @@ const activeEventsCount = computed(() => {
 
 const completedEventsCount = computed(() => {
   const now = new Date();
-  return events.value.filter((event: EventResponseMediumDTO) => {
+  return allEvents.value.filter((event: EventResponseMediumDTO) => {
     const eventDate = new Date(event.startTime);
     const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
     return eventEndTime <= now;
@@ -287,23 +335,28 @@ const onScroll = (event: any) => {
   lastScrollY.value = currentScrollY;
 };
 
-const loadEvents = async (hotSearch = false) => {
+const loadAllEvents = async (forceRefresh = false) => {
   isLoading.value = true;
+  page.value = 1; // Сброс пагинации
   try {
+    const userId = authStore.user?.id;
+    if (!userId) {
+      allEvents.value = [];
+      return;
+    }
+    
+    // Загружаем ВСЕ события, игнорируя пагинацию
     await eventsStore.fetchEventsSearch({
-      keyword: searchText.value,
-      page: page.value,
-      size: size
+      userId: userId,
+      sortBy: 'id',
+      sortOrder: 'DESC',
+      size: 1000 // Устанавливаем большой размер страницы для получения всех
     });
     
-    // Фильтруем только свои мероприятия
-    const userId = authStore.user?.id;
-    const allEvents = eventsStore.getEvents;
-    events.value = allEvents.filter(event => event.owner?.id === userId);
+    allEvents.value = eventsStore.getEvents;
     
-    filterEvents();
   } catch (error) {
-    console.error('Error loading events:', error);
+    console.error('Error loading all events:', error);
     const toast = await toastController.create({
       message: 'Ошибка загрузки мероприятий',
       duration: 3000,
@@ -315,42 +368,54 @@ const loadEvents = async (hotSearch = false) => {
   }
 };
 
-const filterEvents = () => {
-  let filtered = [...events.value];
+const filterAndSearchEvents = () => {
+  let filtered = [...allEvents.value];
   const now = new Date();
   
+  // 1. Фильтрация по статусу
   switch (selectedFilter.value) {
     case 'upcoming':
-      filtered = filtered.filter((event: EventResponseMediumDTO) => {
-        const eventDate = new Date(event.startTime);
-        return eventDate > now;
-      });
+      filtered = filtered.filter((event: EventResponseMediumDTO) => new Date(event.startTime) > now);
       break;
     case 'active':
       filtered = filtered.filter((event: EventResponseMediumDTO) => {
         const eventDate = new Date(event.startTime);
-        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
         return eventDate <= now && eventEndTime > now;
       });
       break;
     case 'past':
       filtered = filtered.filter((event: EventResponseMediumDTO) => {
         const eventDate = new Date(event.startTime);
-        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
         return eventEndTime <= now;
       });
       break;
   }
+
+  // 2. Поиск по текстовому полю
+  if (searchText.value.trim()) {
+    const searchLower = searchText.value.trim().toLowerCase();
+    filtered = filtered.filter((event: EventResponseMediumDTO) =>
+      event.title.toLowerCase().includes(searchLower) ||
+      (event.description && event.description.toLowerCase().includes(searchLower))
+    );
+  }
   
-  // Сортировка: предстоящие по возрастанию даты, прошедшие по убыванию
+  // 3. Сортировка
   filtered.sort((a: EventResponseMediumDTO, b: EventResponseMediumDTO) => {
     const aDate = new Date(a.startTime);
     const bDate = new Date(b.startTime);
     
+    // Для прошедших - по убыванию даты, для остальных - по возрастанию
     if (selectedFilter.value === 'past') {
-      return bDate.getTime() - aDate.getTime(); // убывание для прошедших
+      return bDate.getTime() - aDate.getTime();
     } else {
-      return aDate.getTime() - bDate.getTime(); // возрастание для предстоящих/активных
+      // Для 'all', 'upcoming', 'active' сортируем по id desc, как было изначально
+      if (selectedFilter.value === 'all') {
+        return (b.id ?? 0) - (a.id ?? 0);
+      }
+      return aDate.getTime() - bDate.getTime();
     }
   });
   
@@ -433,8 +498,9 @@ const confirmDeleteEvent = async (event: EventResponseMediumDTO) => {
           try {
             if (!event.id) return;
             await eventsStore.deleteEvent(event.id);
-            events.value = events.value.filter(e => e.id !== event.id);
-            filterEvents();
+            // Обновляем allEvents и filteredEvents
+            allEvents.value = allEvents.value.filter(e => e.id !== event.id);
+            filterAndSearchEvents();
             
             const toast = await toastController.create({
               message: 'Мероприятие удалено',
@@ -467,20 +533,35 @@ const clearSearch = () => {
 watch(searchText, () => {
   if (debounceTimeout) clearTimeout(debounceTimeout);
   debounceTimeout = setTimeout(() => {
-    loadEvents(true);
+    page.value = 1;
+    filterAndSearchEvents();
   }, 400);
 });
 
-watch(selectedFilter, filterEvents);
+watch(selectedFilter, filterAndSearchEvents);
+
+watch(allEvents, filterAndSearchEvents);
 
 onMounted(() => {
-  loadEvents();
+  loadAllEvents();
 });
 </script>
 
 <style scoped>
 .events-management-page {
   --background: var(--eco-background-secondary);
+}
+
+.events-management-page ion-header {
+  box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
+  --box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
+  position: relative;
+  z-index: 1000;
+}
+
+.events-management-page ion-toolbar {
+  box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
+  --box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
 }
 
 .events-content {
@@ -490,6 +571,12 @@ onMounted(() => {
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
+  text-align: left;
+  cursor: pointer;
+}
+
+.page-title:hover {
+  color: var(--eco-primary);
 }
 
 .create-button {
@@ -526,10 +613,6 @@ onMounted(() => {
 }
 
 .stats-icon {
-  width: 56px;
-  height: 56px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -537,7 +620,7 @@ onMounted(() => {
 }
 
 .stats-icon ion-icon {
-  font-size: 28px;
+  font-size: 48px;
   color: white;
 }
 
@@ -549,6 +632,13 @@ onMounted(() => {
   color: white;
 }
 
+.stats-info h5 {
+  font-weight: var(--eco-font-weight-regular);
+  font-size: var(--eco-font-size-md);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .stats-info p {
   font-size: var(--eco-font-size-sm);
   margin: 0;
@@ -558,7 +648,7 @@ onMounted(() => {
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--eco-space-4);
+  gap: var(--eco-space-2);
 }
 
 .stat-item {
@@ -666,23 +756,8 @@ onMounted(() => {
   padding: 0 var(--eco-space-4) var(--eco-space-6);
 }
 
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--eco-space-12);
-  text-align: center;
-}
-
-.loading-spinner {
-  margin-bottom: var(--eco-space-4);
-}
-
-.loading-text {
-  font-size: var(--eco-font-size-base);
-  color: var(--eco-gray-500);
-  margin: 0;
+.loader-container {
+  padding: var(--eco-space-6);
 }
 
 .empty-state,
@@ -825,8 +900,7 @@ onMounted(() => {
 
 .action-btn {
   --color: var(--eco-gray-500);
-  width: 32px;
-  height: 32px;
+  font-size: 20px;
 }
 
 .action-btn:hover {
@@ -892,11 +966,6 @@ onMounted(() => {
 
 /* Отзывчивость */
 @media (max-width: 480px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-    gap: var(--eco-space-3);
-  }
-  
   .stat-value {
     font-size: var(--eco-font-size-xl);
   }
