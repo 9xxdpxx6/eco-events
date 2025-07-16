@@ -281,6 +281,11 @@ body {
   color: var(--eco-white);
 }
 
+.eco-status-active {
+  background-color: var(--eco-success);
+  color: var(--eco-white);
+}
+
 .eco-status-finished {
   background-color: var(--eco-gray-400);
   color: var(--eco-white);

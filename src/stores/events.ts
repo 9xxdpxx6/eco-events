@@ -164,7 +164,7 @@ export const useEventsStore = defineStore('events', {
       this.isLoading = true;
       this.error = null;
       try {
-        const events = await eventsApi.searchByUser(filter);
+        const events = await eventsApi.searchWithUser(filter);
         this.events = events;
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при поиске событий пользователя';

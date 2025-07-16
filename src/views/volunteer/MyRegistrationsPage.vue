@@ -64,65 +64,16 @@
           />
         </div>
         
-        <div class="filters-card eco-card">
-          <div class="filters-header">
-            <ion-icon :icon="funnelOutline" />
-            <span>Фильтр по дате события</span>
-          </div>
-          
-          <div class="filters-content">
-            <div class="date-filter">
-              <div class="date-input-wrapper" @click="openDatePicker('from')">
-                <ion-input
-                :value="dateFromDisplay"
-                readonly
-                  class="date-input"
-                  placeholder="С: выберите дату"
-                ></ion-input>
-                <ion-icon :icon="calendarOutline" class="date-icon" />
-                <ion-button 
-                  v-if="dateFrom"
-                  fill="clear" 
-                  size="small" 
-                  class="clear-date-button"
-                  @click.stop="clearDateFrom"
-                >
-                  <ion-icon :icon="closeOutline" slot="icon-only" />
-                </ion-button>
-            </div>
-          </div>
-            
-            <div class="date-filter">
-              <div class="date-input-wrapper" @click="openDatePicker('to')">
-                <ion-input
-                :value="dateToDisplay"
-                readonly
-                  class="date-input"
-                  placeholder="По: выберите дату"
-                ></ion-input>
-                <ion-icon :icon="calendarOutline" class="date-icon" />
-                <ion-button 
-                  v-if="dateTo"
-                  fill="clear" 
-                  size="small" 
-                  class="clear-date-button"
-                  @click.stop="clearDateTo"
-                >
-                  <ion-icon :icon="closeOutline" slot="icon-only" />
-                </ion-button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DateRangeFilter
+          v-model="dateRange"
+          title="Фильтр по дате события"
+          from-placeholder="С: дата события"
+          to-placeholder="По: дата события"
+          @change="onDateRangeChange"
+        />
       </div>
 
-    <!-- Календарь -->
-    <EcoCalendar 
-      :show="showDatePicker" 
-      :title="currentDateType === 'from' ? 'Выберите дату начала' : 'Выберите дату окончания'"
-      @update:show="showDatePicker = $event"
-      @select="onDateSelect"
-    />
+
 
       <!-- Список регистраций -->
       <div class="registrations-section">
@@ -227,6 +178,7 @@ import ErrorState from '../../components/ErrorState.vue';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
+import DateRangeFilter from '../../components/DateRangeFilter.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -238,10 +190,7 @@ const statsLoading = ref(true);
 const error = ref<Error | null>(null);
 
 const searchText = ref('');
-const dateFrom = ref<string>('');
-const dateTo = ref<string>('');
-const showDatePicker = ref(false);
-const currentDateType = ref<'from' | 'to'>('from');
+const dateRange = ref({ from: '', to: '' });
 
 const page = ref(0);
 const size = 20;
@@ -252,9 +201,6 @@ const upcomingCount = ref(0);
 const completedCount = ref(0);
 const cancelledCount = ref(0);
 const totalCount = computed(() => upcomingCount.value + completedCount.value + cancelledCount.value);
-
-const dateFromDisplay = computed(() => dateFrom.value ? formatDateInput(dateFrom.value) : '');
-const dateToDisplay = computed(() => dateTo.value ? formatDateInput(dateTo.value) : '');
 
 const filteredRegistrations = computed(() => {
   if (!searchText.value) {
@@ -267,42 +213,16 @@ const filteredRegistrations = computed(() => {
 });
 
 const hasActiveFilters = computed(() => {
-  const result = !!(searchText.value || dateFrom.value || dateTo.value);
+  const result = !!(searchText.value || dateRange.value.from || dateRange.value.to);
   return result;
 });
 
-function formatDateInput(dateStr: string) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('ru-RU');
-}
-
-function openDatePicker(type: 'from' | 'to') {
-  currentDateType.value = type;
-  showDatePicker.value = true;
-}
-
-function onDateSelect(dateString: string) {
-  if (currentDateType.value === 'from') {
-    dateFrom.value = dateString;
-  } else {
-    dateTo.value = dateString;
-  }
-  loadRegistrations(true); // Применяем фильтр и загружаем заново
-}
-
-const clearDateFrom = () => {
-  dateFrom.value = '';
-  loadRegistrations(true); // Перезагружаем данные
-};
-
-const clearDateTo = () => {
-  dateTo.value = '';
-  loadRegistrations(true); // Перезагружаем данные
+const onDateRangeChange = () => {
+  loadRegistrations(true);
 };
 
 const clearFilters = () => {
-  dateFrom.value = '';
-  dateTo.value = '';
+  dateRange.value = { from: '', to: '' };
   searchText.value = '';
   loadRegistrations(true); // Сбрасываем фильтр и загружаем заново
 };
@@ -402,14 +322,21 @@ const loadRegistrations = async (reset = false) => {
     userId: authStore.user.id,
     page: page.value,
     size,
-    sortBy: 'createdAt',
-    sortOrder: 'DESC'
+    // sortBy и sortOrder выставляем ниже
   };
-  
   // Добавляем пользовательские фильтры только если они заданы
-  if (dateFrom.value) filter.eventStartTimeFrom = dateFrom.value + 'T00:00:00';
-  if (dateTo.value) filter.eventStartTimeTo = dateTo.value + 'T23:59:59';
-  
+  if (dateRange.value.from) filter.eventStartTimeFrom = dateRange.value.from + 'T00:00:00';
+  if (dateRange.value.to) filter.eventStartTimeTo = dateRange.value.to + 'T23:59:59';
+
+  // Если есть фильтр по дате события — сортируем по дате события, иначе по дате создания
+  if (dateRange.value.from || dateRange.value.to) {
+    filter.sortBy = 'eventStartTime';
+    filter.sortOrder = 'ASC';
+  } else {
+    filter.sortBy = 'createdAt';
+    filter.sortOrder = 'DESC';
+  }
+
   // Поиск по названию (если поддерживается API)
   // if (searchText.value) filter.title = searchText.value;
   try {

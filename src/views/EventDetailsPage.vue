@@ -28,7 +28,14 @@
         <!-- Hero секция с изображением -->
         <div class="event-hero">
           <div class="hero-image">
-            <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+            <img 
+              :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" 
+              alt="Event image"
+              :style="{
+                'object-fit': event.preview ? 'cover' : 'contain',
+                'width': event.preview ? '100%' : 'auto'
+              }"
+            />
             <div class="hero-overlay"></div>
           </div>
           
@@ -73,6 +80,16 @@
                 </div>
               </div>
               
+              <div class="info-item" v-if="eventDuration">
+                <div class="info-icon">
+                  <ion-icon :icon="hourglassOutline" />
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Продолжительность</span>
+                  <span class="info-value">{{ eventDuration }}</span>
+                </div>
+              </div>
+
               <div class="info-item">
                 <div class="info-icon">
                   <ion-icon :icon="locationOutline" />
@@ -90,6 +107,16 @@
                 <div class="info-content">
                   <span class="info-label">Категория</span>
                   <span class="info-value">{{ event.eventType?.name || 'Не указана' }}</span>
+                </div>
+              </div>
+              
+              <div class="info-item" v-if="!isOrganization && event && typeof event.totalVisitors === 'number'">
+                <div class="info-icon">
+                  <ion-icon :icon="peopleOutline" />
+                </div>
+                <div class="info-content">
+                  <span class="info-label">Участников</span>
+                  <span class="info-value">{{ event.totalVisitors }}</span>
                 </div>
               </div>
             </div>
@@ -185,6 +212,30 @@
             </div>
           </div>
 
+          <!-- Кнопки управления (для организаций) -->
+          <div v-if="event && isOrganization && isMyEvent" class="admin-controls-card">
+            <div class="admin-actions">
+              <ion-button
+                color="danger"
+                class="admin-button"
+                expand="block"
+                @click="deleteEvent"
+              >
+                <ion-icon :icon="trashOutline" slot="start" />
+                Удалить
+              </ion-button>
+              <ion-button
+                fill="outline"
+                class="admin-button"
+                expand="block"
+                @click="editEvent"
+              >
+                <ion-icon :icon="createOutline" slot="start" />
+                Редактировать
+              </ion-button>
+            </div>
+          </div>
+
           <!-- Статус участия (для зарегистрированных волонтёров) -->
           <div v-if="event && !isOrganization && isUserRegistered">
             <!-- Отмена участия (если мероприятие не завершено) -->
@@ -243,29 +294,6 @@
       </div>
     </ion-footer>
 
-    <!-- Кнопки управления (для организаций) -->
-          <ion-footer v-if="event && isOrganization && isMyEvent" class="admin-footer">
-      <div class="admin-actions">
-        <ion-button 
-          fill="outline" 
-          size="large" 
-          class="admin-button"
-          @click="editEvent"
-        >
-          <ion-icon :icon="createOutline" slot="start" />
-          Редактировать
-        </ion-button>
-        <ion-button 
-          color="danger" 
-          size="large" 
-          class="admin-button"
-          @click="deleteEvent"
-        >
-          <ion-icon :icon="trashOutline" slot="start" />
-          Удалить
-        </ion-button>
-      </div>
-    </ion-footer>
   </ion-page>
 </template>
 
@@ -306,7 +334,8 @@ import {
   informationCircleOutline,
   documentTextOutline,
   personOutline,
-  checkmarkCircleOutline
+  checkmarkCircleOutline,
+  hourglassOutline
 } from 'ionicons/icons';
 import { useAuthStore } from '../stores/auth';
 import { useEventsStore } from '../stores';
@@ -353,6 +382,42 @@ const isEventFinished = computed(() => {
   const now = new Date();
   const eventDate = new Date(event.value.startTime);
   return eventDate < now;
+});
+
+const eventDuration = computed(() => {
+  if (!event.value || !event.value.startTime || !event.value.endTime) return null;
+
+  const getHourWord = (h: number) => {
+    if (h % 10 === 1 && h % 100 !== 11) return 'час';
+    if ([2, 3, 4].includes(h % 10) && ![12, 13, 14].includes(h % 100)) return 'часа';
+    return 'часов';
+  };
+
+  const getMinuteWord = (m: number) => {
+    if (m % 10 === 1 && m % 100 !== 11) return 'минута';
+    if ([2, 3, 4].includes(m % 10) && ![12, 13, 14].includes(m % 100)) return 'минуты';
+    return 'минут';
+  };
+
+  const start = new Date(event.value.startTime);
+  const end = new Date(event.value.endTime);
+  const diff = end.getTime() - start.getTime();
+
+  if (diff <= 0) return null;
+
+  const totalMinutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  const parts = [];
+  if (hours > 0) {
+    parts.push(`${hours} ${getHourWord(hours)}`);
+  }
+  if (minutes > 0) {
+    parts.push(`${minutes} ${getMinuteWord(minutes)}`);
+  }
+
+  return parts.length > 0 ? parts.join(' ') : null;
 });
 
 const loadEvent = async () => {
@@ -419,7 +484,7 @@ const toggleRegistration = async () => {
 
 const editEvent = () => {
   if (event.value) {
-    router.push(`/event/${event.value.id}/edit`);
+    router.push(`/edit-event/${event.value.id}`);
   }
 };
 
@@ -610,12 +675,12 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
+  text-align: center;
+  background-color: var(--eco-gray-100);
 }
 
 .hero-image img {
-  width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
 .hero-overlay {
@@ -983,9 +1048,22 @@ onMounted(() => {
   --color: var(--eco-gray-700);
 }
 
+/* Карточка управления */
+.admin-controls-card {
+  background: var(--eco-white);
+  border-radius: var(--eco-radius-lg);
+  padding: var(--eco-space-4);
+  border: 1px solid var(--eco-gray-200);
+}
+
+.admin-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--eco-space-3);
+}
+
 /* Footer действий */
-.action-footer,
-.admin-footer {
+.action-footer {
   padding: var(--eco-space-2);
   background: var(--eco-white);
   border-top: 1px solid var(--eco-gray-200);
@@ -994,11 +1072,6 @@ onMounted(() => {
 .footer-content {
   display: flex;
   justify-content: center;
-  gap: var(--eco-space-3);
-}
-
-.admin-actions {
-  display: flex;
   gap: var(--eco-space-3);
 }
 
@@ -1048,7 +1121,6 @@ onMounted(() => {
 }
 
 .admin-button {
-  flex: 1;
   height: 48px;
   font-weight: var(--eco-font-weight-medium);
   --border-radius: var(--eco-radius-lg);
@@ -1180,10 +1252,6 @@ onMounted(() => {
   
   .info-grid {
     gap: var(--eco-space-4);
-  }
-  
-  .admin-actions {
-    flex-direction: column;
   }
   
   .cancel-card {

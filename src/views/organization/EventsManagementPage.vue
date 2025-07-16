@@ -72,6 +72,15 @@
             </ion-chip>
           </div>
         </div>
+        
+        <!-- Фильтры по дате -->
+        <DateRangeFilter
+          v-model="dateRange"
+          title="Фильтр по дате события"
+          from-placeholder="С: дата начала"
+          to-placeholder="По: дата начала"
+          @change="onDateRangeChange"
+        />
       </div>
 
       <!-- Список мероприятий -->
@@ -121,7 +130,13 @@
             @click="viewEventDetails(Number(event.id))"
           >
             <div class="event-image">
-              <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+              <img 
+                :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" 
+                alt="Event image" 
+                :style="{ 
+                  'width': event.preview ? '100%' : 'auto'
+                }"
+              />
               <div class="event-status">
                 <span :class="['status-badge', 'eco-status', getEventStatusClass(event)]">
                   {{ getEventStatus(event) }}
@@ -132,24 +147,6 @@
             <div class="event-content">
               <div class="event-header">
                 <h3 class="event-title">{{ event.title }}</h3>
-                <div class="event-actions" @click.stop>
-                  <ion-button 
-                    fill="clear" 
-                    size="small"
-                    class="action-btn delete-btn" 
-                    @click="confirmDeleteEvent(event)"
-                  >
-                    <ion-icon :icon="trashOutline" />
-                  </ion-button>
-                  <ion-button 
-                    fill="clear" 
-                    size="small"
-                    class="action-btn edit-btn" 
-                    @click="editEvent(Number(event.id))"
-                  >
-                    <ion-icon :icon="createOutline" />
-                  </ion-button>
-                </div>
               </div>
               
               <div class="event-meta">
@@ -171,6 +168,24 @@
                 <div class="stat-chip">
                   <ion-icon :icon="peopleOutline" />
                   <span>Участников: {{ getParticipantsCount(event) }}</span>
+                </div>
+                <div class="event-actions" @click.stop>
+                  <ion-button 
+                    fill="clear" 
+                    size="small"
+                    class="action-btn delete-btn" 
+                    @click="confirmDeleteEvent(event)"
+                  >
+                    <ion-icon :icon="trashOutline" />
+                  </ion-button>
+                  <ion-button 
+                    fill="clear" 
+                    size="small"
+                    class="action-btn edit-btn" 
+                    @click="editEvent(Number(event.id))"
+                  >
+                    <ion-icon :icon="createOutline" />
+                  </ion-button>
                 </div>
               </div>
             </div>
@@ -239,6 +254,7 @@ import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import EventListLoader from '../EventListLoader.vue';
+import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import { IMAGE_BASE_URL } from '../../api/client';
 
 const router = useRouter();
@@ -252,6 +268,7 @@ const isLoading = ref(false);
 const page = ref(1);
 const size = 15; // Количество отображаемых за раз
 const searchText = ref('');
+const dateRange = ref({ from: '', to: '' });
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 const contentRef = ref();
 const filtersVisible = ref(true);
@@ -393,7 +410,24 @@ const filterAndSearchEvents = () => {
       break;
   }
 
-  // 2. Поиск по текстовому полю
+  // 2. Фильтрация по дате
+  if (dateRange.value.from) {
+    const fromDate = new Date(dateRange.value.from + 'T00:00:00');
+    filtered = filtered.filter((event: EventResponseMediumDTO) => {
+      const eventDate = new Date(event.startTime);
+      return eventDate >= fromDate;
+    });
+  }
+  
+  if (dateRange.value.to) {
+    const toDate = new Date(dateRange.value.to + 'T23:59:59');
+    filtered = filtered.filter((event: EventResponseMediumDTO) => {
+      const eventDate = new Date(event.startTime);
+      return eventDate <= toDate;
+    });
+  }
+
+  // 3. Поиск по текстовому полю
   if (searchText.value.trim()) {
     const searchLower = searchText.value.trim().toLowerCase();
     filtered = filtered.filter((event: EventResponseMediumDTO) =>
@@ -402,7 +436,7 @@ const filterAndSearchEvents = () => {
     );
   }
   
-  // 3. Сортировка
+  // 4. Сортировка
   filtered.sort((a: EventResponseMediumDTO, b: EventResponseMediumDTO) => {
     const aDate = new Date(a.startTime);
     const bDate = new Date(b.startTime);
@@ -527,6 +561,12 @@ const confirmDeleteEvent = async (event: EventResponseMediumDTO) => {
 const clearSearch = () => {
   searchText.value = '';
   selectedFilter.value = 'all';
+  dateRange.value = { from: '', to: '' };
+};
+
+const onDateRangeChange = () => {
+  page.value = 1;
+  filterAndSearchEvents();
 };
 
 watch(searchText, () => {
@@ -682,15 +722,18 @@ onMounted(() => {
   z-index: 100;
   background: var(--eco-white);
   border-bottom: 1px solid var(--eco-gray-200);
+  border-radius: var(--eco-radius-lg);
   padding: var(--eco-space-4);
   transform: translateY(0);
   transition: transform var(--eco-transition-normal), opacity var(--eco-transition-normal);
   opacity: 1;
   margin-bottom: var(--eco-space-4);
+  margin-left: var(--eco-space-4);
+  margin-right: var(--eco-space-4);
 }
 
 .search-filters-container.filters-hidden {
-  transform: translateY(-120px);
+  transform: translateY(-200px);
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
@@ -851,12 +894,12 @@ onMounted(() => {
   max-height: 300px;
   flex-shrink: 0;
   overflow: hidden;
+  border-radius: var(--eco-radius-lg);
+  text-align: center;
 }
 
 .event-image img {
-  width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
 .event-status {
@@ -899,7 +942,7 @@ onMounted(() => {
 
 .action-btn {
   --color: var(--eco-gray-500);
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .action-btn:hover {
@@ -937,6 +980,8 @@ onMounted(() => {
 
 .event-stats {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: var(--eco-space-2);
 }
 

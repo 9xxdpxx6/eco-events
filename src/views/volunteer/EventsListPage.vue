@@ -44,6 +44,15 @@
           </ion-chip>
           </div>
         </div>
+        
+        <!-- Фильтр по дате -->
+        <DateRangeFilter
+          v-model="dateRange"
+          title="Фильтр по дате события"
+          from-placeholder="С: дата события"
+          to-placeholder="По: дата события"
+          @change="onDateRangeChange"
+        />
       </div>
 
       <!-- Прелоадер -->
@@ -240,6 +249,7 @@ import { useAuthStore } from '../../stores';
 import EventListLoader from '../EventListLoader.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
+import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import MasonryWall from '@yeger/vue-masonry-wall';
 import type { EventResponseMediumDTO, EventParticipantDTO, EventParticipantFilterDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
@@ -257,6 +267,7 @@ const events = ref<EventResponseMediumDTO[]>([]);
 const filteredEvents = ref<EventResponseMediumDTO[]>([]);
 const userParticipations = ref<Set<number>>(new Set());
 const searchText = ref('');
+const dateRange = ref({ from: '', to: '' });
 const selectedFilter = ref('all');
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
@@ -300,6 +311,12 @@ function setFilter(value: string) {
     loadEvents(true); // Перезагружаем данные с сервера с новыми фильтрами
   }
 }
+
+const onDateRangeChange = () => {
+  if (isInitialized.value) {
+    loadEvents(true);
+  }
+};
 
 function isEventThisWeek(dateStr: string) {
   const now = new Date();
@@ -378,42 +395,56 @@ const loadEvents = async (reset = true) => {
     const now = new Date();
     now.setUTCMilliseconds(0);
 
-    switch (selectedFilter.value) {
-      case 'today':
-        const today = new Date(now);
-        today.setUTCHours(0, 0, 0, 0);
+    // Фильтр по дате события (приоритет над фильтрами категорий)
+    if (dateRange.value.from || dateRange.value.to) {
+      if (dateRange.value.from) {
+        filterParams.startDateFrom = dateRange.value.from + 'T00:00:00';
+      }
+      if (dateRange.value.to) {
+        filterParams.startDateTo = dateRange.value.to + 'T23:59:59';
+      }
+    } else {
+      // Применяем фильтры категорий только если нет фильтра по дате
+      switch (selectedFilter.value) {
+        case 'today':
+          const today = new Date(now);
+          today.setUTCHours(0, 0, 0, 0);
 
-        const tomorrow = new Date(today);
-        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+          const tomorrow = new Date(today);
+          tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
-        filterParams.startDateFrom = formatDateForApi(today);
-        filterParams.startDateTo = formatDateForApi(new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1));
-        break;
+          filterParams.startDateFrom = formatDateForApi(today);
+          filterParams.startDateTo = formatDateForApi(new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1));
+          break;
 
-      case 'upcoming':
-        filterParams.startDateFrom = formatDateForApi(new Date());
-        break;
+        case 'upcoming':
+          filterParams.startDateFrom = formatDateForApi(new Date());
+          break;
 
-      case 'week':
-        const startOfWeek = new Date(now);
-        startOfWeek.setUTCHours(0, 0, 0, 0);
-        // Находим понедельник текущей недели (1 = понедельник, 0 = воскресенье)
-        const dayOfWeek = startOfWeek.getUTCDay();
-        const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // если воскресенье, то 6 дней назад
-        startOfWeek.setUTCDate(startOfWeek.getUTCDate() - daysToMonday);
+        case 'week':
+          const startOfWeek = new Date(now);
+          startOfWeek.setUTCHours(0, 0, 0, 0);
+          // Находим понедельник текущей недели (1 = понедельник, 0 = воскресенье)
+          const dayOfWeek = startOfWeek.getUTCDay();
+          const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // если воскресенье, то 6 дней назад
+          startOfWeek.setUTCDate(startOfWeek.getUTCDate() - daysToMonday);
 
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setUTCDate(endOfWeek.getUTCDate() + 7);
 
-        filterParams.startDateFrom = formatDateForApi(startOfWeek);
-        filterParams.startDateTo = formatDateForApi(new Date(endOfWeek.getTime() - 1));
-        break;
-      case 'finished':
-        filterParams.startDateTo = formatDateForApi(now);
-        filterParams.sortBy = 'startTime';
-        filterParams.sortOrder = 'DESC';
-        break;
-      case 'my':
+          filterParams.startDateFrom = formatDateForApi(startOfWeek);
+          filterParams.startDateTo = formatDateForApi(new Date(endOfWeek.getTime() - 1));
+          break;
+                case 'finished':
+          filterParams.startDateTo = formatDateForApi(now);
+          filterParams.sortBy = 'startTime';
+          filterParams.sortOrder = 'DESC';
+          break;
+      }
+    }
+    
+    // Обработка фильтра "Мои мероприятия" (не зависит от фильтров по дате)
+    if (selectedFilter.value === 'my') {
         // Для фильтра "Мои мероприятия" получаем только мероприятия с VALID статусом
         if (authStore.isAuthenticated && authStore.user?.id) {
           
@@ -484,7 +515,6 @@ const loadEvents = async (reset = true) => {
             return;
           }
         }
-        break;
     }
 
     if (reset) {

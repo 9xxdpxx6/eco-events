@@ -31,61 +31,15 @@
 
       <!-- Фильтры -->
       <div class="filters-section">
-        <div class="filters-card eco-card">
-          <div class="filters-header">
-            <ion-icon :icon="funnelOutline" />
-            <span>Фильтр по дате операции</span>
-          </div>
-          <div class="filters-content">
-            <div class="date-filter">
-              <div class="date-input-wrapper" @click="openDatePicker('from')">
-                <ion-input
-                  :value="dateFromDisplay"
-                  readonly
-                  class="date-input"
-                  placeholder="С: выберите дату"
-                ></ion-input>
-                <ion-icon :icon="calendarOutline" class="date-icon" />
-                <ion-button 
-                  v-if="dateFrom" 
-                  fill="clear" 
-                  size="small" 
-                  class="clear-date-button"
-                  @click.stop="clearDateFrom"
-                >
-                  <ion-icon :icon="closeOutline" slot="icon-only" />
-                </ion-button>
-              </div>
-            </div>
-            <div class="date-filter">
-              <div class="date-input-wrapper" @click="openDatePicker('to')">
-                <ion-input
-                  :value="dateToDisplay"
-                  readonly
-                  class="date-input"
-                  placeholder="По: выберите дату"
-                ></ion-input>
-                <ion-icon :icon="calendarOutline" class="date-icon" />
-                <ion-button 
-                  v-if="dateTo" 
-                  fill="clear" 
-                  size="small" 
-                  class="clear-date-button"
-                  @click.stop="clearDateTo"
-                >
-                  <ion-icon :icon="closeOutline" slot="icon-only" />
-                </ion-button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DateRangeFilter
+          v-model="dateRange"
+          title="Фильтр по дате операции"
+          from-placeholder="С: дата операции"
+          to-placeholder="По: дата операции"
+          @change="onDateRangeChange"
+        />
       </div>
-      <EcoCalendar 
-        :show="showDatePicker" 
-        :title="currentDateType === 'from' ? 'Выберите дату начала' : 'Выберите дату окончания'"
-        @update:show="showDatePicker = $event"
-        @select="onDateSelect"
-      />
+      
 
       <!-- История бонусов -->
       <div class="history-section">
@@ -166,6 +120,7 @@ import {
 } from '@ionic/vue';
 import ErrorState from '../../components/ErrorState.vue';
 import EcoCalendar from '../../components/EcoCalendar.vue';
+import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import { 
   calendarOutline, 
   trophyOutline,
@@ -187,16 +142,10 @@ const allBonuses = ref<UserBonusHistoryResponseShortDTO[]>([]); // для ста
 const isLoading = ref(true);
 const error = ref<Error | null>(null);
 
-const dateFrom = ref<string>('');
-const dateTo = ref<string>('');
-const showDatePicker = ref(false);
-const currentDateType = ref<'from' | 'to'>('from');
+const dateRange = ref({ from: '', to: '' });
 const page = ref(0);
 const size = 50;
 const hasMore = ref(true);
-
-const dateFromDisplay = computed(() => dateFrom.value ? formatDateInput(dateFrom.value) : '');
-const dateToDisplay = computed(() => dateTo.value ? formatDateInput(dateTo.value) : '');
 
 const filteredBonuses = computed(() => bonuses.value);
 
@@ -204,36 +153,12 @@ const totalBalance = computed(() => allBonuses.value.reduce((sum, item) => sum +
 const totalEarned = computed(() => allBonuses.value.filter(item => item.amount > 0).reduce((sum, item) => sum + item.amount, 0));
 const totalSpent = computed(() => allBonuses.value.filter(item => item.amount < 0).reduce((sum, item) => sum + item.amount, 0));
 
-function formatDateInput(dateStr: string) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('ru-RU');
-}
-
-function openDatePicker(type: 'from' | 'to') {
-  currentDateType.value = type;
-  showDatePicker.value = true;
-}
-
-function onDateSelect(dateString: string) {
-  if (currentDateType.value === 'from') {
-    dateFrom.value = dateString;
-  } else {
-    dateTo.value = dateString;
-  }
-  reloadBonuses();
-}
-
-const clearDateFrom = () => {
-  dateFrom.value = '';
+const onDateRangeChange = () => {
   reloadBonuses();
 };
-const clearDateTo = () => {
-  dateTo.value = '';
-  reloadBonuses();
-};
+
 const clearFilters = () => {
-  dateFrom.value = '';
-  dateTo.value = '';
+  dateRange.value = { from: '', to: '' };
   reloadBonuses();
 };
 
@@ -295,8 +220,8 @@ const loadBonuses = async (reset = false) => {
     sortBy: 'createdAt',
     sortOrder: 'DESC',
   };
-  if (dateFrom.value) filter.createdAtFrom = dateFrom.value + 'T00:00:00';
-  if (dateTo.value) filter.createdAtTo = dateTo.value + 'T23:59:59';
+  if (dateRange.value.from) filter.createdAtFrom = dateRange.value.from + 'T00:00:00';
+  if (dateRange.value.to) filter.createdAtTo = dateRange.value.to + 'T23:59:59';
   try {
     const result = await bonusHistoryApi.search(filter);
     if (result.length > 0) {

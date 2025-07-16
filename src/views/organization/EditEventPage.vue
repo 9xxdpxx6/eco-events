@@ -70,8 +70,13 @@
                 <ion-select 
                   v-model="form.eventTypeId" 
                   placeholder="Выберите тип мероприятия"
-                  class="eco-select"
+                  class="eco-select ios-select"
                   :class="{ 'error': !form.eventTypeId && showErrors }"
+                  interface="action-sheet"
+                  interface-options="{
+                    header: 'Выберите тип мероприятия',
+                    translucent: true
+                  }"
                 >
                   <ion-select-option v-for="type in eventTypes" :key="type.id" :value="type.id">
                     {{ type.name }}
@@ -100,14 +105,31 @@
                 ></ion-datetime>
               </div>
               
-              <div class="field-group">
-                <label class="field-label">Время начала *</label>
-                <ion-datetime 
-                  v-model="form.time"
-                  presentation="time"
-                  class="eco-datetime"
-                  :class="{ 'error': !form.time && showErrors }"
-                ></ion-datetime>
+              <div class="time-row">
+                <div class="field-group half-width">
+                  <label class="field-label">Время начала *</label>
+                  <ion-input
+                    v-model="form.time"
+                    placeholder="23:59"
+                    :maxlength="5"
+                    class="eco-input time-input"
+                    :class="{ 'error': !form.time && showErrors }"
+                    @ionInput="formatTimeInput"
+                    @ionFocus="handleTimeFocus"
+                  ></ion-input>
+                </div>
+                
+                <div class="field-group half-width">
+                  <label class="field-label">Продолжительность (часов)</label>
+                  <ion-input 
+                    type="number" 
+                    v-model="form.duration" 
+                    placeholder="2"
+                    min="1"
+                    max="12"
+                    class="eco-input"
+                  ></ion-input>
+                </div>
               </div>
             </div>
           </div>
@@ -128,6 +150,16 @@
                   class="eco-input"
                   :class="{ 'error': !form.location && showErrors }"
                 ></ion-input>
+              </div>
+              
+              <div class="field-group">
+                <label class="field-label">Подробности места</label>
+                <ion-textarea 
+                  v-model="form.locationDetails" 
+                  placeholder="Дополнительная информация о месте встречи"
+                  :rows="2"
+                  class="eco-textarea"
+                ></ion-textarea>
               </div>
             </div>
           </div>
@@ -162,6 +194,64 @@
             </div>
           </div>
 
+          <!-- Превью мероприятия -->
+          <div class="form-section eco-card">
+            <div class="section-header">
+              <ion-icon :icon="imageOutline" />
+              <h2>Превью мероприятия</h2>
+            </div>
+            
+            <div class="form-fields">
+              <div class="field-group">
+                <label class="field-label">Изображение превью</label>
+                <p class="field-hint">Загрузите изображение для превью мероприятия (JPG, PNG, до 5MB)</p>
+                
+                <div class="image-upload-container">
+                  <!-- Превью изображения -->
+                  <div v-if="previewImageUrl" class="image-preview">
+                    <img :src="previewImageUrl" alt="Превью" class="preview-image" />
+                    <div class="image-overlay">
+                      <ion-button 
+                        fill="clear" 
+                        @click="removePreviewImage"
+                        class="remove-image-button"
+                      >
+                        <ion-icon :icon="trashOutline" />
+                      </ion-button>
+                    </div>
+                  </div>
+                  
+                  <!-- Кнопка загрузки -->
+                  <div v-else class="upload-placeholder" @click="triggerFileUpload">
+                    <ion-icon :icon="imageOutline" />
+                    <p>Нажмите для загрузки изображения</p>
+                    <small>JPG, PNG до 5MB</small>
+                  </div>
+                  
+                  <!-- Скрытый input для файла -->
+                  <input 
+                    ref="fileInput"
+                    type="file" 
+                    accept="image/jpeg,image/png,image/jpg"
+                    @change="handleFileSelect"
+                    style="display: none"
+                  />
+                </div>
+                
+                <!-- Кнопка замены изображения -->
+                <ion-button 
+                  v-if="previewImageUrl" 
+                  fill="outline" 
+                  @click="triggerFileUpload"
+                  class="change-image-button"
+                >
+                  <ion-icon :icon="refreshOutline" slot="start" />
+                  Заменить изображение
+                </ion-button>
+              </div>
+            </div>
+          </div>
+
           <!-- Дополнительные настройки -->
           <div class="form-section eco-card">
             <div class="section-header">
@@ -179,6 +269,50 @@
                   min="1"
                   class="eco-input"
                 ></ion-input>
+              </div>
+              
+              <div class="checkbox-group">
+                <div class="checkbox-item">
+                  <ion-checkbox v-model="form.requiresRegistration" class="eco-checkbox" />
+                  <label class="checkbox-label">Требуется предварительная регистрация</label>
+                </div>
+                
+                <div class="checkbox-item">
+                  <ion-checkbox v-model="form.providesEquipment" class="eco-checkbox" />
+                  <label class="checkbox-label">Организация предоставляет инвентарь</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Требования к участникам -->
+          <div class="form-section eco-card">
+            <div class="section-header">
+              <ion-icon :icon="peopleOutline" />
+              <h2>Требования к участникам</h2>
+            </div>
+            
+            <div class="form-fields">
+              <div class="field-group">
+                <label class="field-label">Минимальный возраст</label>
+                <ion-input 
+                  type="number" 
+                  v-model="form.minAge" 
+                  placeholder="Без ограничений"
+                  min="0"
+                  max="100"
+                  class="eco-input"
+                ></ion-input>
+              </div>
+              
+              <div class="field-group">
+                <label class="field-label">Что необходимо взять с собой</label>
+                <ion-textarea 
+                  v-model="form.requirements" 
+                  placeholder="Удобная одежда, перчатки, вода..."
+                  :rows="3"
+                  class="eco-textarea"
+                ></ion-textarea>
               </div>
             </div>
           </div>
@@ -228,14 +362,16 @@ import {
   IonDatetime,
   IonSelect,
   IonSelectOption,
+  IonCheckbox,
   IonSpinner,
   toastController
 } from '@ionic/vue';
-import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline } from 'ionicons/icons';
+import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline } from 'ionicons/icons';
 import { useEventsStore } from '../../stores';
 import { useEventTypesStore } from '../../stores';
 import { useAuthStore } from '../../stores/auth';
 import type { EventTypeDTO } from '../../types/api';
+import { IMAGE_BASE_URL } from '../../api/client';
 
 const router = useRouter();
 const route = useRoute();
@@ -250,16 +386,25 @@ const form = ref({
   eventTypeId: null as number | null,
   date: '',
   time: '',
+  duration: '2',
   location: '',
+  locationDetails: '',
   contactEmail: '',
   contactPhone: '',
-  maxParticipants: null as number | null
+  maxParticipants: null as number | null,
+  requiresRegistration: true,
+  providesEquipment: false,
+  minAge: null as number | null,
+  requirements: ''
 });
 
 const showErrors = ref(false);
 const isLoading = ref(false);
 const isSaving = ref(false);
 const eventTypes = ref<EventTypeDTO[]>([]);
+const previewImageUrl = ref<string>('');
+const selectedPreviewFile = ref<File | null>(null);
+const fileInput = ref<HTMLInputElement>();
 
 const minDate = new Date().toISOString();
 
@@ -279,17 +424,31 @@ const loadEvent = async () => {
     const event = eventsStore.getCurrentEvent;
     if (event) {
       const eventDate = new Date(event.startTime);
+      const endDate = new Date(event.endTime);
+      const durationHours = Math.round((endDate.getTime() - eventDate.getTime()) / (1000 * 60 * 60));
+      
       form.value = {
         title: event.title,
         description: event.description,
         eventTypeId: Number(event.eventType.id),
         date: eventDate.toISOString().split('T')[0],
         time: eventDate.toTimeString().slice(0, 5),
+        duration: durationHours.toString(),
         location: event.location,
+        locationDetails: (event as any).locationDetails || '',
         contactEmail: (event as any).contactEmail || '',
         contactPhone: (event as any).contactPhone || '',
         maxParticipants: (event as any).maxParticipants ?? null,
+        requiresRegistration: (event as any).requiresRegistration ?? true,
+        providesEquipment: (event as any).providesEquipment ?? false,
+        minAge: (event as any).minAge ?? null,
+        requirements: (event as any).requirements || ''
       };
+      
+      // Устанавливаем превью изображение если есть
+      if (event.preview) {
+        previewImageUrl.value = `${IMAGE_BASE_URL}/${event.preview}`;
+      }
     }
   } catch (error) {
     console.error('Error loading event:', error);
@@ -320,6 +479,95 @@ const loadEventTypes = async () => {
   }
 };
 
+// Функции для форматирования времени
+const formatTimeInput = (event: any) => {
+  let value = event.target.value.replace(/[^\d]/g, ''); // Оставляем только цифры
+  
+  if (value.length >= 2) {
+    // Добавляем двоеточие после первых двух цифр
+    value = value.substring(0, 2) + ':' + value.substring(2, 4);
+  }
+  
+  // Валидация часов (00-23)
+  if (value.length >= 2) {
+    const hours = parseInt(value.substring(0, 2));
+    if (hours > 23) {
+      value = '23' + value.substring(2);
+    }
+  }
+  
+  // Валидация минут (00-59)
+  if (value.length >= 5) {
+    const minutes = parseInt(value.substring(3, 5));
+    if (minutes > 59) {
+      value = value.substring(0, 3) + '59';
+    }
+  }
+  
+  form.value.time = value;
+  event.target.value = value;
+};
+
+const handleTimeFocus = (event: any) => {
+  // При фокусе показываем placeholder или текущее значение
+  if (!form.value.time) {
+    event.target.placeholder = '00:00';
+  }
+};
+
+// Методы для работы с изображением
+const triggerFileUpload = () => {
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+};
+
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+  
+  // Валидация типа файла
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  if (!allowedTypes.includes(file.type)) {
+    toastController.create({
+      message: 'Пожалуйста, выберите изображение в формате JPG или PNG',
+      duration: 3000,
+      color: 'warning'
+    }).then(toast => toast.present());
+    return;
+  }
+  
+  // Валидация размера файла (5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB в байтах
+  if (file.size > maxSize) {
+    toastController.create({
+      message: 'Размер файла не должен превышать 5MB',
+      duration: 3000,
+      color: 'warning'
+    }).then(toast => toast.present());
+    return;
+  }
+  
+  selectedPreviewFile.value = file;
+  
+  // Создаем URL для превью
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    previewImageUrl.value = e.target?.result as string;
+  };
+  reader.readAsDataURL(file);
+};
+
+const removePreviewImage = () => {
+  previewImageUrl.value = '';
+  selectedPreviewFile.value = null;
+  if (fileInput.value) {
+    fileInput.value.value = '';
+  }
+};
+
 const saveChanges = async () => {
   if (!isFormValid.value) {
     showErrors.value = true;
@@ -329,14 +577,30 @@ const saveChanges = async () => {
   isSaving.value = true;
   try {
     const eventType = eventTypes.value.find(t => t.id === Number(form.value.eventTypeId));
+    if (!eventType) throw new Error('Тип мероприятия не найден');
+    
+    let startTime = '';
+    if (form.value.time && form.value.time.includes('T')) {
+      startTime = form.value.time;
+    } else if (form.value.date && form.value.time) {
+      const datePart = form.value.date.split('T')[0];
+      let timePart = form.value.time;
+      if (timePart.length <= 5) timePart += ':00';
+      startTime = new Date(`${datePart}T${timePart}`).toISOString();
+    }
+    if (!startTime || isNaN(Date.parse(startTime))) throw new Error('Некорректная дата/время');
+    
+    const duration = Number(form.value.duration) || 2;
+    const endTime = new Date(new Date(startTime).getTime() + duration * 60 * 60 * 1000).toISOString();
+    
     const eventData = {
       title: form.value.title,
       description: form.value.description,
-      startTime: new Date(`${form.value.date}T${form.value.time}`).toISOString(),
-      endTime: new Date(new Date(form.value.date).getTime() + 3600000).toISOString(),
+      startTime,
+      endTime,
       location: form.value.location,
       conducted: false,
-      eventTypeId: eventType?.id!,
+      eventTypeId: eventType.id!,
       userId: authStore.user?.id || 1
     };
 
@@ -409,7 +673,7 @@ onMounted(() => {
 /* Hero секция */
 .hero-section {
   background: linear-gradient(135deg, var(--eco-secondary) 0%, var(--eco-tertiary) 100%);
-  padding: var(--eco-space-6) var(--eco-space-4) var(--eco-space-8);
+  padding: var(--eco-space-8) var(--eco-space-4) var(--eco-space-12);
   color: white;
   text-align: center;
 }
@@ -420,28 +684,28 @@ onMounted(() => {
 }
 
 .hero-icon {
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto var(--eco-space-4) auto;
+  margin: 0 auto var(--eco-space-6) auto;
   backdrop-filter: blur(8px);
 }
 
 .hero-icon ion-icon {
-  font-size: 36px;
+  font-size: 40px;
   color: white;
 }
 
 .hero-title {
   font-family: var(--eco-font-family);
-  font-size: var(--eco-font-size-xl);
+  font-size: var(--eco-font-size-2xl);
   font-weight: var(--eco-font-weight-bold);
   color: white;
-  margin: 0 0 var(--eco-space-2) 0;
+  margin: 0 0 var(--eco-space-3) 0;
   line-height: var(--eco-line-height-tight);
 }
 
@@ -503,11 +767,39 @@ onMounted(() => {
   gap: var(--eco-space-2);
 }
 
+/* Строка времени */
+.time-row {
+  display: flex;
+  gap: var(--eco-space-4);
+  align-items: flex-end;
+}
+
+.half-width {
+  flex: 1;
+}
+
 .field-label {
   font-size: var(--eco-font-size-sm);
   font-weight: var(--eco-font-weight-medium);
   color: var(--eco-gray-700);
   margin-bottom: var(--eco-space-1);
+}
+
+/* Специальные стили для time input */
+.time-input {
+  font-family: 'Courier New', monospace;
+  font-size: var(--eco-font-size-lg);
+  font-weight: var(--eco-font-weight-medium);
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.time-input::part(native) {
+  font-family: 'Courier New', monospace;
+  font-size: var(--eco-font-size-lg);
+  font-weight: var(--eco-font-weight-medium);
+  text-align: center;
+  letter-spacing: 1px;
 }
 
 /* Стили input элементов */
@@ -528,6 +820,134 @@ onMounted(() => {
   transition: all var(--eco-transition-normal);
 }
 
+/* iOS стилизация селекта */
+.ios-select {
+  --background: var(--eco-white);
+  --color: var(--eco-gray-800);
+  border-radius: 12px;
+  border: 1px solid var(--eco-gray-200);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.ios-select:hover {
+  border-color: var(--eco-secondary);
+  box-shadow: 0 2px 8px rgba(25, 158, 255, 0.15);
+}
+
+/* Глобальные стили для iOS action sheet */
+:root {
+  --ion-action-sheet-background: #f2f2f7;
+  --ion-action-sheet-button-background: white;
+  --ion-action-sheet-button-background-selected: #007aff;
+  --ion-action-sheet-button-color: #000;
+  --ion-action-sheet-button-color-selected: white;
+  --ion-action-sheet-group-background: white;
+}
+
+/* Стили для iOS селекта */
+ion-action-sheet {
+  --background: transparent;
+}
+
+ion-action-sheet .action-sheet-wrapper {
+  background: transparent !important;
+  border-radius: 20px 20px 0 0;
+  overflow: hidden;
+  margin: 0 8px 8px 8px;
+}
+
+ion-action-sheet .action-sheet-container {
+  background: #f2f2f7 !important;
+  border-radius: 20px 20px 0 0;
+  padding: 16px 0;
+}
+
+ion-action-sheet .action-sheet-title {
+  color: #8e8e93 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  padding: 16px 16px 8px 16px !important;
+  background: white !important;
+  margin: 0 16px 8px 16px !important;
+  border-radius: 14px 14px 0 0 !important;
+}
+
+ion-action-sheet .action-sheet-group {
+  background: white !important;
+  border-radius: 14px !important;
+  margin: 0 16px 8px 16px !important;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+ion-action-sheet .action-sheet-button {
+  background: white !important;
+  color: #000 !important;
+  font-size: 17px !important;
+  font-weight: 400 !important;
+  height: 56px !important;
+  border-bottom: 0.5px solid #e5e5ea !important;
+  padding: 0 20px !important;
+  text-align: left !important;
+  position: relative !important;
+}
+
+ion-action-sheet .action-sheet-button:last-child {
+  border-bottom: none !important;
+}
+
+ion-action-sheet .action-sheet-button.action-sheet-selected {
+  background: white !important;
+  color: #007aff !important;
+  font-weight: 600 !important;
+}
+
+ion-action-sheet .action-sheet-button.action-sheet-selected::after {
+  content: '✓';
+  position: absolute;
+  right: 20px;
+  color: #007aff;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+ion-action-sheet .action-sheet-button.action-sheet-cancel {
+  background: white !important;
+  color: #007aff !important;
+  font-weight: 600 !important;
+  border-radius: 14px !important;
+  margin: 0 16px 16px 16px !important;
+  border-bottom: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Специальные стили для селекта */
+.eco-select {
+  --placeholder-color: var(--eco-gray-600);
+  --padding-end: 40px;
+  color: var(--eco-gray-800) !important;
+  background: var(--eco-white) !important;
+  position: relative;
+}
+
+.eco-select::part(native) {
+  color: var(--eco-gray-800);
+  background: var(--eco-white);
+  padding-right: 40px !important;
+}
+
+.eco-select::part(icon) {
+  color: var(--eco-gray-600);
+  opacity: 1;
+  position: absolute !important;
+  right: var(--eco-space-3) !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  margin: 0 !important;
+}
+
 .eco-input:focus,
 .eco-textarea:focus,
 .eco-select:focus,
@@ -546,6 +966,211 @@ onMounted(() => {
 .eco-textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+/* Checkbox группы */
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eco-space-4);
+  margin-top: var(--eco-space-2);
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--eco-space-3);
+}
+
+.eco-checkbox {
+  --color: var(--eco-secondary);
+  --background: white;
+  --background-checked: var(--eco-secondary);
+  --border-color: var(--eco-gray-300);
+  --border-style: solid;
+  --border-width: 2px;
+  --checkmark-color: white;
+  margin-top: 2px;
+  background: white !important;
+}
+
+.eco-checkbox::part(container) {
+  background: white !important;
+  border: 2px solid var(--eco-gray-300) !important;
+  border-radius: 4px;
+}
+
+.eco-checkbox.checkbox-checked::part(container) {
+  background: var(--eco-secondary) !important;
+  border-color: var(--eco-secondary) !important;
+}
+
+.checkbox-label {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-700);
+  line-height: var(--eco-line-height-normal);
+  cursor: pointer;
+  flex: 1;
+}
+
+/* Стили для загрузки изображения */
+.field-hint {
+  font-size: var(--eco-font-size-sm);
+  color: var(--eco-gray-600);
+  margin-bottom: var(--eco-space-3);
+  line-height: var(--eco-line-height-normal);
+}
+
+.image-upload-container {
+  border: 2px dashed var(--eco-gray-300);
+  border-radius: var(--eco-radius-lg);
+  overflow: hidden;
+  transition: all var(--eco-transition-normal);
+}
+
+.image-upload-container:hover {
+  border-color: var(--eco-secondary);
+  background: rgba(25, 158, 255, 0.02);
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--eco-space-8) var(--eco-space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--eco-transition-normal);
+}
+
+.upload-placeholder:hover {
+  background: rgba(25, 158, 255, 0.05);
+}
+
+.upload-placeholder ion-icon {
+  font-size: 48px;
+  color: var(--eco-gray-400);
+  margin-bottom: var(--eco-space-3);
+  transition: color var(--eco-transition-normal);
+}
+
+.upload-placeholder:hover ion-icon {
+  color: var(--eco-secondary);
+}
+
+.upload-placeholder p {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-700);
+  margin: 0 0 var(--eco-space-1) 0;
+  font-weight: var(--eco-font-weight-medium);
+}
+
+.upload-placeholder small {
+  font-size: var(--eco-font-size-sm);
+  color: var(--eco-gray-600);
+}
+
+.image-preview {
+  position: relative;
+  width: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--eco-gray-50);
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--eco-radius-md);
+}
+
+.image-overlay {
+  position: absolute;
+  top: var(--eco-space-3);
+  right: var(--eco-space-3);
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  backdrop-filter: blur(4px);
+}
+
+.remove-image-button {
+  --color: white;
+  --background: transparent;
+  --background-activated: rgba(255, 255, 255, 0.1);
+  --padding-start: 8px;
+  --padding-end: 8px;
+  --border-radius: 50%;
+  width: 40px;
+  height: 40px;
+}
+
+.remove-image-button ion-icon {
+  font-size: 20px;
+}
+
+.change-image-button {
+  --border-color: var(--eco-secondary);
+  --color: var(--eco-secondary);
+  --background: transparent;
+  --background-activated: rgba(25, 158, 255, 0.1);
+  --border-radius: var(--eco-radius-md);
+  margin-top: var(--eco-space-3);
+  height: 44px;
+  font-weight: var(--eco-font-weight-medium);
+}
+
+.change-image-button ion-icon {
+  font-size: 18px;
+}
+
+/* Специальные стили для календаря */
+.eco-datetime {
+  --color: var(--eco-gray-800);
+  background: var(--eco-white) !important;
+}
+
+.eco-datetime::part(native) {
+  color: var(--eco-gray-800);
+  background: var(--eco-white);
+}
+
+/* Стили для календарного попапа */
+ion-datetime {
+  --color: var(--eco-gray-800);
+  --background: var(--eco-white);
+  --background-rgb: 255, 255, 255;
+}
+
+ion-datetime::part(calendar-day) {
+  color: var(--eco-gray-800);
+}
+
+ion-datetime::part(calendar-day-today) {
+  color: var(--eco-secondary);
+  font-weight: var(--eco-font-weight-semibold);
+}
+
+ion-datetime::part(calendar-day-active) {
+  background: var(--eco-secondary);
+  color: white;
+}
+
+ion-datetime::part(month-year-button) {
+  color: var(--eco-gray-800);
+}
+
+ion-datetime::part(calendar-day-disabled) {
+  color: var(--eco-gray-600);
+}
+
+ion-datetime::part(time-button) {
+  color: var(--eco-gray-800);
 }
 
 /* Footer */
@@ -575,13 +1200,34 @@ onMounted(() => {
 }
 
 /* Отзывчивость */
+@media (max-width: 768px) and (min-width: 481px) {
+  /* Средние экраны - сохраняем двухколоночный макет времени */
+  .time-row {
+    display: flex;
+    gap: var(--eco-space-3);
+  }
+  
+  .half-width {
+    flex: 1;
+  }
+  
+  .eco-time-picker {
+    --height: 45px;
+    --max-height: 45px;
+  }
+  
+  .form-container {
+    padding: var(--eco-space-5) var(--eco-space-3);
+  }
+}
+
 @media (max-width: 480px) {
   .hero-section {
-    padding: var(--eco-space-4) var(--eco-space-3) var(--eco-space-6);
+    padding: var(--eco-space-6) var(--eco-space-3) var(--eco-space-8);
   }
   
   .hero-title {
-    font-size: var(--eco-font-size-lg);
+    font-size: var(--eco-font-size-xl);
   }
   
   .form-container {
@@ -602,8 +1248,40 @@ onMounted(() => {
     gap: var(--eco-space-4);
   }
   
+  /* Время на мобильных - всегда в две колонки */
+  .time-row {
+    display: flex;
+    gap: var(--eco-space-3);
+  }
+  
+  .half-width {
+    flex: 1;
+  }
+  
+  .eco-time-picker {
+    --height: 45px;
+    --max-height: 45px;
+  }
+  
   .action-footer {
     padding: var(--eco-space-3);
+  }
+  
+  /* Отзывчивость для загрузки изображения */
+  .image-preview {
+    min-height: 150px;
+  }
+  
+  .preview-image {
+    max-height: 200px;
+  }
+  
+  .upload-placeholder {
+    padding: var(--eco-space-6) var(--eco-space-3);
+  }
+  
+  .upload-placeholder ion-icon {
+    font-size: 40px;
   }
 }
 </style> 
