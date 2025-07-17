@@ -31,6 +31,18 @@
 
       <!-- Фильтры -->
       <div class="filters-section">
+        <div class="search-card eco-card">
+          <EcoSearchBar
+            v-model="searchText"
+            placeholder="Поиск операций..."
+            :show-view-toggle="false"
+            :show-sort-select="true"
+            :sort-options="sortOptions"
+            :sort-value="sortBy"
+            @update:sort-value="selectSort"
+          />
+        </div>
+        
         <DateRangeFilter
           v-model="dateRange"
           title="Фильтр по дате операции"
@@ -121,6 +133,7 @@ import {
 import ErrorState from '../../components/ErrorState.vue';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';
+import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import { 
   calendarOutline, 
   trophyOutline,
@@ -130,6 +143,10 @@ import {
   giftOutline,
   timeOutline,
   searchOutline,
+  listOutline,
+  arrowUpOutline,
+  arrowDownOutline,
+  textOutline
 } from 'ionicons/icons';
 import { bonusHistoryApi } from '../../api/bonuses';
 import { useAuthStore } from '../../stores/auth';
@@ -147,6 +164,17 @@ const page = ref(0);
 const size = 50;
 const hasMore = ref(true);
 
+const searchText = ref('');
+const sortBy = ref('id_DESC');
+
+const sortOptions = [
+  { value: 'id_DESC', label: 'По умолчанию', icon: 'listOutline' },
+  { value: 'createdAt_DESC', label: 'По убыванию даты', icon: 'arrowDownOutline' },
+  { value: 'createdAt_ASC', label: 'По возрастанию даты', icon: 'arrowUpOutline' },
+  { value: 'reason_ASC', label: 'По названию А-Я', icon: 'textOutline' },
+  { value: 'reason_DESC', label: 'По названию Я-А', icon: 'textOutline' }
+];
+
 const filteredBonuses = computed(() => bonuses.value);
 
 const totalBalance = computed(() => allBonuses.value.reduce((sum, item) => sum + item.amount, 0));
@@ -154,6 +182,11 @@ const totalEarned = computed(() => allBonuses.value.filter(item => item.amount >
 const totalSpent = computed(() => allBonuses.value.filter(item => item.amount < 0).reduce((sum, item) => sum + item.amount, 0));
 
 const onDateRangeChange = () => {
+  reloadBonuses();
+};
+
+const selectSort = (value: string) => {
+  sortBy.value = value;
   reloadBonuses();
 };
 
@@ -213,15 +246,20 @@ const loadBonuses = async (reset = false) => {
     isLoading.value = true;
   }
   error.value = null;
+  
+  const [sortField, sortOrder] = sortBy.value.split('_');
+  
   const filter: any = {
     userId: authStore.user.id,
     page: page.value,
     size,
-    sortBy: 'createdAt',
-    sortOrder: 'DESC',
+    sortBy: sortField,
+    sortOrder: sortOrder,
   };
   if (dateRange.value.from) filter.createdAtFrom = dateRange.value.from + 'T00:00:00';
   if (dateRange.value.to) filter.createdAtTo = dateRange.value.to + 'T23:59:59';
+  if (searchText.value) filter.reason = searchText.value;
+  
   try {
     const result = await bonusHistoryApi.search(filter);
     if (result.length > 0) {
@@ -372,10 +410,11 @@ const getAmountClass = (amount: number) => {
   gap: var(--eco-space-4);
 }
 
-.filters-card {
-  background: var(--eco-white);
+.search-card {
+  background: var(--eco-gray-50);
   border: 1px solid var(--eco-gray-200);
-  margin-bottom: var(--eco-space-2);
+  border-radius: var(--eco-radius-lg);
+  padding: var(--eco-space-3);
   box-shadow: var(--eco-shadow-sm);
 }
 

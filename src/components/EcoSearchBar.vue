@@ -27,6 +27,7 @@
         :options="sortOptions"
         :trigger-icon="swapVerticalOutline"
         trigger-id="sortBtn"
+        :show-text-only="false"
         @update:model-value="$emit('update:sortValue', $event)"
       />
     </div>
@@ -125,6 +126,7 @@ ion-searchbar :deep(.searchbar-clear-button) {
 
 .custom-searchbar {
   flex: 1;
+  min-width: 200px;
   --background: var(--eco-gray-100);
   --border-radius: var(--eco-radius-lg);
   --border-width: 2px;

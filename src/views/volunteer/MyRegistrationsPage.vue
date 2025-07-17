@@ -61,6 +61,11 @@
           <EcoSearchBar
             v-model="searchText"
             placeholder="Поиск мероприятий..."
+            :show-view-toggle="false"
+            :show-sort-select="true"
+            :sort-options="sortOptions"
+            :sort-value="sortBy"
+            @update:sort-value="selectSort"
           />
         </div>
         
@@ -167,7 +172,11 @@ import {
   checkmarkCircleOutline,
   closeCircleOutline,
   locationOutline,
-  searchOutline
+  searchOutline,
+  listOutline,
+  arrowUpOutline,
+  arrowDownOutline,
+  textOutline
 } from 'ionicons/icons';
 import { participantsApi } from '../../api/participants';
 import { eventsApi } from '../../api/events';
@@ -196,6 +205,16 @@ const page = ref(0);
 const size = 20;
 const hasMore = ref(true);
 
+const sortBy = ref('id_DESC');
+
+const sortOptions = [
+  { value: 'id_DESC', label: 'По умолчанию', icon: 'listOutline' },
+  { value: 'createdAt_DESC', label: 'По убыванию даты', icon: 'arrowDownOutline' },
+  { value: 'createdAt_ASC', label: 'По возрастанию даты', icon: 'arrowUpOutline' },
+  { value: 'eventTitle_ASC', label: 'По названию А-Я', icon: 'textOutline' },
+  { value: 'eventTitle_DESC', label: 'По названию Я-А', icon: 'textOutline' }
+];
+
 // Stats
 const upcomingCount = ref(0);
 const completedCount = ref(0);
@@ -218,6 +237,11 @@ const hasActiveFilters = computed(() => {
 });
 
 const onDateRangeChange = () => {
+  loadRegistrations(true);
+};
+
+const selectSort = (value: string) => {
+  sortBy.value = value;
   loadRegistrations(true);
 };
 
@@ -318,11 +342,15 @@ const loadRegistrations = async (reset = false) => {
   if (!hasMore.value) return;
   isLoading.value = true;
   error.value = null;
+  
+  const [sortField, sortOrder] = sortBy.value.split('_');
+  
   const filter: any = {
     userId: authStore.user.id,
     page: page.value,
     size,
-    // sortBy и sortOrder выставляем ниже
+    sortBy: sortField,
+    sortOrder: sortOrder,
   };
   // Добавляем пользовательские фильтры только если они заданы
   if (dateRange.value.from) filter.eventStartTimeFrom = dateRange.value.from + 'T00:00:00';
@@ -333,8 +361,8 @@ const loadRegistrations = async (reset = false) => {
     filter.sortBy = 'eventStartTime';
     filter.sortOrder = 'ASC';
   } else {
-    filter.sortBy = 'createdAt';
-    filter.sortOrder = 'DESC';
+    filter.sortBy = sortField;
+    filter.sortOrder = sortOrder;
   }
 
   // Поиск по названию (если поддерживается API)
@@ -545,11 +573,12 @@ onMounted(() => {
   gap: var(--eco-space-4);
 }
 
-.search-card,
-.filters-card {
-  background: var(--eco-white);
+.search-card {
+  background: var(--eco-gray-50);
   border: 1px solid var(--eco-gray-200);
-  margin-bottom: var(--eco-space-2);
+  border-radius: var(--eco-radius-lg);
+  padding: var(--eco-space-3);
+  box-shadow: var(--eco-shadow-sm);
 }
 
 .search-section {

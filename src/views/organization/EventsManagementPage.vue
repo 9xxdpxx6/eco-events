@@ -57,7 +57,10 @@
           v-model="searchText"
           placeholder="Поиск мероприятий..."
           :show-view-toggle="false"
-          :show-sort-select="false"
+          :show-sort-select="true"
+          :sort-options="sortOptions"
+          :sort-value="sortBy"
+          @update:sort-value="selectSort"
         />
         <div class="filters-section">
           <div class="filters-scroll">
@@ -247,7 +250,11 @@ import {
   searchOutline,
   businessOutline,
   locationOutline,
-  layersOutline
+  layersOutline,
+  listOutline,
+  arrowUpOutline,
+  arrowDownOutline,
+  textOutline
 } from 'ionicons/icons';
 import { useEventsStore, useAuthStore } from '../../stores';
 import type { EventResponseMediumDTO } from '../../types/api';
@@ -273,6 +280,16 @@ let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 const contentRef = ref();
 const filtersVisible = ref(true);
 const lastScrollY = ref(0);
+
+const sortBy = ref('id_DESC');
+
+const sortOptions = [
+  { value: 'id_DESC', label: 'По умолчанию', icon: 'listOutline' },
+  { value: 'startTime_DESC', label: 'По убыванию даты', icon: 'arrowDownOutline' },
+  { value: 'startTime_ASC', label: 'По возрастанию даты', icon: 'arrowUpOutline' },
+  { value: 'title_ASC', label: 'По названию А-Я', icon: 'textOutline' },
+  { value: 'title_DESC', label: 'По названию Я-А', icon: 'textOutline' }
+];
 
 const scrollToTop = async () => {
   if (contentRef.value) {
@@ -310,6 +327,12 @@ const filters = computed(() => [
 const setFilter = (value: string) => {
   selectedFilter.value = value;
   page.value = 1; // Сбрасываем пагинацию при смене фильтра
+};
+
+const selectSort = (value: string) => {
+  sortBy.value = value;
+  page.value = 1;
+  filterAndSearchEvents();
 };
 
 const upcomingEventsCount = computed(() => {
@@ -437,19 +460,33 @@ const filterAndSearchEvents = () => {
   }
   
   // 4. Сортировка
+  const [sortField, sortOrder] = sortBy.value.split('_');
+  
   filtered.sort((a: EventResponseMediumDTO, b: EventResponseMediumDTO) => {
-    const aDate = new Date(a.startTime);
-    const bDate = new Date(b.startTime);
+    let aValue: any, bValue: any;
     
-    // Для прошедших - по убыванию даты, для остальных - по возрастанию
-    if (selectedFilter.value === 'past') {
-      return bDate.getTime() - aDate.getTime();
+    switch (sortField) {
+      case 'id':
+        aValue = a.id ?? 0;
+        bValue = b.id ?? 0;
+        break;
+      case 'startTime':
+        aValue = new Date(a.startTime).getTime();
+        bValue = new Date(b.startTime).getTime();
+        break;
+      case 'title':
+        aValue = a.title.toLowerCase();
+        bValue = b.title.toLowerCase();
+        break;
+      default:
+        aValue = a.id ?? 0;
+        bValue = b.id ?? 0;
+    }
+    
+    if (sortOrder === 'DESC') {
+      return typeof aValue === 'string' ? bValue.localeCompare(aValue) : bValue - aValue;
     } else {
-      // Для 'all', 'upcoming', 'active' сортируем по id desc, как было изначально
-      if (selectedFilter.value === 'all') {
-        return (b.id ?? 0) - (a.id ?? 0);
-      }
-      return aDate.getTime() - bDate.getTime();
+      return typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue;
     }
   });
   

@@ -247,7 +247,7 @@ import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
 import { useAuthStore } from '../../stores';
 import EventListLoader from '../EventListLoader.vue';
-import EcoSelect from '../../components/EcoSelect.vue';
+
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import MasonryWall from '@yeger/vue-masonry-wall';
@@ -272,7 +272,7 @@ const selectedFilter = ref('all');
 const isLoading = ref(false);
 const isLoadingMore = ref(false);
 const isRegistering = ref(false);
-const sortBy = ref('startTime_DESC');
+const sortBy = ref('id_DESC');
 const viewMode = ref('grid');
 const contentRef = ref();
 const filtersVisible = ref(true);
@@ -284,9 +284,11 @@ const savedScrollPosition = ref(0);
 const isLoadingMoreData = ref(false);
 
 const sortOptions = [
-  { value: 'startTime_DESC', label: 'Сначала новые', icon: arrowDownOutline },
-  { value: 'startTime_ASC', label: 'Сначала старые', icon: arrowUpOutline },
-  { value: 'title_ASC', label: 'По алфавиту', icon: textOutline }
+  { value: 'id_DESC', label: 'По умолчанию', icon: listOutline },
+  { value: 'startTime_DESC', label: 'По убыванию даты', icon: arrowDownOutline },
+  { value: 'startTime_ASC', label: 'По возрастанию даты', icon: arrowUpOutline },
+  { value: 'title_ASC', label: 'По названию А-Я', icon: textOutline },
+  { value: 'title_DESC', label: 'По названию Я-А', icon: textOutline }
 ];
 
 const filters = [
@@ -851,7 +853,7 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--eco-white);
+  background: var(--eco-gray-50);
   border-bottom: 1px solid var(--eco-gray-200);
   padding: var(--eco-space-4);
   margin-bottom: var(--eco-space-4);
@@ -859,6 +861,7 @@ onUnmounted(() => {
   transform: translateY(0);
   transition: transform var(--eco-transition-normal), opacity var(--eco-transition-normal);
   opacity: 1;
+  border-radius: var(--eco-radius-lg);
 }
 
 .search-filters-container.filters-hidden {

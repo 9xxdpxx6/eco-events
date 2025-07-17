@@ -3,18 +3,23 @@
     <ion-button 
       fill="clear" 
       class="select-trigger"
-      :id="triggerId"
+      :class="{ 'icon-only': !showTextOnly }"
       @click="openPopover"
     >
-      <ion-icon :icon="triggerIcon" />
+      <span v-if="showTextOnly" class="select-text">{{ displayText }}</span>
+      <ion-icon v-else :icon="triggerIcon" />
+      <ion-icon v-if="showTextOnly" :icon="chevronDownOutline" slot="end" />
     </ion-button>
 
     <ion-popover 
       :is-open="showPopover" 
       @didDismiss="showPopover = false" 
-      :trigger="triggerId" 
+      :event="popoverEvent"
       trigger-action="click"
       class="eco-select-popover"
+      :alignment="'start'"
+      :side="'bottom'"
+      :reference="'trigger'"
     >
       <ion-content>
         <ion-list class="select-options">
@@ -25,7 +30,7 @@
             @click="selectOption(option.value)"
             class="select-option-item"
           >
-            <ion-icon :icon="option.icon" slot="start" />
+            <ion-icon v-if="option.icon" :icon="option.icon" slot="start" />
             <ion-label :class="{ 'selected': modelValue === option.value }">
               {{ option.label }}
             </ion-label>
@@ -43,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import {
   IonButton,
   IonIcon,
@@ -53,38 +58,53 @@ import {
   IonItem,
   IonLabel
 } from '@ionic/vue';
-import { checkmarkOutline } from 'ionicons/icons';
+import { checkmarkOutline, chevronDownOutline } from 'ionicons/icons';
 
 interface SelectOption {
-  value: string;
+  value: string | number;
   label: string;
-  icon: string;
+  icon?: string;
 }
 
 interface Props {
-  modelValue: string;
+  modelValue: string | number | null;
   options: SelectOption[];
-  triggerIcon: string;
+  placeholder?: string;
   triggerId?: string;
+  showTextOnly?: boolean;
+  triggerIcon?: string;
 }
 
 interface Emits {
-  (e: 'update:modelValue', value: string): void;
+  (e: 'update:modelValue', value: string | number | null): void;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  triggerId: 'selectTrigger'
+  triggerId: 'selectTrigger',
+  placeholder: 'Выберите...',
+  showTextOnly: true,
+  triggerIcon: 'swapVerticalOutline'
 });
 
 const emit = defineEmits<Emits>();
 
 const showPopover = ref(false);
+const popoverEvent = ref<Event | undefined>(undefined);
 
-const openPopover = () => {
+const displayText = computed(() => {
+  if (props.modelValue === null || props.modelValue === '') {
+    return props.placeholder;
+  }
+  const selectedOption = props.options.find(option => option.value === props.modelValue);
+  return selectedOption ? selectedOption.label : props.placeholder;
+});
+
+const openPopover = (event: Event) => {
+  popoverEvent.value = event;
   showPopover.value = true;
 };
 
-const selectOption = (value: string) => {
+const selectOption = (value: string | number) => {
   emit('update:modelValue', value);
   showPopover.value = false;
 };
@@ -92,37 +112,76 @@ const selectOption = (value: string) => {
 
 <style scoped>
 .eco-select-container {
-  display: inline-block;
+  display: block;
+  width: 100%;
 }
 
 .select-trigger {
-  --color: var(--eco-gray-600);
+  --color: var(--eco-gray-800);
   --background: var(--eco-gray-100);
   --border-radius: var(--eco-radius-lg);
-  width: 48px;
-  height: 48px;
-  --box-shadow: none !important;
+  width: 100%;
+  height: auto;
+  min-height: 48px;
+  text-transform: none;
+  justify-content: space-between;
+  --padding-start: var(--eco-space-4);
+  --padding-end: var(--eco-space-4);
+  --padding-top: var(--eco-space-3);
+  --padding-bottom: var(--eco-space-3);
+  border: 1px solid transparent;
   transition: all var(--eco-transition-normal);
+  --box-shadow: none;
+}
+
+.select-trigger.icon-only {
+  width: 48px;
+  min-width: 48px;
+  max-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  max-height: 48px;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  justify-content: center;
+  align-items: center;
 }
 
 .select-trigger:hover {
   --background: var(--eco-gray-200);
-  transform: scale(1.05);
 }
 
 .select-trigger:active {
-  transform: scale(0.95);
+  transform: scale(0.98);
+}
+
+.select-text {
+  font-size: var(--eco-font-size-base);
+  color: var(--eco-gray-800);
+  text-align: left;
+  flex: 1;
 }
 
 .select-trigger ion-icon {
+  font-size: 18px;
+  color: var(--eco-gray-600);
+  margin-left: var(--eco-space-2);
+}
+
+.select-trigger.icon-only ion-icon {
   font-size: 20px;
   color: var(--eco-gray-600);
+  margin-left: 0;
 }
 
 /* iOS стили для popover */
 .eco-select-popover {
   --width: 280px;
   --max-width: 90vw;
+  --backdrop-opacity: 0.3;
+  z-index: 100000;
 }
 
 .eco-select-popover::part(content) {
@@ -131,6 +190,10 @@ const selectOption = (value: string) => {
   backdrop-filter: blur(20px);
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.eco-select-popover::part(backdrop) {
+  /* z-index управляется через хост */
 }
 
 .select-options {

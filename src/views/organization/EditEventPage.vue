@@ -67,21 +67,12 @@
 
               <div class="field-group">
                 <label class="field-label">Тип мероприятия *</label>
-                <ion-select 
-                  v-model="form.eventTypeId" 
+                <EcoSelect
+                  v-model="form.eventTypeId"
+                  :options="eventTypeOptions"
                   placeholder="Выберите тип мероприятия"
-                  class="eco-select ios-select"
                   :class="{ 'error': !form.eventTypeId && showErrors }"
-                  interface="action-sheet"
-                  interface-options="{
-                    header: 'Выберите тип мероприятия',
-                    translucent: true
-                  }"
-                >
-                  <ion-select-option v-for="type in eventTypes" :key="type.id" :value="type.id">
-                    {{ type.name }}
-                  </ion-select-option>
-                </ion-select>
+                />
               </div>
             </div>
           </div>
@@ -376,6 +367,7 @@ import { useAuthStore } from '../../stores/auth';
 import type { EventTypeDTO } from '../../types/api';
 import { IMAGE_BASE_URL } from '../../api/client';
 import EcoCalendar from '../../components/EcoCalendar.vue';
+import EcoSelect from '../../components/EcoSelect.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -420,6 +412,14 @@ const isFormValid = computed(() => {
          form.value.date &&
          form.value.time &&
          form.value.location;
+});
+
+const eventTypeOptions = computed(() => {
+  return eventTypes.value.map(type => ({
+    value: type.id!,
+    label: type.name,
+    icon: 'leafOutline'
+  }));
 });
 
 const formatDateForDisplay = (isoString: string) => {
