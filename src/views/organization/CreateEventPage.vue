@@ -515,6 +515,14 @@ const saveEvent = async () => {
     
     resetForm();
     
+    // Обновляем данные в store перед переходом
+    await eventsStore.fetchEventsSearch({
+      userId: authStore.user?.id || 0,
+      sortBy: 'id',
+      sortOrder: 'DESC',
+      size: 1000
+    });
+    
     router.push('/tabs/events-management');
   } catch (error) {
     console.error('Error creating event:', error);
@@ -607,19 +615,16 @@ onMounted(() => {
 }
 
 .hero-icon {
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--eco-space-6) auto;
-  backdrop-filter: blur(8px);
 }
 
 .hero-icon ion-icon {
-  font-size: 40px;
+  font-size: 60px;
   color: white;
 }
 

@@ -286,6 +286,7 @@
       message="Вы уверены, что хотите выйти из аккаунта?"
       confirm-text="Выйти"
       cancel-text="Отмена"
+      :is-destructive="true"
       @confirm="handleLogoutConfirm"
       @cancel="handleLogoutCancel"
       @dismiss="handleLogoutCancel"
@@ -301,6 +302,19 @@
       @confirm="handleLeaveEventConfirm"
       @cancel="handleLeaveEventCancel"
       @dismiss="handleLeaveEventCancel"
+    />
+
+    <!-- Eco About Dialog -->
+    <EcoDialog
+      :is-open="showAboutDialog"
+      title="О приложении"
+      message="EcoEvents - приложение для организации и участия в экологических мероприятиях.
+
+Версия: 1.0.0"
+      confirm-text="OK"
+      :hide-cancel="true"
+      @confirm="handleAboutConfirm"
+      @dismiss="handleAboutConfirm"
     />
   </ion-page>
 </template>
@@ -377,6 +391,7 @@ const isLoadingEvents = ref(true);
 // Dialog states
 const showLogoutDialog = ref(false);
 const showLeaveEventDialog = ref(false);
+const showAboutDialog = ref(false);
 const eventToLeave = ref<EventParticipantWithEventDetailsDTO | null>(null);
 
 const loadStatistics = async () => {
@@ -546,6 +561,10 @@ const handleLeaveEventCancel = () => {
   eventToLeave.value = null;
 };
 
+const handleAboutConfirm = () => {
+  showAboutDialog.value = false;
+};
+
 const editProfile = () => {
   router.push('/edit-profile');
 };
@@ -555,9 +574,7 @@ const showNotificationSettings = () => {
 };
 
 const showAbout = () => {
-  // Для простого информационного диалога можно использовать toast или отдельный диалог
-  // Пока оставим как простой alert или можно сделать отдельный компонент
-  alert('EcoEvents - приложение для организации и участия в экологических мероприятиях. Версия 1.0.0');
+  showAboutDialog.value = true;
 };
 
 const logout = () => {

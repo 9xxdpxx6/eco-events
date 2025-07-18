@@ -233,6 +233,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
+import { onIonViewWillEnter } from '@ionic/vue';
 import { useRouter } from 'vue-router';
 import {
   IonPage,
@@ -633,6 +634,10 @@ watch(allEvents, filterAndSearchEvents);
 onMounted(() => {
   loadAllEvents();
 });
+
+onIonViewWillEnter(() => {
+  loadAllEvents();
+});
 </script>
 
 <style scoped>
@@ -684,7 +689,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, var(--eco-warning) 0%, var(--eco-primary) 100%);
+  background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-secondary) 100%);
   border-radius: 0 0 var(--eco-radius-xl) var(--eco-radius-xl);
 }
 

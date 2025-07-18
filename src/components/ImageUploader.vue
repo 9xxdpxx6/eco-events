@@ -36,7 +36,7 @@
       {{ errorMessage }}
     </div>
     <div class="uploader-hint" v-if="images.length > 0">
-      **Двойной клик по фото, чтобы сделать его главным.
+      Двойной клик по фото, чтобы сделать его главным.
     </div>
   </div>
 </template>
@@ -341,6 +341,7 @@ async function presentActionSheet() {
   --border-color: var(--eco-gray-300);
   border-radius: var(--eco-radius-lg);
   transition: all 0.2s ease-in-out;
+  --border-width: 0;
 }
 
 .add-button:hover {

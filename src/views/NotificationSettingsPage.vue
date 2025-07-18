@@ -190,19 +190,16 @@ import {
 }
 
 .hero-icon {
-  width: 70px;
-  height: 70px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--eco-space-4) auto;
-  backdrop-filter: blur(8px);
 }
 
 .hero-icon ion-icon {
-  font-size: 36px;
+  font-size: 60px;
   color: white;
 }
 
