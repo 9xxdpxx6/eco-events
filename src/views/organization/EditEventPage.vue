@@ -669,7 +669,7 @@ onMounted(() => {
 
 /* Hero секция */
 .hero-section {
-  background: linear-gradient(135deg, var(--eco-secondary) 0%, var(--eco-tertiary) 100%);
+  background: linear-gradient(135deg, var(--eco-secondary) 0%, var(--eco-success) 100%);
   padding: var(--eco-space-8) var(--eco-space-4) var(--eco-space-12);
   color: white;
   text-align: center;

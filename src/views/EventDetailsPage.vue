@@ -294,6 +294,18 @@
       </div>
     </ion-footer>
 
+    <!-- Eco Delete Dialog -->
+    <EcoDialog
+      :is-open="showDeleteDialog"
+      title="Подтверждение"
+      message="Вы уверены, что хотите удалить это мероприятие?"
+      confirm-text="Удалить"
+      cancel-text="Отмена"
+      :is-destructive="true"
+      @confirm="handleDeleteConfirm"
+      @cancel="handleDeleteCancel"
+      @dismiss="handleDeleteCancel"
+    />
   </ion-page>
 </template>
 
@@ -312,7 +324,6 @@ import {
   IonButton,
   IonIcon,
   IonSpinner,
-  alertController,
   toastController
 } from '@ionic/vue';
 import {
@@ -344,6 +355,7 @@ import type { EventResponseMediumDTO } from '../types/api';
 import type { EventParticipantDTO } from '../types/api';
 import { getEventPlaceholder } from '../utils/eventImages';
 import { IMAGE_BASE_URL } from '../api/client';
+import EcoDialog from '../components/EcoDialog.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -355,6 +367,9 @@ const event = ref<EventResponseMediumDTO | null>(null);
 const participants = ref<EventParticipantDTO[]>([]);
 const isLoading = ref(false);
 const isRegistering = ref(false);
+
+// Dialog state
+const showDeleteDialog = ref(false);
 
 const displayedParticipants = computed(() => {
   return [...participants.value]
@@ -488,46 +503,38 @@ const editEvent = () => {
   }
 };
 
-const deleteEvent = async () => {
+const deleteEvent = () => {
   if (!event.value) return;
+  showDeleteDialog.value = true;
+};
 
-  const alert = await alertController.create({
-    header: 'Подтверждение',
-    message: 'Вы уверены, что хотите удалить это мероприятие?',
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Удалить',
-        role: 'destructive',
-        handler: async () => {
-          try {
-            if (!event.value?.id) return;
-            await eventsStore.deleteEvent(event.value.id);
-            const toast = await toastController.create({
-              message: 'Мероприятие удалено',
-              duration: 2000,
-              color: 'success'
-            });
-            await toast.present();
-            router.push('/tabs/events-list');
-          } catch (error) {
-            console.error('Error deleting event:', error);
-            const toast = await toastController.create({
-              message: 'Ошибка при удалении мероприятия',
-              duration: 3000,
-              color: 'danger'
-            });
-            await toast.present();
-          }
-        }
-      }
-    ]
-  });
+const handleDeleteConfirm = async () => {
+  if (!event.value?.id) return;
+  
+  showDeleteDialog.value = false;
+  
+  try {
+    await eventsStore.deleteEvent(event.value.id);
+    const toast = await toastController.create({
+      message: 'Мероприятие удалено',
+      duration: 2000,
+      color: 'success'
+    });
+    await toast.present();
+    router.push('/tabs/events-list');
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка при удалении мероприятия',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  }
+};
 
-  await alert.present();
+const handleDeleteCancel = () => {
+  showDeleteDialog.value = false;
 };
 
 const shareEvent = async () => {

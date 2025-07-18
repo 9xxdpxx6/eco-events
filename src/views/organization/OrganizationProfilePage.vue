@@ -102,6 +102,18 @@
         </ion-card-content>
       </ion-card>
     </ion-content>
+
+    <!-- Eco Logout Dialog -->
+    <EcoDialog
+      :is-open="showLogoutDialog"
+      title="Выйти"
+      message="Вы уверены, что хотите выйти из аккаунта?"
+      confirm-text="Выйти"
+      cancel-text="Отмена"
+      @confirm="handleLogoutConfirm"
+      @cancel="handleLogoutCancel"
+      @dismiss="handleLogoutCancel"
+    />
   </ion-page>
 </template>
 
@@ -126,7 +138,6 @@ import {
   IonLabel,
   IonList,
   IonItem,
-  alertController,
   toastController
 } from '@ionic/vue';
 import {
@@ -146,6 +157,7 @@ import {
 import { useAuthStore } from '../../stores';
 import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
+import EcoDialog from '../../components/EcoDialog.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -158,6 +170,9 @@ const statistics = ref({
   totalParticipants: 0,
   rating: 4.8
 });
+
+// Dialog state
+const showLogoutDialog = ref(false);
 
 const loadStatistics = async () => {
   try {
@@ -205,57 +220,43 @@ const editProfile = () => {
   router.push('/edit-profile');
 };
 
-const manageDocuments = async () => {
-  const alert = await alertController.create({
-    header: 'Документы верификации',
-    message: 'Здесь вы сможете загружать и управлять документами для подтверждения статуса организации.',
-    buttons: ['Понятно']
-  });
-  await alert.present();
+const manageDocuments = () => {
+  // Для простого информационного диалога используем alert
+  alert('Здесь вы сможете загружать и управлять документами для подтверждения статуса организации.');
 };
 
 const showNotificationSettings = () => {
   router.push('/notification-settings');
 };
 
-const showAbout = async () => {
-  const alert = await alertController.create({
-    header: 'О приложении',
-    message: 'EcoEvents - приложение для организации и участия в экологических мероприятиях. Версия 1.0.0',
-    buttons: ['Закрыть']
-  });
-  await alert.present();
+const showAbout = () => {
+  // Для простого информационного диалога используем alert
+  alert('EcoEvents - приложение для организации и участия в экологических мероприятиях. Версия 1.0.0');
 };
 
-const logout = async () => {
-  const alert = await alertController.create({
-    header: 'Выйти',
-    message: 'Вы уверены, что хотите выйти из аккаунта?',
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Выйти',
-        handler: async () => {
-          try {
-            await authStore.logout();
-            router.push('/login');
-          } catch (error) {
-            console.error('Error logging out:', error);
-            const toast = await toastController.create({
-              message: 'Ошибка при выходе из аккаунта',
-              duration: 3000,
-              color: 'danger'
-            });
-            await toast.present();
-          }
-        }
-      }
-    ]
-  });
-  await alert.present();
+const logout = () => {
+  showLogoutDialog.value = true;
+};
+
+const handleLogoutConfirm = async () => {
+  showLogoutDialog.value = false;
+  
+  try {
+    await authStore.logout();
+    router.push('/login');
+  } catch (error) {
+    console.error('Error logging out:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка при выходе из аккаунта',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  }
+};
+
+const handleLogoutCancel = () => {
+  showLogoutDialog.value = false;
 };
 
 onMounted(() => {

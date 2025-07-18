@@ -215,6 +215,19 @@
         </ion-fab-button>
       </ion-fab>
     </ion-content>
+
+    <!-- Eco Delete Dialog -->
+    <EcoDialog
+      :is-open="showDeleteDialog"
+      title="Удалить мероприятие?"
+      :message="`Вы уверены, что хотите удалить «${eventToDelete?.title}»? Это действие необратимо.`"
+      confirm-text="Удалить"
+      cancel-text="Отмена"
+      :is-destructive="true"
+      @confirm="handleDeleteConfirm"
+      @cancel="handleDeleteCancel"
+      @dismiss="handleDeleteCancel"
+    />
   </ion-page>
 </template>
 
@@ -234,7 +247,6 @@ import {
   IonLabel,
   IonFab,
   IonFabButton,
-  alertController,
   toastController,
   IonRefresher,
   IonRefresherContent,
@@ -263,6 +275,7 @@ import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import EventListLoader from '../EventListLoader.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import { IMAGE_BASE_URL } from '../../api/client';
+import EcoDialog from '../../components/EcoDialog.vue';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -279,6 +292,10 @@ const dateRange = ref({ from: '', to: '' });
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 const contentRef = ref();
 const filtersVisible = ref(true);
+
+// Dialog state
+const showDeleteDialog = ref(false);
+const eventToDelete = ref<EventResponseMediumDTO | null>(null);
 const lastScrollY = ref(0);
 
 const sortBy = ref('id_DESC');
@@ -550,49 +567,44 @@ const viewEventDetails = (eventId: number) => {
   router.push(`/event/${eventId}`);
 };
 
-const confirmDeleteEvent = async (event: EventResponseMediumDTO) => {
+const confirmDeleteEvent = (event: EventResponseMediumDTO) => {
   if (!event.id) return;
+  eventToDelete.value = event;
+  showDeleteDialog.value = true;
+};
+
+const handleDeleteConfirm = async () => {
+  const event = eventToDelete.value;
+  if (!event?.id) return;
   
-  const alert = await alertController.create({
-    header: 'Удалить мероприятие?',
-    message: `Вы уверены, что хотите удалить «${event.title}»? Это действие необратимо.`,
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Удалить',
-        role: 'destructive',
-        handler: async () => {
-          try {
-            if (!event.id) return;
-            await eventsStore.deleteEvent(event.id);
-            // Обновляем allEvents и filteredEvents
-            allEvents.value = allEvents.value.filter(e => e.id !== event.id);
-            filterAndSearchEvents();
-            
-            const toast = await toastController.create({
-              message: 'Мероприятие удалено',
-              duration: 2000,
-              color: 'success'
-            });
-            await toast.present();
-          } catch (error) {
-            console.error('Error deleting event:', error);
-            const toast = await toastController.create({
-              message: 'Ошибка при удалении мероприятия',
-              duration: 3000,
-              color: 'danger'
-            });
-            await toast.present();
-          }
-        }
-      }
-    ]
-  });
+  showDeleteDialog.value = false;
   
-  await alert.present();
+  try {
+    await eventsStore.deleteEvent(event.id);
+    // Обновляем allEvents и filteredEvents
+    allEvents.value = allEvents.value.filter(e => e.id !== event.id);
+    filterAndSearchEvents();
+    
+    const toast = await toastController.create({
+      message: 'Мероприятие удалено',
+      duration: 2000,
+      color: 'success'
+    });
+    await toast.present();
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка при удалении мероприятия',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  }
+};
+
+const handleDeleteCancel = () => {
+  showDeleteDialog.value = false;
+  eventToDelete.value = null;
 };
 
 const clearSearch = () => {

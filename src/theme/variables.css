@@ -29,14 +29,6 @@ http://ionicframework.com/docs/theming/ */
   --ion-color-secondary-shade: #0D7FD9;
   --ion-color-secondary-tint: #4DB4FF;
 
-  /** tertiary / success **/
-  --ion-color-tertiary: #2EDC93;
-  --ion-color-tertiary-rgb: 46, 220, 147;
-  --ion-color-tertiary-contrast: #ffffff;
-  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
-  --ion-color-tertiary-shade: #1FAE6F;
-  --ion-color-tertiary-tint: #58E6A8;
-
   /** success **/
   --ion-color-success: #2EDC93;
   --ion-color-success-rgb: 46, 220, 147;

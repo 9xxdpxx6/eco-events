@@ -278,6 +278,30 @@
         </div>
       </div>
     </ion-content>
+
+    <!-- Eco Logout Dialog -->
+    <EcoDialog
+      :is-open="showLogoutDialog"
+      title="Выйти"
+      message="Вы уверены, что хотите выйти из аккаунта?"
+      confirm-text="Выйти"
+      cancel-text="Отмена"
+      @confirm="handleLogoutConfirm"
+      @cancel="handleLogoutCancel"
+      @dismiss="handleLogoutCancel"
+    />
+
+    <!-- Eco Leave Event Dialog -->
+    <EcoDialog
+      :is-open="showLeaveEventDialog"
+      title="Отменить участие"
+      :message="eventToLeave ? `Вы уверены, что хотите отменить участие в мероприятии ${eventToLeave.event?.title}?` : 'Вы уверены, что хотите отменить участие?'"
+      confirm-text="Да, отменить"
+      cancel-text="Отмена"
+      @confirm="handleLeaveEventConfirm"
+      @cancel="handleLeaveEventCancel"
+      @dismiss="handleLeaveEventCancel"
+    />
   </ion-page>
 </template>
 
@@ -299,7 +323,6 @@ import {
   IonSegmentButton,
   IonSpinner,
   IonSkeletonText,
-  alertController,
   toastController,
   IonRefresher,
   IonRefresherContent
@@ -321,6 +344,7 @@ import {
 } from 'ionicons/icons';
 import { useAuthStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
+import EcoDialog from '../../components/EcoDialog.vue';
 import type { EventParticipantWithEventDetailsDTO } from '../../types/api';
 import { usersApi } from '../../api/users';
 import { bonusHistoryApi } from '../../api/bonuses';
@@ -349,6 +373,11 @@ const pastEventsCount = ref(0);
 const isLoadingProfile = ref(true);
 const isLoadingStatistics = ref(true);
 const isLoadingEvents = ref(true);
+
+// Dialog states
+const showLogoutDialog = ref(false);
+const showLeaveEventDialog = ref(false);
+const eventToLeave = ref<EventParticipantWithEventDetailsDTO | null>(null);
 
 const loadStatistics = async () => {
   const userId = user.value?.id;
@@ -471,51 +500,50 @@ const goToEvents = () => {
   router.push('/tabs/events-list');
 };
 
-const leaveEvent = async (event: EventParticipantWithEventDetailsDTO) => {
+const leaveEvent = (event: EventParticipantWithEventDetailsDTO) => {
   if (!event.event.id) return;
-  const alert = await alertController.create({
-    header: 'Отменить участие',
-    message: `Вы уверены, что хотите отменить участие в "${event.event.title}"?`,
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Да, отменить',
-        handler: async () => {
-          try {
-            const userId = user.value?.id;
-            if (!userId || !event.event.id) return;
-            
-            await participantsStore.unregisterFromEvent(userId, event.event.id);
-            
-            // Быстро обновляем UI - удаляем событие из списка
-            upcomingEvents.value = upcomingEvents.value.filter(e => e.event.id !== event.event.id);
-            
-            // Перезагружаем статистику в фоне
-            loadStatistics();
-            
-            const toast = await toastController.create({
-              message: 'Участие отменено',
-              duration: 2000,
-              color: 'success'
-            });
-            await toast.present();
-          } catch (error) {
-            console.error('Error leaving event:', error);
-            const toast = await toastController.create({
-              message: 'Ошибка при отмене участия',
-              duration: 3000,
-              color: 'danger'
-            });
-            await toast.present();
-          }
-        }
-      }
-    ]
-  });
-  await alert.present();
+  eventToLeave.value = event;
+  showLeaveEventDialog.value = true;
+};
+
+const handleLeaveEventConfirm = async () => {
+  const event = eventToLeave.value;
+  if (!event?.event.id) return;
+  
+  showLeaveEventDialog.value = false;
+  
+  try {
+    const userId = user.value?.id;
+    if (!userId || !event.event.id) return;
+    
+    await participantsStore.unregisterFromEvent(userId, event.event.id);
+    
+    // Быстро обновляем UI - удаляем событие из списка
+    upcomingEvents.value = upcomingEvents.value.filter(e => e.event.id !== event.event.id);
+    
+    // Перезагружаем статистику в фоне
+    loadStatistics();
+    
+    const toast = await toastController.create({
+      message: 'Участие отменено',
+      duration: 2000,
+      color: 'success'
+    });
+    await toast.present();
+  } catch (error) {
+    console.error('Error leaving event:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка при отмене участия',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  }
+};
+
+const handleLeaveEventCancel = () => {
+  showLeaveEventDialog.value = false;
+  eventToLeave.value = null;
 };
 
 const editProfile = () => {
@@ -526,44 +554,35 @@ const showNotificationSettings = () => {
   router.push('/notification-settings');
 };
 
-const showAbout = async () => {
-  const alert = await alertController.create({
-    header: 'О приложении',
-    message: 'EcoEvents - приложение для организации и участия в экологических мероприятиях. Версия 1.0.0',
-    buttons: ['Закрыть']
-  });
-  await alert.present();
+const showAbout = () => {
+  // Для простого информационного диалога можно использовать toast или отдельный диалог
+  // Пока оставим как простой alert или можно сделать отдельный компонент
+  alert('EcoEvents - приложение для организации и участия в экологических мероприятиях. Версия 1.0.0');
 };
 
-const logout = async () => {
-  const alert = await alertController.create({
-    header: 'Выйти',
-    message: 'Вы уверены, что хотите выйти из аккаунта?',
-    buttons: [
-      {
-        text: 'Отмена',
-        role: 'cancel'
-      },
-      {
-        text: 'Выйти',
-        handler: async () => {
-          try {
-            await authStore.logout();
-            router.push('/login');
-          } catch (error) {
-            console.error('Error logging out:', error);
-            const toast = await toastController.create({
-              message: 'Ошибка при выходе из аккаунта',
-              duration: 3000,
-              color: 'danger'
-            });
-            await toast.present();
-          }
-        }
-      }
-    ]
-  });
-  await alert.present();
+const logout = () => {
+  showLogoutDialog.value = true;
+};
+
+const handleLogoutConfirm = async () => {
+  showLogoutDialog.value = false;
+  
+  try {
+    await authStore.logout();
+    router.push('/login');
+  } catch (error) {
+    console.error('Error logging out:', error);
+    const toast = await toastController.create({
+      message: 'Ошибка при выходе из аккаунта',
+      duration: 3000,
+      color: 'danger'
+    });
+    await toast.present();
+  }
+};
+
+const handleLogoutCancel = () => {
+  showLogoutDialog.value = false;
 };
 
 const handleRefresh = async (event: any) => {

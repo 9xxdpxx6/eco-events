@@ -88,7 +88,7 @@ defineProps({
 .explore-icon {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-tertiary) 100%);
+  background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-success) 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
