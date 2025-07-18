@@ -182,56 +182,19 @@
           <div class="form-section eco-card">
             <div class="section-header">
               <ion-icon :icon="imageOutline" />
-              <h2>Превью мероприятия</h2>
+              <h2>Изображения мероприятия</h2>
             </div>
             
             <div class="form-fields">
               <div class="field-group">
-                <label class="field-label">Изображение превью</label>
-                <p class="field-hint">Загрузите изображение для превью мероприятия (JPG, PNG, до 5MB)</p>
+                <label class="field-label">Фотографии</label>
+                <p class="field-hint">Загрузите до 10 изображений (JPG, PNG, до 10MB). Первое фото будет главным.</p>
                 
-                <div class="image-upload-container">
-                  <!-- Превью изображения -->
-                  <div v-if="previewImageUrl" class="image-preview">
-                    <img :src="previewImageUrl" alt="Превью" class="preview-image" />
-                    <div class="image-overlay">
-                      <ion-button 
-                        fill="clear" 
-                        @click="removePreviewImage"
-                        class="remove-image-button"
-                      >
-                        <ion-icon :icon="trashOutline" />
-                      </ion-button>
-                    </div>
-                  </div>
-                  
-                  <!-- Кнопка загрузки -->
-                  <div v-else class="upload-placeholder" @click="triggerFileUpload">
-                    <ion-icon :icon="imageOutline" />
-                    <p>Нажмите для загрузки изображения</p>
-                    <small>JPG, PNG до 5MB</small>
-                  </div>
-                  
-                  <!-- Скрытый input для файла -->
-                  <input 
-                    ref="fileInput"
-                    type="file" 
-                    accept="image/jpeg,image/png,image/jpg"
-                    @change="handleFileSelect"
-                    style="display: none"
-                  />
-                </div>
-                
-                <!-- Кнопка замены изображения -->
-                <ion-button 
-                  v-if="previewImageUrl" 
-                  fill="outline" 
-                  @click="triggerFileUpload"
-                  class="change-image-button"
-                >
-                  <ion-icon :icon="refreshOutline" slot="start" />
-                  Заменить изображение
-                </ion-button>
+                <ImageUploader 
+                  v-model="images"
+                  @update:preview="updatePreview"
+                  :max-files="10"
+                />
               </div>
             </div>
           </div>
@@ -359,6 +322,7 @@ import { useAuthStore } from '../../stores/auth';
 import type { EventTypeDTO } from '../../types/api';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
+import ImageUploader from '../../components/ImageUploader.vue';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -386,9 +350,8 @@ const form = ref({
 const showErrors = ref(false);
 const isSaving = ref(false);
 const eventTypes = ref<EventTypeDTO[]>([]);
-const previewImageUrl = ref<string>('');
-const selectedPreviewFile = ref<File | null>(null);
-const fileInput = ref<HTMLInputElement>();
+const images = ref<(File)[]>([]);
+const previewImage = ref<File | null>(null);
 const showCalendar = ref(false);
 
 const minDate = new Date().toISOString();
@@ -420,6 +383,15 @@ const formatDateForDisplay = (isoString: string) => {
   });
 };
 
+const updatePreview = (file: File | string | null) => {
+  if (file instanceof File) {
+    previewImage.value = file;
+  } else {
+    previewImage.value = null; // Should not happen with current uploader logic
+  }
+};
+
+
 const resetForm = () => {
   form.value = {
     title: '',
@@ -439,11 +411,8 @@ const resetForm = () => {
     requirements: ''
   };
   showErrors.value = false;
-  previewImageUrl.value = '';
-  selectedPreviewFile.value = null;
-  if (fileInput.value) {
-    fileInput.value.value = '';
-  }
+  images.value = [];
+  previewImage.value = null;
   // Загружаем контактную информацию пользователя заново
   loadUserContactInfo();
 };
@@ -483,42 +452,33 @@ const saveEvent = async () => {
 
   isSaving.value = true;
   try {
-    // Получаем тип мероприятия полностью
     const eventType = eventTypes.value.find(t => t.id === Number(form.value.eventTypeId));
     if (!eventType) throw new Error('Тип мероприятия не найден');
     
-    // Формируем дату и время
     let startTime = '';
     if (form.value.date && form.value.time) {
-      // Проверяем формат даты
-      const datePart = form.value.date;
+      const datePart = form.value.date.split('T')[0];
       let timePart = form.value.time;
-      
-      // Убеждаемся, что время в правильном формате
       if (timePart.length === 5 && timePart.includes(':')) {
-        timePart += ':00'; // Добавляем секунды если их нет
+        timePart += ':00';
       }
-      
-      // Создаем полную дату
       const fullDateTime = `${datePart}T${timePart}`;
-      console.log('Full datetime:', fullDateTime);
-      
-      // Проверяем, что дата корректная
       const testDate = new Date(fullDateTime);
       if (isNaN(testDate.getTime())) {
         throw new Error('Некорректная дата или время');
       }
-      
       startTime = testDate.toISOString();
     } else {
       throw new Error('Не указана дата или время');
     }
     
-    console.log('Start time:', startTime);
-    
     const duration = Number(form.value.duration) || 2;
     const endTime = new Date(new Date(startTime).getTime() + duration * 60 * 60 * 1000).toISOString();
     
+    if (!authStore.user?.id) {
+        throw new Error("Пользователь не авторизован");
+    }
+
     const eventData = {
       title: form.value.title,
       description: form.value.description,
@@ -527,12 +487,25 @@ const saveEvent = async () => {
       location: form.value.location,
       conducted: false,
       eventTypeId: eventType.id!,
-      userId: authStore.user?.id || 1
+      userId: authStore.user.id
     };
     
-    console.log('Event data:', eventData);
+    const formData = new FormData();
+    formData.append('event', new Blob([JSON.stringify(eventData)], { type: 'application/json' }));
     
-    await eventsStore.createEvent(eventData, selectedPreviewFile.value || undefined);
+    if (previewImage.value) {
+        formData.append('preview', previewImage.value);
+    }
+
+    const otherImages = images.value.filter(img => img !== previewImage.value);
+    otherImages.forEach(imageFile => {
+        if (imageFile instanceof File) {
+            formData.append('images', imageFile);
+        }
+    });
+    
+    await eventsStore.createEventWithImages(formData);
+
     const toast = await toastController.create({
       message: 'Мероприятие успешно создано',
       duration: 2000,
@@ -540,14 +513,13 @@ const saveEvent = async () => {
     });
     await toast.present();
     
-    // Сбрасываем форму после успешного создания
     resetForm();
     
     router.push('/tabs/events-management');
   } catch (error) {
     console.error('Error creating event:', error);
     const toast = await toastController.create({
-      message: 'Ошибка при создании мероприятия: ' + ((error as any)?.message || error),
+      message: `Ошибка при создании мероприятия: ${((error as any)?.message || String(error))}`,
       duration: 3000,
       color: 'danger'
     });
@@ -593,59 +565,6 @@ const handleTimeFocus = (event: any) => {
   // При фокусе показываем placeholder или текущее значение
   if (!form.value.time) {
     event.target.placeholder = '00:00';
-  }
-};
-
-// Методы для работы с изображением
-const triggerFileUpload = () => {
-  if (fileInput.value) {
-    fileInput.value.click();
-  }
-};
-
-const handleFileSelect = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  
-  if (!file) return;
-  
-  // Валидация типа файла
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-  if (!allowedTypes.includes(file.type)) {
-    toastController.create({
-      message: 'Пожалуйста, выберите изображение в формате JPG или PNG',
-      duration: 3000,
-      color: 'warning'
-    }).then(toast => toast.present());
-    return;
-  }
-  
-  // Валидация размера файла (5MB)
-  const maxSize = 5 * 1024 * 1024; // 5MB в байтах
-  if (file.size > maxSize) {
-    toastController.create({
-      message: 'Размер файла не должен превышать 5MB',
-      duration: 3000,
-      color: 'warning'
-    }).then(toast => toast.present());
-    return;
-  }
-  
-  selectedPreviewFile.value = file;
-  
-  // Создаем URL для превью
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    previewImageUrl.value = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
-};
-
-const removePreviewImage = () => {
-  previewImageUrl.value = '';
-  selectedPreviewFile.value = null;
-  if (fileInput.value) {
-    fileInput.value.value = '';
   }
 };
 

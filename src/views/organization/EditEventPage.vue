@@ -190,56 +190,18 @@
           <div class="form-section eco-card">
             <div class="section-header">
               <ion-icon :icon="imageOutline" />
-              <h2>Превью мероприятия</h2>
+              <h2>Изображения мероприятия</h2>
             </div>
             
             <div class="form-fields">
               <div class="field-group">
-                <label class="field-label">Изображение превью</label>
-                <p class="field-hint">Загрузите изображение для превью мероприятия (JPG, PNG, до 5MB)</p>
-                
-                <div class="image-upload-container">
-                  <!-- Превью изображения -->
-                  <div v-if="previewImageUrl" class="image-preview">
-                    <img :src="previewImageUrl" alt="Превью" class="preview-image" />
-                    <div class="image-overlay">
-                      <ion-button 
-                        fill="clear" 
-                        @click="removePreviewImage"
-                        class="remove-image-button"
-                      >
-                        <ion-icon :icon="trashOutline" />
-                      </ion-button>
-                    </div>
-                  </div>
-                  
-                  <!-- Кнопка загрузки -->
-                  <div v-else class="upload-placeholder" @click="triggerFileUpload">
-                    <ion-icon :icon="imageOutline" />
-                    <p>Нажмите для загрузки изображения</p>
-                    <small>JPG, PNG до 5MB</small>
-                  </div>
-                  
-                  <!-- Скрытый input для файла -->
-                  <input 
-                    ref="fileInput"
-                    type="file" 
-                    accept="image/jpeg,image/png,image/jpg"
-                    @change="handleFileSelect"
-                    style="display: none"
-                  />
-                </div>
-                
-                <!-- Кнопка замены изображения -->
-                <ion-button 
-                  v-if="previewImageUrl" 
-                  fill="outline" 
-                  @click="triggerFileUpload"
-                  class="change-image-button"
-                >
-                  <ion-icon :icon="refreshOutline" slot="start" />
-                  Заменить изображение
-                </ion-button>
+                <label class="field-label">Фотографии</label>
+                <p class="field-hint">Загрузите до 10 изображений (JPG, PNG, до 10MB). Первое фото будет главным.</p>
+                <ImageUploader 
+                  v-model="images"
+                  @update:preview="updatePreview"
+                  :max-files="10"
+                />
               </div>
             </div>
           </div>
@@ -364,10 +326,11 @@ import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline,
 import { useEventsStore } from '../../stores';
 import { useEventTypesStore } from '../../stores';
 import { useAuthStore } from '../../stores/auth';
-import type { EventTypeDTO } from '../../types/api';
+import type { EventTypeDTO, EventResponseMediumDTO } from '../../types/api';
 import { IMAGE_BASE_URL } from '../../api/client';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
+import ImageUploader from '../../components/ImageUploader.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -398,9 +361,8 @@ const showErrors = ref(false);
 const isLoading = ref(false);
 const isSaving = ref(false);
 const eventTypes = ref<EventTypeDTO[]>([]);
-const previewImageUrl = ref<string>('');
-const selectedPreviewFile = ref<File | null>(null);
-const fileInput = ref<HTMLInputElement>();
+const images = ref<(File | string)[]>([]);
+const previewImage = ref<File | string | null>(null);
 const showCalendar = ref(false);
 
 const minDate = new Date().toISOString();
@@ -432,11 +394,17 @@ const formatDateForDisplay = (isoString: string) => {
   });
 };
 
+const updatePreview = (file: File | string | null) => {
+  previewImage.value = file;
+};
+
+
 const loadEvent = async () => {
   isLoading.value = true;
   try {
     await eventsStore.fetchEventById(eventId);
-    const event = eventsStore.getCurrentEvent;
+    const event = eventsStore.getCurrentEvent as any;
+
     if (event) {
       const eventDate = new Date(event.startTime);
       const endDate = new Date(event.endTime);
@@ -460,9 +428,30 @@ const loadEvent = async () => {
         requirements: (event as any).requirements || ''
       };
       
-      // Устанавливаем превью изображение если есть
+      images.value = [];
+      // Устанавливаем превью и другие изображения
       if (event.preview) {
-        previewImageUrl.value = `${IMAGE_BASE_URL}/${event.preview}`;
+        images.value.push(`${IMAGE_BASE_URL}${event.preview}`);
+      }
+      if (event.images) {
+        const otherImages = event.images
+          .map((img: { filePath: string; }) => `${IMAGE_BASE_URL}${img.filePath}`)
+          .filter((path: string) => path !== `${IMAGE_BASE_URL}${event.preview}`);
+        images.value.push(...otherImages);
+      }
+
+      if (images.value.length > 0) {
+        // Устанавливаем превью, если оно есть
+        const previewUrl = `${IMAGE_BASE_URL}${event.preview}`;
+        const previewIndex = images.value.findIndex(img => img === previewUrl);
+        if (previewIndex !== -1) {
+          // Перемещаем превью в начало массива
+          const [preview] = images.value.splice(previewIndex, 1);
+          images.value.unshift(preview);
+          previewImage.value = preview;
+        } else {
+          previewImage.value = images.value[0];
+        }
       }
     }
   } catch (error) {
@@ -545,59 +534,6 @@ const handleTimeFocus = (event: any) => {
   }
 };
 
-// Методы для работы с изображением
-const triggerFileUpload = () => {
-  if (fileInput.value) {
-    fileInput.value.click();
-  }
-};
-
-const handleFileSelect = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  
-  if (!file) return;
-  
-  // Валидация типа файла
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-  if (!allowedTypes.includes(file.type)) {
-    toastController.create({
-      message: 'Пожалуйста, выберите изображение в формате JPG или PNG',
-      duration: 3000,
-      color: 'warning'
-    }).then(toast => toast.present());
-    return;
-  }
-  
-  // Валидация размера файла (5MB)
-  const maxSize = 5 * 1024 * 1024; // 5MB в байтах
-  if (file.size > maxSize) {
-    toastController.create({
-      message: 'Размер файла не должен превышать 5MB',
-      duration: 3000,
-      color: 'warning'
-    }).then(toast => toast.present());
-    return;
-  }
-  
-  selectedPreviewFile.value = file;
-  
-  // Создаем URL для превью
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    previewImageUrl.value = e.target?.result as string;
-  };
-  reader.readAsDataURL(file);
-};
-
-const removePreviewImage = () => {
-  previewImageUrl.value = '';
-  selectedPreviewFile.value = null;
-  if (fileInput.value) {
-    fileInput.value.value = '';
-  }
-};
-
 const saveChanges = async () => {
   if (!isFormValid.value) {
     showErrors.value = true;
@@ -623,29 +559,59 @@ const saveChanges = async () => {
     const duration = Number(form.value.duration) || 2;
     const endTime = new Date(new Date(startTime).getTime() + duration * 60 * 60 * 1000).toISOString();
     
+    let previewPath: string | undefined = undefined;
+    if (previewImage.value) {
+      if (typeof previewImage.value === 'string') {
+        previewPath = previewImage.value.replace(IMAGE_BASE_URL, '');
+      } else {
+        // Если превью - новый файл, то на бэке он определится из multipart-поля 'preview'
+        previewPath = undefined;
+      }
+    }
+
     const eventData = {
+      id: eventId,
       title: form.value.title,
       description: form.value.description,
       startTime,
       endTime,
       location: form.value.location,
-      conducted: false,
       eventTypeId: eventType.id!,
-      userId: authStore.user?.id || 1
+      userId: authStore.user?.id || 1,
+      preview: previewPath,
+      currentImages: images.value
+        .filter(img => typeof img === 'string')
+        .map(url => ({ filePath: (url as string).replace(IMAGE_BASE_URL, '') }))
     };
 
-    await eventsStore.updateEvent(eventId, eventData);
+    const formData = new FormData();
+    formData.append('event', new Blob([JSON.stringify(eventData)], { type: 'application/json' }));
+    
+    const newFiles = images.value.filter(img => img instanceof File) as File[];
+
+    if (previewImage.value instanceof File) {
+      formData.append('preview', previewImage.value);
+    } 
+
+    newFiles.forEach(file => {
+        if(file !== previewImage.value) {
+            formData.append('images', file);
+        }
+    });
+
+    await eventsStore.updateEventWithImages(eventId, formData);
+    
     const toast = await toastController.create({
       message: 'Мероприятие успешно обновлено',
       duration: 2000,
       color: 'success'
     });
     await toast.present();
-    router.push(`/event/${eventId}`);
+    router.push(`/tabs/events-management`);
   } catch (error) {
     console.error('Error updating event:', error);
     const toast = await toastController.create({
-      message: 'Ошибка при обновлении мероприятия',
+      message: `Ошибка при обновлении мероприятия: ${((error as any)?.message || String(error))}`,
       duration: 3000,
       color: 'danger'
     });

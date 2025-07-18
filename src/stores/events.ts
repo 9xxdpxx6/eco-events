@@ -87,11 +87,47 @@ export const useEventsStore = defineStore('events', {
       }
     },
 
+    async createEventWithImages(formData: FormData) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const newEvent = await eventsApi.createWithImages(formData);
+        this.events.push(newEvent);
+        return newEvent;
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Произошла ошибка при создании события';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
     async updateEvent(eventId: number, eventData: EventRequestDTO) {
       this.isLoading = true;
       this.error = null;
       try {
         const updatedEvent = await eventsApi.update(eventId, eventData);
+        const index = this.events.findIndex(event => event.id === eventId);
+        if (index !== -1) {
+          this.events[index] = updatedEvent;
+        }
+        if (this.currentEvent?.id === eventId) {
+          this.currentEvent = updatedEvent;
+        }
+        return updatedEvent;
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Произошла ошибка при обновлении события';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async updateEventWithImages(eventId: number, formData: FormData) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        const updatedEvent = await eventsApi.updateWithImages(eventId, formData);
         const index = this.events.findIndex(event => event.id === eventId);
         if (index !== -1) {
           this.events[index] = updatedEvent;

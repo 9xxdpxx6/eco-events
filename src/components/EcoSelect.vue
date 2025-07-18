@@ -113,7 +113,6 @@ const selectOption = (value: string | number) => {
 <style scoped>
 .eco-select-container {
   display: block;
-  width: 100%;
 }
 
 .select-trigger {

@@ -34,8 +34,18 @@ export const eventsApi = {
     return data;
   },
 
+  createWithImages: async (formData: FormData): Promise<EventResponseMediumDTO> => {
+    const { data } = await client.post<EventResponseMediumDTO>('/api/events/', formData);
+    return data;
+  },
+
   update: async (eventId: number, eventData: EventRequestDTO): Promise<EventResponseMediumDTO> => {
     const { data } = await client.post<EventResponseMediumDTO>(`/api/events/${eventId}`, eventData);
+    return data;
+  },
+
+  updateWithImages: async (eventId: number, formData: FormData): Promise<EventResponseMediumDTO> => {
+    const { data } = await client.post<EventResponseMediumDTO>(`/api/events/${eventId}`, formData);
     return data;
   },
 
