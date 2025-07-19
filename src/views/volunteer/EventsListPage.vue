@@ -61,11 +61,11 @@
       </div>
 
       <!-- Список мероприятий -->
-      <div v-else-if="filteredEvents.length > 0" :class="['events-container']">
+      <div v-else-if="displayedEvents.length > 0" :class="['events-container']">
         <!-- Masonry Grid View -->
         <masonry-wall
           v-if="viewMode === 'grid'"
-          :items="filteredEvents"
+          :items="displayedEvents"
           :column-width="180"
           :gap="12"
           :key="`masonry-${viewMode}-${selectedFilter}`"
@@ -74,11 +74,18 @@
           <template #default="{ item: event }">
             <div
               :key="event.id"
+              :id="generateEventId(event)"
               class="event-card eco-card"
               @click="openEventDetails(Number(event.id))"
             >
               <div class="event-image">
-                <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+                <img 
+                  :src="getEventPlaceholder(event.id ?? 0)"
+                  :data-src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)"
+                  :alt="event.title"
+                  class="lazy-img"
+                  loading="lazy"
+                />
                 <div class="event-status">
                   <span :class="['status-badge', getEventStatus(event.startTime)]">
                     {{ getEventStatusText(event.startTime) }}
@@ -123,13 +130,20 @@
         <!-- List View -->
         <div v-else class="events-list">
            <div 
-            v-for="event in filteredEvents" 
+            v-for="event in displayedEvents" 
             :key="event.id"
+            :id="generateEventId(event)"
             class="event-card eco-card eco-list-item"
             @click="openEventDetails(Number(event.id))"
           >
             <div class="event-image">
-              <img :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" alt="Event image" />
+              <img 
+                :src="getEventPlaceholder(event.id ?? 0)"
+                :data-src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)"
+                :alt="event.title"
+                class="lazy-img"
+                loading="lazy"
+              />
               <div class="event-status">
                 <span :class="['status-badge', getEventStatus(event.startTime)]">
                   {{ getEventStatusText(event.startTime) }}
@@ -194,10 +208,10 @@
       <ion-infinite-scroll 
         @ionInfinite="loadMoreEvents" 
         :disabled="!hasMore"
-        threshold="100px"
+        threshold="300px"
       >
         <ion-infinite-scroll-content
-          loading-spinner="bubbles"
+          loading-spinner="crescent"
           loading-text="Загрузка..."
         ></ion-infinite-scroll-content>
       </ion-infinite-scroll>
@@ -208,6 +222,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { onIonViewWillLeave } from '@ionic/vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   IonPage,
@@ -265,6 +280,8 @@ const authStore = useAuthStore();
 
 const events = ref<EventResponseMediumDTO[]>([]);
 const filteredEvents = ref<EventResponseMediumDTO[]>([]);
+const displayedEvents = ref<EventResponseMediumDTO[]>([]);
+const MAX_DISPLAYED_EVENTS = 300; // Увеличиваем лимит отображаемых элементов
 const userParticipations = ref<Set<number>>(new Set());
 const searchText = ref('');
 const dateRange = ref({ from: '', to: '' });
@@ -282,6 +299,8 @@ const isInitialized = ref(false);
 // Добавляем переменные для сохранения позиции скролла
 const savedScrollPosition = ref(0);
 const isLoadingMoreData = ref(false);
+const imageObserver = ref<IntersectionObserver | null>(null);
+const infiniteScrollDebounce = ref<NodeJS.Timeout | null>(null);
 
 const sortOptions = [
   { value: 'id_DESC', label: 'По умолчанию', icon: listOutline },
@@ -304,7 +323,7 @@ if (authStore.isAuthenticated) {
 }
 
 const page = ref(0);
-const size = 50;
+const size = 100; // Оптимизируем размер страницы
 const hasMore = ref(true);
 
 function setFilter(value: string) {
@@ -368,7 +387,7 @@ function formatDateForApi(date: Date) {
   return date.toISOString().slice(0, 19);
 }
 
-const loadEvents = async (reset = true) => {
+const loadEvents = async (reset = true, isRefresh = false) => {
   if (reset) {
     isLoading.value = true;
     page.value = 0;
@@ -542,6 +561,7 @@ const loadEvents = async (reset = true) => {
     
     // Сортировка теперь происходит на сервере
     filteredEvents.value = events.value;
+    updateDisplayedEvents(isRefresh);
   } catch (error) {
     console.error('Error loading events:', error);
     const toast = await toastController.create({
@@ -558,7 +578,7 @@ const loadEvents = async (reset = true) => {
 };
 
 const handleRefresh = async (event: any) => {
-  await loadEvents(true);
+  await loadEvents(true, true); // Передаем флаг isRefresh
   event.target.complete();
 };
 
@@ -567,22 +587,33 @@ const loadMoreEvents = async (event: any) => {
     event.target.complete();
     return;
   }
-  isLoadingMore.value = true;
-  isLoadingMoreData.value = true;
   
-  // Сохраняем текущую позицию скролла перед загрузкой
-  if (contentRef.value) {
-    contentRef.value.$el.getScrollElement().then((el: any) => {
-      savedScrollPosition.value = el.scrollTop;
-    });
+  // Убираем дополнительную проверку - позволяем infinite scroll работать по threshold
+  // Infinite scroll сам определит когда срабатывать на основе threshold="300px"
+  
+  // Дебаунс для предотвращения множественных запросов
+  if (infiniteScrollDebounce.value) {
+    clearTimeout(infiniteScrollDebounce.value);
   }
   
-  try {
-    await loadEvents(false);
-  } finally {
-    isLoadingMore.value = false;
-  }
-  event.target.complete();
+  infiniteScrollDebounce.value = setTimeout(async () => {
+    isLoadingMore.value = true;
+    isLoadingMoreData.value = true;
+    
+    // Сохраняем текущую позицию скролла перед загрузкой
+    if (contentRef.value) {
+      contentRef.value.$el.getScrollElement().then((el: any) => {
+        savedScrollPosition.value = el.scrollTop;
+      });
+    }
+    
+    try {
+      await loadEvents(false);
+    } finally {
+      isLoadingMore.value = false;
+    }
+    event.target.complete();
+  }, 100); // Уменьшаем дебаунс до минимума
 };
 
 const applyClientSorting = () => {
@@ -609,11 +640,100 @@ const applyClientSorting = () => {
   }
   
   filteredEvents.value = sorted;
+  updateDisplayedEvents(false); // Не refresh для сортировки
 };
 
 const filterEvents = () => {
   // Фильтрация и сортировка теперь происходят на сервере
   filteredEvents.value = events.value;
+  updateDisplayedEvents();
+};
+
+const generateEventId = (event: EventResponseMediumDTO) => {
+  const date = new Date(event.startTime);
+  const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+  return `event_${dateStr}_${event.id}`;
+};
+
+const getLastVisibleEventId = (): string | null => {
+  if (displayedEvents.value.length === 0) return null;
+  
+  // Находим последний видимый элемент
+  const lastEvent = displayedEvents.value[displayedEvents.value.length - 1];
+  return generateEventId(lastEvent);
+};
+
+const restoreScrollPosition = (targetEventId: string | null) => {
+  if (!targetEventId) return;
+  
+  // Ждем завершения рендеринга
+  nextTick(() => {
+    setTimeout(() => {
+      const targetElement = document.getElementById(targetEventId);
+      if (targetElement && contentRef.value) {
+        contentRef.value.$el.getScrollElement().then((scrollElement: any) => {
+          const elementRect = targetElement.getBoundingClientRect();
+          const containerRect = scrollElement.getBoundingClientRect();
+          const scrollTop = scrollElement.scrollTop;
+          
+          // Позиционируем элемент внизу видимой области без анимации
+          const targetScrollTop = scrollTop + elementRect.top - containerRect.height + elementRect.height + 20;
+          
+          scrollElement.scrollTop = targetScrollTop;
+        });
+      }
+    }, 50); // Уменьшаем задержку для более быстрого отклика
+  });
+};
+
+const updateDisplayedEvents = (isRefresh = false) => {
+  const previousLastVisibleId = getLastVisibleEventId();
+  
+  // Ограничиваем количество отображаемых элементов для производительности
+  // Обрезаем только если элементов больше лимита + буфер (чтобы не обрезать слишком часто)
+  if (filteredEvents.value.length > MAX_DISPLAYED_EVENTS + 50) {
+    displayedEvents.value = filteredEvents.value.slice(-MAX_DISPLAYED_EVENTS);
+  } else {
+    displayedEvents.value = [...filteredEvents.value];
+  }
+  
+  // Инициализируем ленивую загрузку для новых изображений
+  nextTick(() => {
+    initLazyLoading();
+    // Восстанавливаем позицию только если это не pull-to-refresh
+    if (!isRefresh) {
+      restoreScrollPosition(previousLastVisibleId);
+    }
+  });
+};
+
+const initLazyLoading = () => {
+  // Уничтожаем предыдущий observer
+  if (imageObserver.value) {
+    imageObserver.value.disconnect();
+  }
+  
+  // Создаем новый Intersection Observer
+  imageObserver.value = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target as HTMLImageElement;
+        const dataSrc = img.getAttribute('data-src');
+        if (dataSrc && img.src !== dataSrc) {
+          img.src = dataSrc;
+        }
+        imageObserver.value?.unobserve(img);
+      }
+    });
+  }, {
+    rootMargin: '50px 0px', // Начинаем загружать за 50px до появления
+    threshold: 0.1
+  });
+  
+  // Наблюдаем за всеми изображениями с классом lazy-img
+  document.querySelectorAll('.lazy-img').forEach(img => {
+    imageObserver.value?.observe(img);
+  });
 };
 
 const isUserRegisteredForEvent = (eventId: number | undefined) => {
@@ -748,6 +868,26 @@ const onScroll = (event: any) => {
   lastScrollY.value = currentScrollY;
 };
 
+// Функция для сброса списка событий
+const resetEventsList = () => {
+  events.value = [];
+  filteredEvents.value = [];
+  displayedEvents.value = [];
+  page.value = 0;
+  hasMore.value = true;
+  isLoading.value = false;
+  isLoadingMore.value = false;
+  isLoadingMoreData.value = false;
+  savedScrollPosition.value = 0;
+  lastScrollY.value = 0;
+  searchText.value = '';
+  dateRange.value = { from: '', to: '' };
+  selectedFilter.value = 'all';
+  sortBy.value = 'id_DESC';
+  viewMode.value = 'grid';
+  filtersVisible.value = true;
+};
+
 watch(searchText, () => {
   // Не выполняем поиск до полной инициализации компонента
   if (!isInitialized.value) return;
@@ -757,10 +897,10 @@ watch(searchText, () => {
     clearTimeout(searchTimeout);
   }
   
-  // Устанавливаем новый таймер с задержкой 500мс
+  // Устанавливаем новый таймер с задержкой 300мс
   searchTimeout = setTimeout(() => {
     loadEvents(true);
-  }, 500);
+  }, 300);
 });
 
 // Обновляем участия при каждом переходе на эту страницу
@@ -787,7 +927,7 @@ watch(
           scrollElement.scrollTop = savedScrollPosition.value;
           isLoadingMoreData.value = false;
         }
-      }, 50);
+      }, 25); // Уменьшаем до минимума
     }
   }
 );
@@ -799,10 +939,25 @@ onMounted(async () => {
   isInitialized.value = true;
 });
 
+// Сбрасываем список событий при переходе на другие табы
+onIonViewWillLeave(() => {
+  resetEventsList();
+});
+
 onUnmounted(() => {
   // Очищаем таймер при размонтировании компонента
   if (searchTimeout) {
     clearTimeout(searchTimeout);
+  }
+  
+  // Очищаем дебаунс infinite scroll
+  if (infiniteScrollDebounce.value) {
+    clearTimeout(infiniteScrollDebounce.value);
+  }
+  
+  // Очищаем Intersection Observer
+  if (imageObserver.value) {
+    imageObserver.value.disconnect();
   }
 });
 </script>
@@ -1276,5 +1431,44 @@ onUnmounted(() => {
   white-space: normal;
   hyphens: auto;
   overflow-wrap: break-word;
+}
+
+/* Оптимизация для ленивой загрузки изображений */
+.lazy-img {
+  transition: opacity 0.3s ease;
+  will-change: transform;
+  transform: translateZ(0); /* GPU acceleration */
+}
+
+.lazy-img[src*="placeholder"] {
+  opacity: 0.7;
+}
+
+.lazy-img:not([src*="placeholder"]) {
+  opacity: 1;
+}
+
+/* Оптимизация производительности карточек */
+.event-card {
+  will-change: transform;
+  transform: translateZ(0); /* GPU acceleration */
+  contain: layout style paint; /* CSS containment */
+}
+
+/* Стилизация спиннера бесконечной прокрутки */
+ion-infinite-scroll-content {
+  --color: var(--eco-primary);
+}
+
+ion-infinite-scroll-content ion-spinner {
+  --color: var(--eco-primary) !important;
+}
+
+ion-infinite-scroll-content ion-spinner::part(circle) {
+  stroke: var(--eco-primary) !important;
+}
+
+ion-infinite-scroll-content ion-spinner::part(circles) {
+  stroke: var(--eco-primary) !important;
 }
 </style> 

@@ -19,9 +19,9 @@
       <div class="hero-section">
         <div class="hero-content">
           <div class="hero-icon">
-            <ion-icon :icon="personOutline" />
+            <ion-icon :icon="user?.role === 'ORGANIZATION' ? businessOutline : personOutline" />
           </div>
-          <h1 class="hero-title">Мой профиль</h1>
+                      <h1 class="hero-title">Редактирование профиля</h1>
           <p class="hero-subtitle">Управляйте своими личными данными</p>
         </div>
       </div>
@@ -109,6 +109,21 @@
                   Минимум 6 символов, оставьте поле пустым если не хотите менять пароль
                 </div>
               </div>
+              
+              <div class="field-group" v-if="form.password">
+                <label class="field-label">Подтвердите пароль</label>
+                <ion-input 
+                  v-model="form.confirmPassword" 
+                  type="password" 
+                  autocomplete="new-password"
+                  placeholder="Повторите новый пароль"
+                  class="eco-input"
+                  :class="{ 'error': form.confirmPassword && form.password !== form.confirmPassword }"
+                />
+                <div class="field-hint" v-if="form.confirmPassword && form.password !== form.confirmPassword">
+                  Пароли не совпадают
+                </div>
+              </div>
             </div>
           </div>
         </form>
@@ -141,7 +156,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import { 
   IonPage, 
   IonHeader, 
@@ -161,59 +176,100 @@ import {
   informationCircleOutline, 
   mailOutline, 
   lockClosedOutline,
-  checkmarkOutline 
+  checkmarkOutline,
+  businessOutline
 } from 'ionicons/icons';
 import { useAuthStore } from '../stores/auth';
 import { usersApi } from '../api/users';
 import type { UserRegistrationRequestDto, UserRegistrationResponseDto } from '../types/api';
 
 const authStore = useAuthStore();
-const user = authStore.user;
+const user = computed(() => authStore.user);
 
-const form = ref<UserRegistrationRequestDto>({
+const form = ref<UserRegistrationRequestDto & { confirmPassword?: string }>({
   fullName: '',
   login: '',
   password: '',
   role: 'USER',
   email: '',
   phoneNumber: '',
+  confirmPassword: '',
 });
 
 const isLoading = ref(false);
 const showToast = ref(false);
 const toastMessage = ref('');
 
-onMounted(async () => {
-  if (user?.id) {
+const loadUserData = async () => {
+  const currentUser = user.value;
+  if (currentUser?.id) {
     try {
-      const userData = await usersApi.getById(user.id);
-      form.value.fullName = userData.fullName;
-      form.value.login = userData.login;
-      form.value.role = userData.role;
-      form.value.email = userData.email || '';
-      form.value.phoneNumber = userData.phoneNumber || '';
+      console.log('Loading user data for ID:', currentUser.id);
+      const userData = await usersApi.getById(currentUser.id);
+      console.log('Received user data:', userData);
+      
+      // Обновляем форму с полученными данными
+      form.value = {
+        fullName: userData.fullName || '',
+        login: userData.login || '',
+        password: '', // Пароль не загружаем из соображений безопасности
+        role: userData.role || 'USER',
+        email: userData.email || '',
+        phoneNumber: userData.phoneNumber || '',
+        confirmPassword: ''
+      };
+      
+      console.log('Form updated with:', form.value);
     } catch (error) {
+      console.error('Error loading user data:', error);
       toastMessage.value = 'Ошибка при загрузке данных профиля';
       showToast.value = true;
     }
+  } else {
+    console.log('No user ID available');
+  }
+};
+
+onMounted(loadUserData);
+
+// Следим за изменениями пользователя
+watch(user, (newUser) => {
+  if (newUser?.id) {
+    loadUserData();
   }
 });
 
 const handleSave = async () => {
-  if (!user) return;
+  const currentUser = user.value;
+  if (!currentUser) return;
+  
+  // Проверяем совпадение паролей
+  if (form.value.password && form.value.password !== form.value.confirmPassword) {
+    toastMessage.value = 'Пароли не совпадают';
+    showToast.value = true;
+    return;
+  }
+  
   isLoading.value = true;
   try {
     const payload: Partial<UserRegistrationRequestDto> = { ...form.value };
     if (!payload.password) {
       delete payload.password;
     }
-    const updatedUser = await usersApi.update(user.id, payload as UserRegistrationRequestDto);
+    // Удаляем confirmPassword из payload, так как это поле только для проверки
+    delete (payload as any).confirmPassword;
+    
+    const updatedUser = await usersApi.update(currentUser.id, payload as UserRegistrationRequestDto);
     
     // Обновляем данные в хранилище
     authStore.updateUser(updatedUser);
 
     toastMessage.value = 'Профиль успешно обновлён';
     showToast.value = true;
+    
+    // Очищаем поля паролей после успешного сохранения
+    form.value.password = '';
+    form.value.confirmPassword = '';
   } catch (e) {
     toastMessage.value = 'Ошибка при сохранении профиля';
     showToast.value = true;
@@ -256,19 +312,16 @@ const handleSave = async () => {
 }
 
 .hero-icon {
-  width: 70px;
-  height: 70px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto var(--eco-space-4) auto;
-  backdrop-filter: blur(8px);
 }
 
 .hero-icon ion-icon {
-  font-size: 36px;
+  font-size: 60px;
   color: white;
 }
 
@@ -371,6 +424,11 @@ const handleSave = async () => {
 .eco-input:focus {
   --border-color: var(--eco-primary);
   box-shadow: 0 0 0 3px rgba(53, 90, 221, 0.1);
+}
+
+.eco-input.error {
+  --border-color: var(--eco-error);
+  border-color: var(--eco-error);
 }
 
 /* Footer */
