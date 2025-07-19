@@ -3,7 +3,8 @@ import type {
   UserRegistrationRequestDto, 
   UserRegistrationResponseDto,
   UserFilterDTO,
-  Page
+  Page,
+  OrganizationStatsDTO
 } from '../types/api';
 
 export const usersApi = {
@@ -70,6 +71,11 @@ export const usersApi = {
     if (filter.size !== undefined) params.size = filter.size;
 
     const { data } = await apiClient.get<Page>('/api/users/search', { params });
+    return data;
+  },
+
+  getOrganizationStats: async (organizerId: number): Promise<OrganizationStatsDTO> => {
+    const { data } = await apiClient.get<OrganizationStatsDTO>(`/api/users/${organizerId}/stats`);
     return data;
   }
 }; 

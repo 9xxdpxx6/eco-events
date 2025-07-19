@@ -199,6 +199,7 @@ import { useParticipantsStore } from '../../stores';
 import EcoDialog from '../../components/EcoDialog.vue';
 import { formatNumberSafe } from '../../utils/formatNumbers';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
+import { usersApi } from '../../api/users';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -223,24 +224,17 @@ const loadStatistics = async () => {
     const userId = user.value?.id;
     if (!userId) return;
     
-    // TODO: Заменить на реальные API вызовы когда будут готовы роуты
-    // Пока используем заглушки для демонстрации
+    // Получаем статистику организации через API
+    const stats = await usersApi.getOrganizationStats(userId);
     
-    // Заглушка для статистики организации
+    // Обновляем статистику с данными из API
     statistics.value = {
-      totalEvents: 15,
-      conductedEvents: 12,
-      totalVisitors: 1234,
-      eventTypes: ['Уборка территории', 'Посадка деревьев', 'Экологическое просвещение', 'Переработка отходов'],
-      totalBonusesAwarded: 18500
+      totalEvents: stats.totalEvents,
+      conductedEvents: stats.conductedEvents,
+      totalVisitors: stats.totalParticipants,
+      eventTypes: stats.eventTypes,
+      totalBonusesAwarded: stats.totalBonusesAccrued
     };
-    
-    // TODO: Реальная логика будет такой:
-    // 1. Получить все события организации
-    // 2. Подсчитать общее количество и проведенные (conducted: true)
-    // 3. Получить всех участников со статусом VALID
-    // 4. Получить уникальные типы событий
-    // 5. Подсчитать начисленные бонусы участникам
     
   } catch (error) {
     console.error('Error loading statistics:', error);

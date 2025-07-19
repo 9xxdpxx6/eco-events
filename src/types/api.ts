@@ -239,4 +239,12 @@ export interface BonusTypeFilterDTO {
   description?: string;
   page?: number;
   size?: number;
+}
+
+export interface OrganizationStatsDTO {
+  totalEvents: number;
+  totalBonusesAccrued: number;
+  conductedEvents: number;
+  totalParticipants: number;
+  eventTypes: string[];
 } 
