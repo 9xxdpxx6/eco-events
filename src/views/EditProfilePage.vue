@@ -145,13 +145,6 @@
       </div>
     </ion-footer>
 
-    <!-- Toast -->
-    <ion-toast 
-      :is-open="showToast" 
-      :message="toastMessage" 
-      :duration="3000" 
-      @didDismiss="showToast = false" 
-    />
   </ion-page>
 </template>
 
@@ -168,8 +161,7 @@ import {
   IonBackButton,
   IonButton,
   IonIcon,
-  IonInput, 
-  IonToast 
+  IonInput
 } from '@ionic/vue';
 import { 
   personOutline, 
@@ -182,6 +174,7 @@ import {
 import { useAuthStore } from '../stores/auth';
 import { usersApi } from '../api/users';
 import type { UserRegistrationRequestDto, UserRegistrationResponseDto } from '../types/api';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 const authStore = useAuthStore();
 const user = computed(() => authStore.user);
@@ -197,8 +190,6 @@ const form = ref<UserRegistrationRequestDto & { confirmPassword?: string }>({
 });
 
 const isLoading = ref(false);
-const showToast = ref(false);
-const toastMessage = ref('');
 
 const loadUserData = async () => {
   const currentUser = user.value;
@@ -222,8 +213,7 @@ const loadUserData = async () => {
       console.log('Form updated with:', form.value);
     } catch (error) {
       console.error('Error loading user data:', error);
-      toastMessage.value = 'Ошибка при загрузке данных профиля';
-      showToast.value = true;
+      await showErrorToast('Ошибка при загрузке данных профиля', 3000);
     }
   } else {
     console.log('No user ID available');
@@ -245,8 +235,7 @@ const handleSave = async () => {
   
   // Проверяем совпадение паролей
   if (form.value.password && form.value.password !== form.value.confirmPassword) {
-    toastMessage.value = 'Пароли не совпадают';
-    showToast.value = true;
+    await showErrorToast('Пароли не совпадают', 3000);
     return;
   }
   
@@ -264,15 +253,13 @@ const handleSave = async () => {
     // Обновляем данные в хранилище
     authStore.updateUser(updatedUser);
 
-    toastMessage.value = 'Профиль успешно обновлён';
-    showToast.value = true;
+    await showSuccessToast('Профиль успешно обновлён', 2000);
     
     // Очищаем поля паролей после успешного сохранения
     form.value.password = '';
     form.value.confirmPassword = '';
   } catch (e) {
-    toastMessage.value = 'Ошибка при сохранении профиля';
-    showToast.value = true;
+    await showErrorToast('Ошибка при сохранении профиля', 3000);
   } finally {
     isLoading.value = false;
   }

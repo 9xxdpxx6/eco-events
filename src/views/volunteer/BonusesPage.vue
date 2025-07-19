@@ -2,11 +2,11 @@
   <ion-page class="bonuses-page">
     <ion-header>
       <ion-toolbar>
-        <ion-title class="page-title">Мои бонусы</ion-title>
+        <ion-title class="page-title" @click="scrollToTop">Мои бонусы</ion-title>
         </ion-toolbar>
       </ion-header>
     
-    <ion-content class="bonuses-content">
+    <ion-content ref="contentRef" class="bonuses-content">
       <!-- Статистика бонусов -->
       <div class="stats-section">
         <div class="stats-card eco-card">
@@ -154,6 +154,8 @@ import type { UserBonusHistoryResponseShortDTO } from '../../types/api';
 
 const authStore = useAuthStore();
 
+const contentRef = ref();
+
 const bonuses = ref<UserBonusHistoryResponseShortDTO[]>([]); // текущая страница + догруженные
 const allBonuses = ref<UserBonusHistoryResponseShortDTO[]>([]); // для статистики (все)
 const isLoading = ref(true);
@@ -296,11 +298,33 @@ const getTrophyClass = (amount: number) => {
 const getAmountClass = (amount: number) => {
   return amount > 0 ? 'positive' : amount < 0 ? 'negative' : 'neutral';
 };
+
+const scrollToTop = async () => {
+  if (contentRef.value) {
+    await contentRef.value.$el.scrollToTop(300);
+  }
+};
 </script>
 
 <style scoped>
 .bonuses-page {
   --background: var(--eco-background-secondary);
+}
+
+/* Убираем тень у header */
+.bonuses-page ion-header {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  position: relative;
+  z-index: 1000;
+}
+
+.bonuses-page ion-toolbar {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .bonuses-content {
@@ -310,7 +334,16 @@ const getAmountClass = (amount: number) => {
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
+  text-align: center !important;
+  cursor: pointer;
+  transition: color var(--eco-transition-fast);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
+
+
 
 /* Статистика */
 .stats-section {
@@ -495,9 +528,7 @@ const getAmountClass = (amount: number) => {
   align-items: center;
   justify-content: center;
 }
-.clear-date-button:hover {
-  --background: var(--eco-gray-100);
-}
+
 .clear-date-button ion-icon {
   font-size: 32px;
 }
@@ -635,10 +666,7 @@ const getAmountClass = (amount: number) => {
   transition: all var(--eco-transition-normal);
 }
 
-.bonus-item:hover {
-  border-color: var(--eco-gray-300);
-  transform: none;
-}
+
 
 .bonus-content {
   width: 100%;

@@ -156,7 +156,5 @@ ion-searchbar :deep(.searchbar-clear-button) {
   --box-shadow: none !important;
 }
 
-.view-toggle-button:hover {
-  --background: var(--eco-gray-200);
-}
+
 </style> 

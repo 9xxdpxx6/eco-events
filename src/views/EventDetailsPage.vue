@@ -3,18 +3,18 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/tabs/events-list" class="back-button"></ion-back-button>
-        </ion-buttons>
-        <ion-title class="page-title">Детали мероприятия</ion-title>
-        <ion-buttons slot="end">
-          <ion-button fill="clear" @click="shareEvent" v-if="event" class="share-button">
-            <ion-icon :icon="shareOutline" />
+          <ion-button fill="clear" @click="goBack" class="back-button">
+            <ion-icon :icon="arrowBackOutline" />
           </ion-button>
+        </ion-buttons>
+        <ion-title class="page-title" @click="scrollToTop">Детали мероприятия</ion-title>
+        <ion-buttons slot="end">
+          <div class="spacer-button"></div>
         </ion-buttons>
       </ion-toolbar>
     </ion-header>
     
-    <ion-content class="event-content">
+    <ion-content ref="contentRef" class="event-content">
       <!-- Лоадер -->
       <div v-if="isLoading" class="loading-container">
         <div class="loading-spinner">
@@ -26,7 +26,7 @@
       <!-- Основной контент -->
       <div v-else-if="event" class="event-container">
         <!-- Hero секция с изображением -->
-        <div class="event-hero">
+        <div class="event-hero" :class="{ 'has-image': event.preview }">
           <div class="hero-image">
             <img 
               :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" 
@@ -323,11 +323,9 @@ import {
   IonBackButton,
   IonButton,
   IonIcon,
-  IonSpinner,
-  toastController
+  IonSpinner
 } from '@ionic/vue';
 import {
-  shareOutline,
   calendarOutline,
   locationOutline,
   layersOutline,
@@ -346,7 +344,8 @@ import {
   documentTextOutline,
   personOutline,
   checkmarkCircleOutline,
-  hourglassOutline
+  hourglassOutline,
+  arrowBackOutline
 } from 'ionicons/icons';
 import { useAuthStore } from '../stores/auth';
 import { useEventsStore } from '../stores';
@@ -356,6 +355,7 @@ import type { EventParticipantDTO } from '../types/api';
 import { getEventPlaceholder } from '../utils/eventImages';
 import { IMAGE_BASE_URL } from '../api/client';
 import EcoDialog from '../components/EcoDialog.vue';
+import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 const router = useRouter();
 const route = useRoute();
@@ -363,6 +363,7 @@ const authStore = useAuthStore();
 const eventsStore = useEventsStore();
 const participantsStore = useParticipantsStore();
 
+const contentRef = ref();
 const event = ref<EventResponseMediumDTO | null>(null);
 const participants = ref<EventParticipantDTO[]>([]);
 const isLoading = ref(false);
@@ -451,12 +452,7 @@ const loadEvent = async () => {
     }
   } catch (error) {
     console.error('Error loading event:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка загрузки мероприятия',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка загрузки мероприятия', 3000);
   } finally {
     isLoading.value = false;
   }
@@ -486,12 +482,7 @@ const toggleRegistration = async () => {
     }
   } catch (error) {
     console.error('Error toggling registration:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка при регистрации на мероприятие',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка при регистрации на мероприятие', 3000);
   } finally {
     isRegistering.value = false;
   }
@@ -515,40 +506,16 @@ const handleDeleteConfirm = async () => {
   
   try {
     await eventsStore.deleteEvent(event.value.id);
-    const toast = await toastController.create({
-      message: 'Мероприятие удалено',
-      duration: 2000,
-      color: 'success'
-    });
-    await toast.present();
+    await showSuccessToast('Мероприятие удалено', 2000);
     router.push('/tabs/events-list');
   } catch (error) {
     console.error('Error deleting event:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка при удалении мероприятия',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка при удалении мероприятия', 3000);
   }
 };
 
 const handleDeleteCancel = () => {
   showDeleteDialog.value = false;
-};
-
-const shareEvent = async () => {
-  if (!event.value) return;
-
-  try {
-    await navigator.share({
-      title: event.value.title,
-      text: event.value.description,
-      url: window.location.href
-    });
-  } catch (error) {
-    console.error('Error sharing event:', error);
-  }
 };
 
 const openEmail = (email: string) => {
@@ -622,7 +589,14 @@ const getEventStatusClass = () => {
 };
 
 const goBack = () => {
+  // Просто используем router.back() - Vue Router сам разберется
   router.back();
+};
+
+const scrollToTop = async () => {
+  if (contentRef.value) {
+    await contentRef.value.$el.scrollToTop(300);
+  }
 };
 
 onMounted(() => {
@@ -635,6 +609,22 @@ onMounted(() => {
   --background: var(--eco-background-secondary);
 }
 
+/* Убираем тень у header */
+.event-details-page ion-header {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  position: relative;
+  z-index: 1000;
+}
+
+.event-details-page ion-toolbar {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .event-content {
   --background: var(--eco-background-secondary);
 }
@@ -642,6 +632,23 @@ onMounted(() => {
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
+  text-align: center !important;
+  cursor: pointer;
+  transition: color var(--eco-transition-fast);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.back-button {
+  --color: var(--eco-gray-700);
+}
+
+.spacer-button {
+  width: 44px;
+  height: 44px;
+  visibility: hidden;
 }
 
 .back-button,
@@ -673,7 +680,12 @@ onMounted(() => {
 .event-hero {
   position: relative;
   height: 280px;
+  max-height: 500px;
   overflow: hidden;
+}
+
+.event-hero.has-image {
+  height: 500px;
 }
 
 .hero-image {
@@ -687,7 +699,15 @@ onMounted(() => {
 }
 
 .hero-image img {
+  width: 100%;
   height: 100%;
+  object-fit: cover;
+}
+
+/* Стили для заглушки */
+.event-hero:not(.has-image) .hero-image img {
+  object-fit: contain;
+  padding: var(--eco-space-4);
 }
 
 .hero-overlay {
@@ -696,10 +716,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(180deg, 
-    rgba(0, 0, 0, 0.2) 0%, 
-    rgba(0, 0, 0, 0.6) 100%
-  );
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .hero-content {
@@ -870,18 +887,18 @@ onMounted(() => {
 }
 
 .organizer-avatar {
-  width: 56px;
-  height: 56px;
-  background: var(--eco-primary);
-  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  background: none;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .organizer-avatar ion-icon {
-  font-size: 28px;
-  color: white;
+  font-size: 48px;
+  color: var(--eco-primary);
 }
 
 .organizer-details h3 {
@@ -917,11 +934,7 @@ onMounted(() => {
   font-weight: var(--eco-font-weight-medium);
 }
 
-.contact-button:hover {
-  --background: var(--eco-gray-100);
-  transform: translateY(-1px);
-  transition: all var(--eco-transition-fast);
-}
+
 
 .contact-button:active {
   transform: translateY(0);
@@ -1099,11 +1112,7 @@ onMounted(() => {
   --color: white;
 }
 
-.action-button.primary:hover {
-  transform: translateY(-2px);
-  --background: var(--eco-primary);
-  box-shadow: 0 8px 24px rgba(53, 90, 221, 0.3);
-}
+
 
 .action-button.primary:active {
   transform: translateY(0);
@@ -1116,11 +1125,7 @@ onMounted(() => {
   --color: white;
 }
 
-.action-button.danger:hover {
-  transform: translateY(-2px);
-  --background: var(--eco-error);
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3);
-}
+
 
 .action-button.danger:active {
   transform: translateY(0);
@@ -1142,10 +1147,7 @@ onMounted(() => {
   --color: var(--eco-gray-700);
 }
 
-.admin-button[fill="outline"]:hover {
-  transform: translateY(-1px);
-  --background: var(--eco-gray-100);
-}
+
 
 .admin-button[color="danger"] {
   --background: var(--eco-error);
@@ -1153,10 +1155,7 @@ onMounted(() => {
   --color: white;
 }
 
-.admin-button[color="danger"]:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
-}
+
 
 .admin-button:active {
   transform: translateY(0);
@@ -1189,10 +1188,7 @@ onMounted(() => {
   transition: all var(--eco-transition-normal);
 }
 
-.cancel-button:hover {
-  --color: var(--eco-error);
-  transform: translateY(-1px);
-}
+
 
 .cancel-button:active {
   transform: translateY(0);

@@ -353,9 +353,7 @@ import {
   transition: all var(--eco-transition-normal);
 }
 
-.notification-type:hover {
-  background: var(--eco-gray-50);
-}
+
 
 .type-icon {
   width: 48px;

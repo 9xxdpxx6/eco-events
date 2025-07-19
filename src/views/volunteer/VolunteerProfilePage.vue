@@ -2,16 +2,11 @@
   <ion-page class="profile-page">
     <ion-header>
       <ion-toolbar>
-        <ion-title class="page-title">Мой профиль</ion-title>
-        <ion-buttons slot="end">
-          <ion-button fill="clear" class="edit-button" @click="editProfile">
-            <ion-icon :icon="createOutline" />
-          </ion-button>
-        </ion-buttons>
+        <ion-title class="page-title" @click="scrollToTop">Мой профиль</ion-title>
       </ion-toolbar>
     </ion-header>
     
-    <ion-content class="profile-content">
+    <ion-content ref="contentRef" class="profile-content">
       <ion-refresher slot="fixed" @ionRefresh="handleRefresh">
         <ion-refresher-content></ion-refresher-content>
       </ion-refresher>
@@ -337,7 +332,6 @@ import {
   IonSegmentButton,
   IonSpinner,
   IonSkeletonText,
-  toastController,
   IonRefresher,
   IonRefresherContent
 } from '@ionic/vue';
@@ -363,10 +357,13 @@ import type { EventParticipantWithEventDetailsDTO } from '../../types/api';
 import { usersApi } from '../../api/users';
 import { bonusHistoryApi } from '../../api/bonuses';
 import { participantsApi } from '../../api/participants';
+import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
 const authStore = useAuthStore();
 const participantsStore = useParticipantsStore();
+
+const contentRef = ref();
 
 const user = computed(() => {
   console.log('User:', authStore.user);
@@ -422,12 +419,7 @@ const loadStatistics = async () => {
   } catch (error: any) {
     console.error('Error loading statistics:', error);
     if (error?.response?.status === 401) {
-      const toast = await toastController.create({
-        message: 'Не авторизован',
-        duration: 3000,
-        color: 'danger'
-      });
-      await toast.present();
+      await showErrorToast('Не авторизован', 3000);
     } else if (error?.response?.status !== 404) {
       // Игнорируем 404 ошибки
     }
@@ -492,12 +484,7 @@ const loadUserEvents = async () => {
   } catch (error: any) {
     console.error('Error loading user events:', error);
     if (error?.response?.status === 401) {
-      const toast = await toastController.create({
-        message: 'Не авторизован',
-        duration: 3000,
-        color: 'danger'
-      });
-      await toast.present();
+      await showErrorToast('Не авторизован', 3000);
     } else if (error?.response?.status !== 404) {
       // Игнорируем 404 ошибки
       console.warn('API returned 404, no events found for user');
@@ -539,20 +526,10 @@ const handleLeaveEventConfirm = async () => {
     // Перезагружаем статистику в фоне
     loadStatistics();
     
-    const toast = await toastController.create({
-      message: 'Участие отменено',
-      duration: 2000,
-      color: 'success'
-    });
-    await toast.present();
+    await showSuccessToast('Участие отменено', 2000);
   } catch (error) {
     console.error('Error leaving event:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка при отмене участия',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка при отмене участия', 3000);
   }
 };
 
@@ -589,12 +566,7 @@ const handleLogoutConfirm = async () => {
     router.push('/login');
   } catch (error) {
     console.error('Error logging out:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка при выходе из аккаунта',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка при выходе из аккаунта', 3000);
   }
 };
 
@@ -614,6 +586,12 @@ const formatDate = (date: string) => {
     hour: '2-digit',
     minute: '2-digit'
   });
+};
+
+const scrollToTop = async () => {
+  if (contentRef.value) {
+    await contentRef.value.$el.scrollToTop(300);
+  }
 };
 
 onMounted(async () => {
@@ -664,6 +642,22 @@ onMounted(async () => {
   --background: var(--eco-background-secondary);
 }
 
+/* Убираем тень у header */
+.profile-page ion-header {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  position: relative;
+  z-index: 1000;
+}
+
+.profile-page ion-toolbar {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .profile-content {
   --background: var(--eco-background-secondary);
 }
@@ -671,11 +665,18 @@ onMounted(async () => {
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
+  text-align: center !important;
+  cursor: pointer;
+  transition: color var(--eco-transition-fast);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.edit-button {
-  --color: var(--eco-gray-700);
-}
+
+
+
 
 /* Hero секция */
 .profile-hero {
@@ -776,10 +777,7 @@ onMounted(async () => {
   transition: all var(--eco-transition-normal);
 }
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--eco-shadow-lg);
-}
+
 
 .stat-icon {
   width: auto;
@@ -959,11 +957,7 @@ onMounted(async () => {
   transition: all var(--eco-transition-normal);
 }
 
-.event-item:hover {
-  background: var(--eco-white);
-  border-color: var(--eco-gray-300);
-  transform: translateY(-1px);
-}
+
 
 .event-item.completed {
   opacity: 0.8;
@@ -1145,18 +1139,13 @@ onMounted(async () => {
   transition: all var(--eco-transition-normal);
 }
 
-.setting-item:hover {
-  background: var(--eco-white);
-  transform: translateY(-1px);
-}
+
 
 .setting-item.danger {
   background: var(--eco-error-light);
 }
 
-.setting-item.danger:hover {
-  background: var(--eco-error);
-}
+
 
 .setting-item.danger .setting-icon {
   background: none;
@@ -1166,11 +1155,7 @@ onMounted(async () => {
   color: var(--eco-error);
 }
 
-.setting-item.danger:hover .setting-title,
-.setting-item.danger:hover .setting-subtitle,
-.setting-item.danger:hover .setting-icon ion-icon {
-  color: white;
-}
+
 
 .setting-icon {
   width: auto;

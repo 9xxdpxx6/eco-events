@@ -248,7 +248,6 @@ import {
   IonLabel,
   IonFab,
   IonFabButton,
-  toastController,
   IonRefresher,
   IonRefresherContent,
   IonInfiniteScroll,
@@ -277,6 +276,7 @@ import EventListLoader from '../EventListLoader.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import { IMAGE_BASE_URL } from '../../api/client';
 import EcoDialog from '../../components/EcoDialog.vue';
+import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -415,12 +415,7 @@ const loadAllEvents = async (forceRefresh = false) => {
     
   } catch (error) {
     console.error('Error loading all events:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка загрузки мероприятий',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка загрузки мероприятий', 3000);
   } finally {
     isLoading.value = false;
   }
@@ -586,20 +581,10 @@ const handleDeleteConfirm = async () => {
     allEvents.value = allEvents.value.filter(e => e.id !== event.id);
     filterAndSearchEvents();
     
-    const toast = await toastController.create({
-      message: 'Мероприятие удалено',
-      duration: 2000,
-      color: 'success'
-    });
-    await toast.present();
+    await showSuccessToast('Мероприятие удалено', 2000);
   } catch (error) {
     console.error('Error deleting event:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка при удалении мероприятия',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка при удалении мероприятия', 3000);
   }
 };
 
@@ -668,9 +653,7 @@ onIonViewWillEnter(() => {
   cursor: pointer;
 }
 
-.page-title:hover {
-  color: var(--eco-primary);
-}
+
 
 .create-button {
   --color: var(--eco-gray-700);
@@ -934,11 +917,7 @@ onIonViewWillEnter(() => {
   transition: all var(--eco-transition-normal);
 }
 
-.event-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--eco-shadow-lg);
-  border-color: var(--eco-gray-300);
-}
+
 
 .event-image {
   position: relative;
@@ -999,17 +978,7 @@ onIonViewWillEnter(() => {
   font-size: 16px;
 }
 
-.action-btn:hover {
-  --background: var(--eco-gray-100);
-}
 
-.edit-btn:hover {
-  --color: var(--eco-primary);
-}
-
-.delete-btn:hover {
-  --color: var(--eco-error);
-}
 
 .event-meta {
   display: flex;

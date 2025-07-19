@@ -73,11 +73,7 @@ const statusClass = computed(() => statusMap[props.status]?.class || 'reg-status
   border: 1px solid rgba(53, 90, 221, 0.2);
 }
 
-.reg-status-upcoming:hover {
-  background: rgba(53, 90, 221, 0.15);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(53, 90, 221, 0.2);
-}
+
 
 .reg-status-success {
   color: var(--eco-success);
@@ -85,11 +81,7 @@ const statusClass = computed(() => statusMap[props.status]?.class || 'reg-status
   border: 1px solid rgba(46, 220, 147, 0.2);
 }
 
-.reg-status-success:hover {
-  background: rgba(46, 220, 147, 0.15);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(46, 220, 147, 0.2);
-}
+
 
 .reg-status-failed {
   color: var(--eco-error);
@@ -97,11 +89,7 @@ const statusClass = computed(() => statusMap[props.status]?.class || 'reg-status
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.reg-status-failed:hover {
-  background: rgba(239, 68, 68, 0.15);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
-}
+
 
 /* Компактная версия для мобильных устройств */
 @media (max-width: 480px) {

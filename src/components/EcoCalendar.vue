@@ -436,9 +436,7 @@ function closeCalendar() {
   transition: all var(--eco-transition-fast);
 }
 
-.calendar-title:hover {
-  background: var(--eco-gray-100);
-}
+
 
 .nav-button {
   --color: var(--eco-primary);
@@ -452,9 +450,7 @@ function closeCalendar() {
   font-size: 36px;
 }
 
-.nav-button:hover {
-  --background: var(--eco-gray-100);
-}
+
 
 .month-year {
   font-family: var(--eco-font-family);
@@ -489,11 +485,7 @@ function closeCalendar() {
   user-select: none;
 }
 
-.calendar-month:hover {
-  background: var(--eco-gray-50);
-  border-color: var(--eco-primary);
-  color: var(--eco-primary);
-}
+
 
 .calendar-month.selected {
   background: var(--eco-primary);
@@ -526,11 +518,7 @@ function closeCalendar() {
   user-select: none;
 }
 
-.calendar-year:hover {
-  background: var(--eco-gray-50);
-  border-color: var(--eco-primary);
-  color: var(--eco-primary);
-}
+
 
 .calendar-year.selected {
   background: var(--eco-primary);
@@ -583,20 +571,14 @@ function closeCalendar() {
   user-select: none;
 }
 
-.calendar-day:hover {
-  background: var(--eco-gray-50);
-  color: var(--eco-primary);
-}
+
 
 .calendar-day.other-month {
   color: var(--eco-gray-400);
   background: var(--eco-gray-50);
 }
 
-.calendar-day.other-month:hover {
-  color: var(--eco-gray-600);
-  background: var(--eco-gray-100);
-}
+
 
 .calendar-day.today {
   background: var(--eco-secondary);
@@ -604,9 +586,7 @@ function closeCalendar() {
   font-weight: var(--eco-font-weight-semibold);
 }
 
-.calendar-day.today:hover {
-  background: var(--eco-primary);
-}
+
 
 .calendar-day.selected {
   background: var(--eco-primary);
@@ -614,9 +594,7 @@ function closeCalendar() {
   font-weight: var(--eco-font-weight-semibold);
 }
 
-.calendar-day.selected:hover {
-  background: var(--eco-primary);
-}
+
 
 .calendar-day.selected.today {
   background: var(--eco-primary);

@@ -312,7 +312,6 @@ import {
   IonSelect,
   IonSelectOption,
   IonCheckbox,
-  toastController,
   alertController
 } from '@ionic/vue';
 import { checkmarkOutline, addCircleOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline, calendarOutline } from 'ionicons/icons';
@@ -323,6 +322,7 @@ import type { EventTypeDTO } from '../../types/api';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import ImageUploader from '../../components/ImageUploader.vue';
+import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -423,12 +423,7 @@ const loadEventTypes = async () => {
     eventTypes.value = eventTypesStore.getEventTypes;
   } catch (error) {
     console.error('Error loading event types:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка загрузки типов мероприятий',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка загрузки типов мероприятий', 3000);
   }
 };
 
@@ -506,12 +501,7 @@ const saveEvent = async () => {
     
     await eventsStore.createEventWithImages(formData);
 
-    const toast = await toastController.create({
-      message: 'Мероприятие успешно создано',
-      duration: 2000,
-      color: 'success'
-    });
-    await toast.present();
+    await showSuccessToast('Мероприятие успешно создано', 2000);
     
     resetForm();
     
@@ -526,12 +516,7 @@ const saveEvent = async () => {
     router.push('/tabs/events-management');
   } catch (error) {
     console.error('Error creating event:', error);
-    const toast = await toastController.create({
-      message: `Ошибка при создании мероприятия: ${((error as any)?.message || String(error))}`,
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast(`Ошибка при создании мероприятия: ${((error as any)?.message || String(error))}`, 3000);
   } finally {
     isSaving.value = false;
   }
@@ -760,11 +745,7 @@ onMounted(() => {
   --box-shadow: none;
 }
 
-.ios-select:hover {
-  border-color: var(--eco-primary);
-  /* box-shadow: 0 2px 8px rgba(53, 90, 221, 0.15); */
-  --box-shadow: none;
-}
+
 
 /* Глобальные стили для iOS action sheet */
 :root {
@@ -877,10 +858,7 @@ ion-action-sheet .action-sheet-button.action-sheet-cancel {
   border-color: var(--eco-error);
 }
 
-.date-button:hover {
-  --background: var(--eco-gray-200);
-  --box-shadow: none;
-}
+
 
 .date-button.ion-activated {
   --background: var(--eco-gray-200);

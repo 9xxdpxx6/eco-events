@@ -148,9 +148,7 @@ const selectOption = (value: string | number) => {
   align-items: center;
 }
 
-.select-trigger:hover {
-  --background: var(--eco-gray-200);
-}
+
 
 .select-trigger:active {
   transform: scale(0.98);
@@ -219,10 +217,7 @@ const selectOption = (value: string | number) => {
   --inner-border-width: 0;
 }
 
-.select-option-item:hover {
-  --background: rgba(53, 90, 221, 0.08);
-  transform: scale(1.02);
-}
+
 
 .select-option-item:active {
   --background: rgba(53, 90, 221, 0.12);

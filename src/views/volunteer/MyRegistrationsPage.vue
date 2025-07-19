@@ -2,11 +2,11 @@
   <ion-page class="registrations-page">
     <ion-header>
       <ion-toolbar>
-        <ion-title class="page-title">Мои записи</ion-title>
+        <ion-title class="page-title" @click="scrollToTop">Мои записи</ion-title>
       </ion-toolbar>
     </ion-header>
 
-    <ion-content class="registrations-content">
+    <ion-content ref="contentRef" class="registrations-content">
       <!-- Pull-to-refresh -->
       <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
         <ion-refresher-content
@@ -193,6 +193,8 @@ const authStore = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
+const contentRef = ref();
+
 const registrations = ref<EventParticipantWithEventDetailsDTO[]>([]);
 const isLoading = ref(true);
 const statsLoading = ref(true);
@@ -326,6 +328,12 @@ const formatEventDate = (dateStr: string) => {
   }
   
   return date.toLocaleDateString('ru-RU', options);
+};
+
+const scrollToTop = async () => {
+  if (contentRef.value) {
+    await contentRef.value.$el.scrollToTop(300);
+  }
 };
 
 const loadRegistrations = async (reset = false) => {
@@ -478,6 +486,22 @@ onMounted(() => {
   --background: var(--eco-background-secondary);
 }
 
+/* Убираем тень у header */
+.registrations-page ion-header {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  position: relative;
+  z-index: 1000;
+}
+
+.registrations-page ion-toolbar {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .registrations-content {
   --background: var(--eco-background-secondary);
 }
@@ -485,7 +509,16 @@ onMounted(() => {
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
+  text-align: center !important;
+  cursor: pointer;
+  transition: color var(--eco-transition-fast);
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
+
+
 
 /* Статистика */
 .stats-section {
@@ -657,9 +690,7 @@ onMounted(() => {
   justify-content: center;
 }
 
-.clear-date-button:hover {
-  --background: var(--eco-gray-100);
-}
+
 
 .clear-date-button ion-icon {
   font-size: 32px;
@@ -710,11 +741,7 @@ onMounted(() => {
   min-height: 80px;
 }
 
-.event-card:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--eco-shadow-md);
-  border-color: var(--eco-gray-300);
-}
+
 
 .event-card.completed {
   opacity: 0.8;

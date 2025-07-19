@@ -271,6 +271,7 @@ import { getEventPlaceholder } from '../../utils/eventImages';
 import { participantsApi } from '../../api/participants';
 import { eventsApi } from '../../api/events';
 import { IMAGE_BASE_URL } from '../../api/client';
+import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
 const route = useRoute();
@@ -564,12 +565,7 @@ const loadEvents = async (reset = true, isRefresh = false) => {
     updateDisplayedEvents(isRefresh);
   } catch (error) {
     console.error('Error loading events:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка загрузки мероприятий',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка загрузки мероприятий', 3000);
   } finally {
     if (reset) {
       isLoading.value = false;
@@ -804,6 +800,12 @@ const formatDate = (dateStr: string) => {
 };
 
 const openEventDetails = (eventId: number) => {
+  // Сохраняем текущую позицию скролла перед переходом
+  if (contentRef.value) {
+    contentRef.value.$el.getScrollElement().then((scrollElement: any) => {
+      savedScrollPosition.value = scrollElement.scrollTop;
+    });
+  }
   router.push(`/event/${eventId}`);
 };
 
@@ -825,20 +827,10 @@ const toggleEventRegistration = async (event: EventResponseMediumDTO) => {
     // Обновляем состояние участий, запрашивая свежие данные с сервера
     await loadUserParticipations();
     
-    const toast = await toastController.create({
-      message: 'Вы успешно записались на мероприятие!',
-      duration: 2000,
-      color: 'success'
-    });
-    await toast.present();
+    await showSuccessToast('Вы успешно записались на мероприятие!', 2000);
   } catch (error) {
     console.error('Error toggling registration:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка при регистрации на мероприятие',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка при регистрации на мероприятие', 3000);
   } finally {
     isRegistering.value = false;
   }
@@ -908,7 +900,19 @@ watch(
   () => route.fullPath,
   async (newPath) => {
     if (newPath === '/tabs/events-list' && isInitialized.value) {
-      await loadUserParticipations();
+      // Восстанавливаем позицию скролла если она была сохранена
+      if (savedScrollPosition.value > 0) {
+        await nextTick();
+        setTimeout(async () => {
+          if (contentRef.value) {
+            const scrollElement = await contentRef.value.$el.getScrollElement();
+            scrollElement.scrollTop = savedScrollPosition.value;
+          }
+        }, 50);
+      }
+      
+      // Загружаем участия в фоне
+      loadUserParticipations();
     }
   }
 );
@@ -939,9 +943,13 @@ onMounted(async () => {
   isInitialized.value = true;
 });
 
-// Сбрасываем список событий при переходе на другие табы
+// Сбрасываем список событий только при переходе на другие табы (не на детали мероприятия)
 onIonViewWillLeave(() => {
-  resetEventsList();
+  // Проверяем, не переходим ли мы на детали мероприятия
+  const currentRoute = router.currentRoute.value;
+  if (!currentRoute.path.includes('/event/')) {
+    resetEventsList();
+  }
 });
 
 onUnmounted(() => {
@@ -999,9 +1007,7 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.page-title:hover {
-  color: var(--eco-primary);
-}
+
 
 /* Поиск и фильтры */
 .search-filters-container {
@@ -1164,11 +1170,7 @@ onUnmounted(() => {
   display: inline-block; /* Для корректной работы в Masonry */
 }
 
-.event-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--eco-shadow-lg);
-  border-color: var(--eco-gray-300);
-}
+
 
 .event-image {
   position: relative;

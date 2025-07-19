@@ -43,9 +43,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { IonButton, IonIcon, actionSheetController, toastController } from '@ionic/vue';
+import { IonButton, IonIcon, actionSheetController } from '@ionic/vue';
 import { cameraOutline, star, starOutline, trashBinOutline } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
+import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toast';
 import { isPlatform } from '@ionic/vue';
 
 interface ImageObject {
@@ -106,12 +107,7 @@ async function takePicture(source: CameraSource) {
       const photosToProcess = result.photos.slice(0, remainingSlots);
 
       if (result.photos.length > remainingSlots) {
-        const toast = await toastController.create({
-            message: `Выбрано слишком много файлов. Будут добавлены первые ${remainingSlots}.`,
-            duration: 3000,
-            color: 'warning'
-        });
-        await toast.present();
+        await showWarningToast(`Выбрано слишком много файлов. Будут добавлены первые ${remainingSlots}.`, 3000);
       }
 
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -141,12 +137,7 @@ async function takePicture(source: CameraSource) {
       }));
 
       if (skippedFiles > 0) {
-        const toast = await toastController.create({
-            message: `Пропущено ${skippedFiles} файлов из-за неверного формата или размера.`,
-            duration: 3500,
-            color: 'warning'
-        });
-        await toast.present();
+        await showWarningToast(`Пропущено ${skippedFiles} файлов из-за неверного формата или размера.`, 3500);
       }
 
       const wasPreviewSet = images.value.some(img => img.isPreview);
@@ -285,9 +276,7 @@ async function presentActionSheet() {
   transition: all 0.2s ease-in-out;
 }
 
-.image-container:hover {
-  transform: scale(1.05);
-}
+
 
 .image-container.preview {
   border-color: var(--eco-primary);
@@ -326,9 +315,7 @@ async function presentActionSheet() {
   transition: opacity 0.2s ease-in-out;
 }
 
-.image-container:hover .delete-button {
-  opacity: 1;
-}
+
 
 .delete-button ion-icon {
   font-size: 14px;
@@ -344,11 +331,7 @@ async function presentActionSheet() {
   --border-width: 0;
 }
 
-.add-button:hover {
-  --border-color: var(--eco-primary);
-  --background: rgba(var(--eco-primary-rgb), 0.05);
-  transform: scale(1.05);
-}
+
 
 .add-button-content {
   display: flex;
@@ -359,9 +342,7 @@ async function presentActionSheet() {
   transition: color 0.2s ease-in-out;
 }
 
-.add-button:hover .add-button-content {
-  color: var(--eco-primary);
-}
+
 
 .add-button-content ion-icon {
   font-size: 28px;

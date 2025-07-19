@@ -198,27 +198,21 @@ body {
   color: var(--eco-white);
 }
 
-.eco-button-primary:hover {
-  background-color: var(--eco-primary-dark);
-}
+
 
 .eco-button-secondary {
   background-color: var(--eco-secondary);
   color: var(--eco-white);
 }
 
-.eco-button-secondary:hover {
-  background-color: var(--eco-secondary-dark);
-}
+
 
 .eco-button-success {
   background-color: var(--eco-success);
   color: var(--eco-white);
 }
 
-.eco-button-success:hover {
-  background-color: var(--eco-success-dark);
-}
+
 
 .eco-button-outline {
   background-color: transparent;
@@ -226,20 +220,14 @@ body {
   border: 2px solid var(--eco-primary);
 }
 
-.eco-button-outline:hover {
-  background-color: var(--eco-primary);
-  color: var(--eco-white);
-}
+
 
 .eco-button-ghost {
   background-color: transparent;
   color: var(--eco-gray-600);
 }
 
-.eco-button-ghost:hover {
-  background-color: var(--eco-gray-100);
-  color: var(--eco-gray-800);
-}
+
 
 /* Cards */
 .eco-card {
@@ -249,10 +237,7 @@ body {
   transition: all var(--eco-transition-normal);
 }
 
-.eco-card:hover {
-  border-color: var(--eco-gray-300);
-  transform: translateY(-1px);
-}
+
 
 .eco-card-content {
   padding: var(--eco-space-4);
@@ -347,10 +332,7 @@ body {
   transition: all var(--eco-transition-normal);
 }
 
-.eco-list-item:hover {
-  border-color: var(--eco-gray-300);
-  transform: translateY(-1px);
-}
+
 
 .eco-list-item:last-child {
   margin-bottom: 0;

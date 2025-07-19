@@ -227,9 +227,7 @@ const clearDateTo = () => {
   justify-content: center;
 }
 
-.clear-date-button:hover {
-  --background: var(--eco-gray-100);
-}
+
 
 .clear-date-button ion-icon {
   font-size: 32px;

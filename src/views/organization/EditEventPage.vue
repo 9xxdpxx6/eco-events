@@ -319,8 +319,7 @@ import {
   IonSelect,
   IonSelectOption,
   IonCheckbox,
-  IonSpinner,
-  toastController
+  IonSpinner
 } from '@ionic/vue';
 import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline, calendarOutline } from 'ionicons/icons';
 import { useEventsStore } from '../../stores';
@@ -331,6 +330,7 @@ import { IMAGE_BASE_URL } from '../../api/client';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import ImageUploader from '../../components/ImageUploader.vue';
+import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
 const route = useRoute();
@@ -456,12 +456,7 @@ const loadEvent = async () => {
     }
   } catch (error) {
     console.error('Error loading event:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка загрузки мероприятия',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка загрузки мероприятия', 3000);
     router.push('/tabs/events-management');
   } finally {
     isLoading.value = false;
@@ -474,12 +469,7 @@ const loadEventTypes = async () => {
     eventTypes.value = eventTypesStore.getEventTypes;
   } catch (error) {
     console.error('Error loading event types:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка загрузки типов мероприятий',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка загрузки типов мероприятий', 3000);
   }
 };
 
@@ -601,12 +591,7 @@ const saveChanges = async () => {
 
     await eventsStore.updateEventWithImages(eventId, formData);
     
-    const toast = await toastController.create({
-      message: 'Мероприятие успешно обновлено',
-      duration: 2000,
-      color: 'success'
-    });
-    await toast.present();
+    await showSuccessToast('Мероприятие успешно обновлено', 2000);
     
     // Обновляем данные в store перед переходом
     await eventsStore.fetchEventsSearch({
@@ -619,12 +604,7 @@ const saveChanges = async () => {
     router.push(`/tabs/events-management`);
   } catch (error) {
     console.error('Error updating event:', error);
-    const toast = await toastController.create({
-      message: `Ошибка при обновлении мероприятия: ${((error as any)?.message || String(error))}`,
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast(`Ошибка при обновлении мероприятия: ${((error as any)?.message || String(error))}`, 3000);
   } finally {
     isSaving.value = false;
   }
@@ -835,11 +815,7 @@ onMounted(() => {
   --box-shadow: none;
 }
 
-.ios-select:hover {
-  border-color: var(--eco-secondary);
-  /* box-shadow: 0 2px 8px rgba(25, 158, 255, 0.15); */
-  --box-shadow: none;
-}
+
 
 /* Глобальные стили для iOS action sheet */
 :root {
@@ -952,10 +928,7 @@ ion-action-sheet .action-sheet-button.action-sheet-cancel {
   border-color: var(--eco-error);
 }
 
-.date-button:hover {
-  --background: var(--eco-gray-200);
-  --box-shadow: none;
-}
+
 
 .date-button.ion-activated {
   --background: var(--eco-gray-200);

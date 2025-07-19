@@ -173,8 +173,7 @@ import {
   IonChip,
   IonLabel,
   IonList,
-  IonItem,
-  toastController
+  IonItem
 } from '@ionic/vue';
 import {
   businessOutline,
@@ -199,6 +198,7 @@ import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
 import EcoDialog from '../../components/EcoDialog.vue';
 import { formatNumberSafe } from '../../utils/formatNumbers';
+import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -244,12 +244,7 @@ const loadStatistics = async () => {
     
   } catch (error) {
     console.error('Error loading statistics:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка загрузки статистики',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка загрузки статистики', 3000);
   }
 };
 
@@ -287,12 +282,7 @@ const handleLogoutConfirm = async () => {
     router.push('/login');
   } catch (error) {
     console.error('Error logging out:', error);
-    const toast = await toastController.create({
-      message: 'Ошибка при выходе из аккаунта',
-      duration: 3000,
-      color: 'danger'
-    });
-    await toast.present();
+    await showErrorToast('Ошибка при выходе из аккаунта', 3000);
   }
 };
 
@@ -333,9 +323,7 @@ onMounted(() => {
   transition: all 0.2s ease;
 }
 
-.profile-card:hover {
-  transform: translateY(-1px);
-}
+
 
 ion-card {
   background: var(--eco-white, #ffffff);
@@ -345,9 +333,7 @@ ion-card {
   transition: all 0.2s ease;
 }
 
-ion-card:hover {
-  transform: translateY(-1px);
-}
+
 
 /* Заголовки карточек */
 ion-card-title {
@@ -451,9 +437,7 @@ ion-card-title {
   transition: all 0.2s ease;
 }
 
-.stat-item:hover {
-  background: var(--eco-white, #ffffff);
-}
+
 
 .stat-item ion-icon {
   font-size: 48px;

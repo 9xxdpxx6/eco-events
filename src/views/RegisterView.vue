@@ -590,9 +590,7 @@ const goToLogin = () => {
   color: var(--eco-primary) !important;
 }
 
-.login-button:hover {
-  --background: var(--eco-gray-50) !important;
-}
+
 
 /* Отзывчивость */
 @media (max-width: 480px) {
