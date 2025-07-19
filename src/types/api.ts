@@ -202,6 +202,7 @@ export interface UserBonusHistoryFilterDTO {
 export interface EventParticipantFilterDTO {
   userId?: number;
   eventId?: number;
+  eventTitle?: string;
   status?: 'CONFIRMED' | 'PENDING' | 'CANCELLED';
   membershipStatus?: 'VALID' | 'INVALID';
   createdAtFrom?: string;

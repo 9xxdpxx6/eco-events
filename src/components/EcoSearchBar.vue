@@ -28,7 +28,7 @@
         :trigger-icon="swapVerticalOutline"
         trigger-id="sortBtn"
         :show-text-only="false"
-        @update:model-value="$emit('update:sortValue', $event)"
+        @update:model-value="(value: string | number | null) => $emit('update:sortValue', String(value || ''))"
       />
     </div>
   </div>

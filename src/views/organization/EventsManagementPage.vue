@@ -272,7 +272,7 @@ import { useEventsStore, useAuthStore } from '../../stores';
 import type { EventResponseMediumDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
-import EventListLoader from '../EventListLoader.vue';
+import EventListLoader from '../../components/EventListLoader.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import { IMAGE_BASE_URL } from '../../api/client';
 import EcoDialog from '../../components/EcoDialog.vue';

@@ -66,6 +66,7 @@
             :sort-options="sortOptions"
             :sort-value="sortBy"
             @update:sort-value="selectSort"
+            @update:model-value="onSearchChange"
           />
         </div>
         
@@ -98,7 +99,7 @@
         />
 
         <!-- Пустое состояние -->
-        <div v-else-if="filteredRegistrations.length === 0" class="empty-state">
+        <div v-else-if="!isLoading && registrations.length === 0" class="empty-state">
           <div class="empty-icon">
             <ion-icon :icon="calendarClearOutline" />
           </div>
@@ -110,16 +111,16 @@
         </div>
 
         <!-- ОДИН СПЛОШНОЙ СПИСОК -->
-        <div v-else class="all-registrations-list">
+        <div v-else-if="registrations.length > 0" class="all-registrations-list">
           <div 
-            v-for="reg in filteredRegistrations" 
+            v-for="reg in registrations" 
             :key="reg.event.id + '-' + reg.createdAt"
             class="event-card eco-card eco-list-item"
             @click="goToEvent(reg.event.id ?? 0)"
           >
             <div class="event-content">
               <div class="event-header">
-                <h4 class="event-title">{{ reg.event.title }}</h4>
+                <h4 class="event-title">{{ reg.event.title || 'Без названия' }}</h4>
               </div>
               <div class="event-meta">
                 <div class="meta-row">
@@ -144,7 +145,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { 
   IonPage, 
@@ -223,15 +224,7 @@ const completedCount = ref(0);
 const cancelledCount = ref(0);
 const totalCount = computed(() => upcomingCount.value + completedCount.value + cancelledCount.value);
 
-const filteredRegistrations = computed(() => {
-  if (!searchText.value) {
-    return registrations.value;
-  }
-  return registrations.value.filter(reg => {
-    // Поиск по названию
-    return reg.event.title?.toLowerCase().includes(searchText.value.toLowerCase());
-  });
-});
+// Убираем клиентский фильтр - теперь поиск будет через сервер
 
 const hasActiveFilters = computed(() => {
   const result = !!(searchText.value || dateRange.value.from || dateRange.value.to);
@@ -247,9 +240,25 @@ const selectSort = (value: string) => {
   loadRegistrations(true);
 };
 
+// Debounce для поиска
+let searchTimeout: NodeJS.Timeout | null = null;
+
+// Обработчик изменения поискового текста
+const onSearchChange = () => {
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  searchTimeout = setTimeout(() => {
+    loadRegistrations(true);
+  }, 500); // Задержка 500мс
+};
+
 const clearFilters = () => {
   dateRange.value = { from: '', to: '' };
   searchText.value = '';
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
   loadRegistrations(true); // Сбрасываем фильтр и загружаем заново
 };
 
@@ -373,8 +382,8 @@ const loadRegistrations = async (reset = false) => {
     filter.sortOrder = sortOrder;
   }
 
-  // Поиск по названию (если поддерживается API)
-  // if (searchText.value) filter.title = searchText.value;
+  // Поиск по названию события
+  if (searchText.value) filter.eventTitle = searchText.value;
   try {
     const result = await participantsApi.search(filter) as { content: EventParticipantDTO[]; last: boolean };
     const items = result?.content ?? [];

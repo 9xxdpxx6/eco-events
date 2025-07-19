@@ -261,7 +261,7 @@ import {
 import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
 import { useAuthStore } from '../../stores';
-import EventListLoader from '../EventListLoader.vue';
+import EventListLoader from '../../components/EventListLoader.vue';
 
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';

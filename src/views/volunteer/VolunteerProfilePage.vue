@@ -742,7 +742,7 @@ onMounted(async () => {
   --background: rgba(255, 255, 255, 0.2);
   --color: white;
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: none;
 }
 
 /* Статистика */

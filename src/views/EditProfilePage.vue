@@ -192,47 +192,32 @@ const form = ref<UserRegistrationRequestDto & { confirmPassword?: string }>({
 const isLoading = ref(false);
 
 const loadUserData = async () => {
-  const currentUser = user.value;
-  if (currentUser?.id) {
-    try {
-      console.log('Loading user data for ID:', currentUser.id);
-      const userData = await usersApi.getById(currentUser.id);
-      console.log('Received user data:', userData);
-      
-      // Обновляем форму с полученными данными
-      form.value = {
-        fullName: userData.fullName || '',
-        login: userData.login || '',
-        password: '', // Пароль не загружаем из соображений безопасности
-        role: userData.role || 'USER',
-        email: userData.email || '',
-        phoneNumber: userData.phoneNumber || '',
-        confirmPassword: ''
-      };
-      
-      console.log('Form updated with:', form.value);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      await showErrorToast('Ошибка при загрузке данных профиля', 3000);
-    }
-  } else {
-    console.log('No user ID available');
+  try {
+    console.log('Loading current user data');
+    const userData = await usersApi.getMe();
+    console.log('Received user data:', userData);
+    
+    // Обновляем форму с полученными данными
+    form.value = {
+      fullName: userData.fullName || '',
+      login: userData.login || '',
+      password: '', // Пароль не загружаем из соображений безопасности
+      role: userData.role || 'USER',
+      email: userData.email || '',
+      phoneNumber: userData.phoneNumber || '',
+      confirmPassword: ''
+    };
+    
+    console.log('Form updated with:', form.value);
+  } catch (error) {
+    console.error('Error loading user data:', error);
+    await showErrorToast('Ошибка при загрузке данных профиля', 3000);
   }
 };
 
 onMounted(loadUserData);
 
-// Следим за изменениями пользователя
-watch(user, (newUser) => {
-  if (newUser?.id) {
-    loadUserData();
-  }
-});
-
 const handleSave = async () => {
-  const currentUser = user.value;
-  if (!currentUser) return;
-  
   // Проверяем совпадение паролей
   if (form.value.password && form.value.password !== form.value.confirmPassword) {
     await showErrorToast('Пароли не совпадают', 3000);
@@ -248,7 +233,11 @@ const handleSave = async () => {
     // Удаляем confirmPassword из payload, так как это поле только для проверки
     delete (payload as any).confirmPassword;
     
-    const updatedUser = await usersApi.update(currentUser.id, payload as UserRegistrationRequestDto);
+    console.log('🔄 EditProfilePage - Starting profile update');
+    console.log('📋 Form Data:', JSON.stringify(form.value, null, 2));
+    console.log('📤 Payload to send:', JSON.stringify(payload, null, 2));
+    
+    const updatedUser = await usersApi.updateMe(payload as UserRegistrationRequestDto);
     
     // Обновляем данные в хранилище
     authStore.updateUser(updatedUser);
@@ -269,6 +258,16 @@ const handleSave = async () => {
 <style scoped>
 .edit-profile-page {
   --background: var(--eco-background-secondary);
+}
+
+.edit-profile-page ion-header {
+  box-shadow: none !important;
+  --box-shadow: none !important;
+}
+
+.edit-profile-page ion-toolbar {
+  box-shadow: none !important;
+  --box-shadow: none !important;
 }
 
 .profile-content {

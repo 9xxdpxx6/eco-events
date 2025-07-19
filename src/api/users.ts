@@ -17,6 +17,11 @@ export const usersApi = {
     return data;
   },
 
+  getMe: async (): Promise<UserRegistrationResponseDto> => {
+    const { data } = await apiClient.get<UserRegistrationResponseDto>('/api/users/me');
+    return data;
+  },
+
   register: async (userData: UserRegistrationRequestDto): Promise<UserRegistrationResponseDto> => {
     const { data } = await apiClient.post<UserRegistrationResponseDto>('/api/users/registration', userData);
     return data;
@@ -30,6 +35,23 @@ export const usersApi = {
   update: async (userId: number, userData: UserRegistrationRequestDto): Promise<UserRegistrationResponseDto> => {
     const { data } = await apiClient.post<UserRegistrationResponseDto>(`/api/users/${userId}`, userData);
     return data;
+  },
+
+  updateMe: async (userData: UserRegistrationRequestDto): Promise<UserRegistrationResponseDto> => {
+    console.log('🔵 API Request - updateMe');
+    console.log('📍 URL:', '/api/users/updateMe');
+    console.log('📦 Request Data:', JSON.stringify(userData, null, 2));
+    try {
+      const { data } = await apiClient.post<UserRegistrationResponseDto>('/api/users/updateMe', userData);
+      console.log('✅ API Response - updateMe:', data);
+      return data;
+    } catch (error: any) {
+      console.error('❌ API Error - updateMe');
+      console.error('Status:', error.response?.status);
+      console.error('Response Data:', error.response?.data);
+      console.error('Error Message:', error.message);
+      throw error;
+    }
   },
 
   delete: async (userId: number): Promise<UserRegistrationResponseDto> => {
