@@ -19,7 +19,7 @@
         <!-- Форма входа -->
         <div class="login-form-card eco-card">
           <div class="login-form-content">
-            <h2 class="form-title">Вход в систему</h2>
+            <h2 class="form-title" @click="showNetworkDiagnostic">Вход в систему</h2>
             
             <div class="form-fields">
               <div class="input-group">
@@ -78,6 +78,9 @@
         </div>
       </div>
 
+      <!-- Диагностика сети -->
+      <NetworkDiagnostic />
+
       <!-- Toast для ошибок -->
       <ion-toast
         :is-open="showError"
@@ -106,6 +109,7 @@ import { leafOutline, refreshOutline } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores';
 import { getErrorMessage } from '../utils/network';
+import NetworkDiagnostic from '../components/NetworkDiagnostic.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -147,6 +151,11 @@ const handleLogin = async () => {
 const goToRegister = () => {
   router.push('/register');
 };
+
+const showNetworkDiagnostic = () => {
+  // Простая функция для показа диагностики
+  console.log('Диагностика сети доступна в правом верхнем углу');
+};
 </script>
 
 <style scoped>
@@ -173,7 +182,7 @@ const goToRegister = () => {
 .login-header {
   text-align: center;
   margin-bottom: var(--eco-space-8);
-  margin-top: var(--eco-space-8);
+  margin-top: 48px; /* увеличенный отступ сверху */
   color: white;
 }
 
@@ -360,18 +369,37 @@ const goToRegister = () => {
   --background: var(--eco-white);
   --color: var(--eco-gray-800);
   --border-color: var(--eco-gray-300);
-  --border-radius: var(--eco-radius-md);
+  --border-width: 1.5px;
+  --border-radius: 12px;
   --padding-start: var(--eco-space-4);
   --padding-end: var(--eco-space-4);
   --padding-top: var(--eco-space-3);
   --padding-bottom: var(--eco-space-3);
   font-size: var(--eco-font-size-base);
-  border: 1px solid var(--border-color);
-  transition: all var(--eco-transition-normal);
+  box-sizing: border-box;
 }
 
 .eco-input:focus {
   --border-color: var(--eco-primary);
   box-shadow: 0 0 0 3px rgba(53, 90, 221, 0.1);
+}
+
+.eco-input::part(native),
+.eco-input::part(input) {
+  border-radius: 12px !important;
+  background: var(--eco-white) !important;
+  border: 1.5px solid var(--eco-gray-300) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  color: var(--eco-gray-800) !important;
+  outline: none !important;
+}
+
+.eco-input input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--eco-gray-800) !important;
+  border-radius: 12px !important;
 }
 </style> 

@@ -323,7 +323,7 @@ const goToLogin = () => {
 .register-header {
   text-align: center;
   margin-bottom: var(--eco-space-8);
-  margin-top: var(--eco-space-8);
+  margin-top: 48px; /* увеличенный отступ сверху */
   color: white;
 }
 
@@ -628,14 +628,33 @@ const goToLogin = () => {
   --background: var(--eco-white);
   --color: var(--eco-gray-800);
   --border-color: var(--eco-gray-300);
-  --border-radius: var(--eco-radius-md);
+  --border-width: 1.5px;
+  --border-radius: 12px;
   --padding-start: var(--eco-space-4);
   --padding-end: var(--eco-space-4);
   --padding-top: var(--eco-space-3);
   --padding-bottom: var(--eco-space-3);
   font-size: var(--eco-font-size-base);
-  border: 1px solid var(--border-color);
-  transition: all var(--eco-transition-normal);
+  box-sizing: border-box;
+}
+
+.eco-input::part(native),
+.eco-input::part(input) {
+  border-radius: 12px !important;
+  background: var(--eco-white) !important;
+  border: 1.5px solid var(--eco-gray-300) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  color: var(--eco-gray-800) !important;
+  outline: none !important;
+}
+
+.eco-input input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  color: var(--eco-gray-800) !important;
+  border-radius: 12px !important;
 }
 
 .eco-input:focus {

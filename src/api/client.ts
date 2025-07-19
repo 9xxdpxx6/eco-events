@@ -1,7 +1,8 @@
 import axios from 'axios';
 import router from '../router';
 
-const API_URL = 'http://localhost:8080';
+//const API_URL = 'http://localhost:8080';
+const API_URL = 'http://192.168.31.250:8080';
 export const IMAGE_BASE_URL = `${API_URL}/uploads/previews`;
 
 export const apiClient = axios.create({
@@ -18,17 +19,43 @@ apiClient.interceptors.request.use((config) => {
     config.headers = config.headers || {};
     config.headers.Authorization = token;
   }
+  
+  // Логируем запрос для отладки
+  console.log('🌐 API Request:', {
+    method: config.method,
+    url: config.url,
+    baseURL: config.baseURL,
+    fullURL: `${config.baseURL}${config.url}`,
+    headers: config.headers,
+    data: config.data
+  });
+  
   return config;
 });
 
 // Добавляем интерцептор для обработки ошибок
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Логируем успешный ответ
+    console.log('✅ API Response:', {
+      status: response.status,
+      url: response.config.url,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
     // Логируем ошибку для отладки
-    if (import.meta.env.DEV) {
-      console.error('API Error:', error);
-    }
+    console.error('❌ API Error:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+      fullURL: error.config?.baseURL + error.config?.url,
+      response: error.response?.data
+    });
     
     // Обрабатываем ошибки авторизации
     if (error.response?.status === 401) {
@@ -45,6 +72,8 @@ apiClient.interceptors.response.use(
         error.message = 'Превышено время ожидания ответа от сервера';
       } else if (error.message === 'Network Error') {
         error.message = 'Ошибка соединения с сервером';
+      } else if (error.message?.includes('fetch')) {
+        error.message = 'Не удалось подключиться к серверу';
       }
     }
     
