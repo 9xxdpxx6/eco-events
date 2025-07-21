@@ -27,20 +27,26 @@
       <div v-else-if="event" class="event-container">
         <!-- Hero секция с изображением -->
         <div class="event-hero" :class="{ 'has-image': event.preview }">
-          <div class="hero-image" @click="galleryVisible = true">
-            <img 
-              :src="event.preview
-                ? (event.preview.startsWith('uploads/')
-                    ? API_URL + '/' + event.preview
-                    : IMAGE_BASE_URL + '/' + event.preview)
-                : getEventPlaceholder(event.id ?? 0)" 
-              alt="Event image"
-              :style="{
-                'object-fit': event.preview ? 'cover' : 'contain',
-                'width': event.preview ? '100%' : 'auto'
-              }"
-              draggable="false"
-            />
+          <div class="hero-image" @click="openGallery">
+            <template v-if="!brokenImage">
+              <img 
+                :src="event.preview
+                  ? (event.preview.startsWith('uploads/')
+                      ? API_URL + '/' + event.preview
+                      : IMAGE_BASE_URL + '/' + event.preview)
+                  : getEventPlaceholder(event.id ?? 0)" 
+                alt="Event image"
+                :style="{
+                  'object-fit': event.preview ? 'cover' : 'contain',
+                  'width': event.preview ? '100%' : 'auto'
+                }"
+                draggable="false"
+                @error="handleImgError"
+              />
+            </template>
+            <template v-else>
+              <BrokenImagePlaceholder />
+            </template>
             <div class="hero-overlay"></div>
           </div>
           
@@ -312,20 +318,13 @@
       @dismiss="handleDeleteCancel"
     />
 
-    <VueEasyLightbox
-      :visible="galleryVisible"
-      :imgs="eventImages"
-      :index="galleryIndex"
-      @hide="galleryVisible = false"
-      @on-prev="galleryIndex = $event"
-      @on-next="galleryIndex = $event"
-    >
-      <template #toolbar="{ currentIndex, total }">
-        <div style="position: absolute; top: 16px; right: 24px; color: white; font-size: 18px; z-index: 1001;">
-          {{ currentIndex + 1 }} / {{ total }}
-        </div>
-      </template>
-    </VueEasyLightbox>
+    <!-- Кастомная галерея (реализация ниже) -->
+    <CustomGallery
+      v-model="galleryVisible"
+      :images="eventImages"
+      :startIndex="galleryIndex"
+      @change="galleryIndex = $event"
+    />
   </ion-page>
 </template>
 
@@ -376,7 +375,8 @@ import { getEventPlaceholder } from '../utils/eventImages';
 import { IMAGE_BASE_URL, API_URL } from '../api/client';
 import EcoDialog from '../components/EcoDialog.vue';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
-import VueEasyLightbox from 'vue-easy-lightbox';
+import BrokenImagePlaceholder from '../components/BrokenImagePlaceholder.vue';
+import CustomGallery from '../components/CustomGallery.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -397,13 +397,31 @@ const galleryVisible = ref(false);
 const galleryIndex = ref(0);
 const eventImages = computed(() => {
   if (!event.value) return [];
-  if (!event.value.preview) return [getEventPlaceholder(event.value.id ?? 0)];
-  // Исправленная логика формирования пути
-  return [
-    event.value.preview.startsWith('uploads/')
+  const images: string[] = [];
+  // Добавляем превью первой, если есть
+  if (event.value.preview) {
+    const previewUrl = event.value.preview.startsWith('uploads/')
       ? `${API_URL}/${event.value.preview}`
-      : `${IMAGE_BASE_URL}/${event.value.preview}`
-  ];
+      : `${IMAGE_BASE_URL}/${event.value.preview}`;
+    images.push(previewUrl);
+  }
+  // Добавляем остальные картинки из event.images, если они не совпадают с превью
+  if (Array.isArray(event.value.images)) {
+    event.value.images.forEach(img => {
+      if (img.filePath) {
+        const url = img.filePath.startsWith('uploads/')
+          ? `${API_URL}/${img.filePath}`
+          : `${IMAGE_BASE_URL}/${img.filePath}`;
+        if (!images.includes(url)) {
+          images.push(url);
+        }
+      }
+    });
+  }
+  if (images.length === 0) {
+    images.push(getEventPlaceholder(event.value.id ?? 0));
+  }
+  return images;
 });
 
 const displayedParticipants = computed(() => {
@@ -476,11 +494,11 @@ const loadEvent = async () => {
     const eventId = parseInt(route.params.id as string);
     await eventsStore.fetchEventById(eventId);
     event.value = eventsStore.getCurrentEvent;
-
+    // ЛОГ для отладки
+    console.log('API event response:', event.value);
     // Загружаем участников
     await participantsStore.fetchEventParticipants(eventId);
     participants.value = participantsStore.getEventParticipants;
-
     if (isOrganization.value && isMyEvent.value) {
       // Дополнительные данные для организаторов
     }
@@ -632,6 +650,17 @@ const scrollToTop = async () => {
     await contentRef.value.$el.scrollToTop(300);
   }
 };
+
+// Для hero-image
+const brokenImage = ref(false);
+function handleImgError() {
+  brokenImage.value = true;
+}
+
+function openGallery(e?: MouseEvent) {
+  if (typeof e === 'object') e.preventDefault();
+  galleryVisible.value = true;
+}
 
 onMounted(() => {
   loadEvent();
@@ -1294,5 +1323,51 @@ onMounted(() => {
   .cancel-card {
     padding: var(--eco-space-3);
   }
+}
+/* Кастомизация фона модалки галереи */
+:deep(.vel-modal) {
+  background: rgba(10, 10, 10, 0.9) !important;
+  z-index: 99999 !important;
+}
+:deep(.vel-img-wrap) { cursor: default !important; }
+:deep(.vel-img) { pointer-events: none !important; user-select: none; }
+:deep(.vel-chevron) {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  padding: 0;
+}
+:deep(.vel-chevron-left) { left: 0; }
+:deep(.vel-chevron-right) { right: 0; }
+:deep(.vel-chevron::before) {
+  content: '';
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-style: solid;
+  border-width: 0 0 3px 3px;
+  border-color: transparent transparent #fff #fff;
+  border-radius: 4px;
+  transform: rotate(45deg);
+  margin: 0 16px;
+}
+:deep(.vel-chevron-right::before) {
+  transform: rotate(-135deg);
+}
+:deep(.vel-chevron-left::before) {
+  transform: rotate(45deg);
+}
+:deep(.vel-chevron:active), :deep(.vel-chevron:focus) {
+  background: none;
 }
 </style> 

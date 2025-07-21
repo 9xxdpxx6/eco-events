@@ -505,7 +505,8 @@ const saveEvent = async () => {
     
     resetForm();
     
-    // Обновляем данные в store перед переходом
+    // Сброс и обновление стейта событий для актуального списка
+    eventsStore.$reset();
     await eventsStore.fetchEventsSearch({
       userId: authStore.user?.id || 0,
       sortBy: 'id',

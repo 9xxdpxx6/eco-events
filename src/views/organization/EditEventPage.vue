@@ -327,6 +327,7 @@ import { useEventTypesStore } from '../../stores';
 import { useAuthStore } from '../../stores/auth';
 import type { EventTypeDTO, EventResponseMediumDTO } from '../../types/api';
 import { IMAGE_BASE_URL } from '../../api/client';
+import { API_URL } from '../../api/client';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import ImageUploader from '../../components/ImageUploader.vue';
@@ -431,18 +432,34 @@ const loadEvent = async () => {
       images.value = [];
       // Устанавливаем превью и другие изображения
       if (event.preview) {
-        images.value.push(`${IMAGE_BASE_URL}${event.preview}`);
+        images.value.push(
+          event.preview.startsWith('uploads/')
+            ? `${API_URL}/${event.preview}`
+            : `${IMAGE_BASE_URL}/${event.preview}`
+        );
       }
       if (event.images) {
         const otherImages = event.images
-          .map((img: { filePath: string; }) => `${IMAGE_BASE_URL}${img.filePath}`)
-          .filter((path: string) => path !== `${IMAGE_BASE_URL}${event.preview}`);
+          .map((img: { filePath: string; }) =>
+            img.filePath.startsWith('uploads/')
+              ? `${API_URL}/${img.filePath}`
+              : `${IMAGE_BASE_URL}/${img.filePath}`
+          )
+          .filter((path: string) => path !== (event.preview
+            ? (event.preview.startsWith('uploads/')
+                ? `${API_URL}/${event.preview}`
+                : `${IMAGE_BASE_URL}/${event.preview}`)
+            : ''));
         images.value.push(...otherImages);
       }
 
       if (images.value.length > 0) {
         // Устанавливаем превью, если оно есть
-        const previewUrl = `${IMAGE_BASE_URL}${event.preview}`;
+        const previewUrl = event.preview
+          ? (event.preview.startsWith('uploads/')
+              ? `${API_URL}/${event.preview}`
+              : `${IMAGE_BASE_URL}/${event.preview}`)
+          : '';
         const previewIndex = images.value.findIndex(img => img === previewUrl);
         if (previewIndex !== -1) {
           // Перемещаем превью в начало массива
@@ -593,7 +610,8 @@ const saveChanges = async () => {
     
     await showSuccessToast('Мероприятие успешно обновлено', 2000);
     
-    // Обновляем данные в store перед переходом
+    // Сброс и обновление стейта событий для актуального списка и деталей
+    eventsStore.$reset();
     await eventsStore.fetchEventsSearch({
       userId: authStore.user?.id || 0,
       sortBy: 'id',

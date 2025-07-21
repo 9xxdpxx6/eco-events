@@ -133,17 +133,23 @@
             @click="viewEventDetails(Number(event.id))"
           >
             <div class="event-image">
-              <img 
-                :src="event.preview
-                  ? (event.preview.startsWith('uploads/')
-                      ? API_URL + '/' + event.preview
-                      : IMAGE_BASE_URL + '/' + event.preview)
-                  : getEventPlaceholder(event.id ?? 0)" 
-                alt="Event image" 
-                :style="{ 
-                  'width': event.preview ? '100%' : 'auto'
-                }"
-              />
+              <template v-if="!brokenImages[event.id]">
+                <img 
+                  :src="event.preview
+                    ? (event.preview.startsWith('uploads/')
+                        ? API_URL + '/' + event.preview
+                        : IMAGE_BASE_URL + '/' + event.preview)
+                    : getEventPlaceholder(event.id ?? 0)" 
+                  alt="Event image" 
+                  :style="{ 
+                    'width': event.preview ? '100%' : 'auto'
+                  }"
+                  @error="handleImgError(event.id)"
+                />
+              </template>
+              <template v-else>
+                <BrokenImagePlaceholder class="broken-image-full" />
+              </template>
               <div class="event-status">
                 <span :class="['status-badge', 'eco-status', getEventStatusClass(event)]">
                   {{ getEventStatus(event) }}
@@ -282,6 +288,8 @@ import { IMAGE_BASE_URL } from '../../api/client';
 import { API_URL } from '../../api/client';
 import EcoDialog from '../../components/EcoDialog.vue';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
+import { ref as vueRef } from 'vue';
+import BrokenImagePlaceholder from '../../components/BrokenImagePlaceholder.vue';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -621,6 +629,12 @@ watch(selectedFilter, filterAndSearchEvents);
 
 watch(allEvents, filterAndSearchEvents);
 
+// Для отслеживания битых картинок в списке
+const brokenImages = vueRef<{ [key: number]: boolean }>({});
+function handleImgError(idx: number) {
+  brokenImages.value[idx] = true;
+}
+
 onMounted(() => {
   loadAllEvents();
 });
@@ -645,16 +659,15 @@ onIonViewWillEnter(() => {
 .events-management-page ion-toolbar {
   box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
   --box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
-}
-
-.events-content {
-  --background: var(--eco-background-secondary);
+  display: flex;
+  justify-content: flex-start;
 }
 
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
   text-align: left;
+  justify-content: flex-start;
   cursor: pointer;
 }
 
@@ -944,6 +957,7 @@ onIonViewWillEnter(() => {
   position: absolute;
   top: var(--eco-space-2);
   left: var(--eco-space-2);
+  z-index: 99;
 }
 
 .event-content {
@@ -1119,5 +1133,15 @@ onIonViewWillEnter(() => {
 }
 .main-create-btn:hover, .main-create-btn:active {
   box-shadow: 0 4px 16px rgba(44, 62, 80, 0.12);
+}
+.broken-image-full {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  height: 100%;
+  width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 </style> 

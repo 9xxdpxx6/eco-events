@@ -79,17 +79,22 @@
               @click="openEventDetails(Number(event.id))"
             >
               <div class="event-image">
-                <img 
-                  :src="getEventPlaceholder(event.id ?? 0)"
-                  :data-src="event.preview
-                    ? (event.preview.startsWith('uploads/')
-                        ? API_URL + '/' + event.preview
-                        : IMAGE_BASE_URL + '/' + event.preview)
-                    : getEventPlaceholder(event.id ?? 0)"
-                  :alt="event.title"
-                  class="lazy-img"
-                  loading="lazy"
-                />
+                <template v-if="!brokenImages[event.id]">
+                  <img 
+                    :src="event.preview
+                      ? (event.preview.startsWith('uploads/')
+                          ? API_URL + '/' + event.preview
+                          : IMAGE_BASE_URL + '/' + event.preview)
+                      : getEventPlaceholder(event.id ?? 0)"
+                    :alt="event.title"
+                    class="lazy-img"
+                    loading="lazy"
+                    @error="handleImgError(event.id)"
+                  />
+                </template>
+                <template v-else>
+                  <BrokenImagePlaceholder />
+                </template>
                 <div class="event-status">
                   <span :class="['status-badge', getEventStatus(event.startTime)]">
                     {{ getEventStatusText(event.startTime) }}
@@ -141,17 +146,22 @@
             @click="openEventDetails(Number(event.id))"
           >
             <div class="event-image">
-              <img 
-                :src="getEventPlaceholder(event.id ?? 0)"
-                :data-src="event.preview
-                  ? (event.preview.startsWith('uploads/')
-                      ? API_URL + '/' + event.preview
-                      : IMAGE_BASE_URL + '/' + event.preview)
-                  : getEventPlaceholder(event.id ?? 0)"
-                :alt="event.title"
-                class="lazy-img"
-                loading="lazy"
-              />
+              <template v-if="!brokenImages[event.id]">
+                <img 
+                  :src="event.preview
+                    ? (event.preview.startsWith('uploads/')
+                        ? API_URL + '/' + event.preview
+                        : IMAGE_BASE_URL + '/' + event.preview)
+                    : getEventPlaceholder(event.id ?? 0)"
+                  :alt="event.title"
+                  class="lazy-img"
+                  loading="lazy"
+                  @error="handleImgError(event.id)"
+                />
+              </template>
+              <template v-else>
+                <BrokenImagePlaceholder />
+              </template>
               <div class="event-status">
                 <span :class="['status-badge', getEventStatus(event.startTime)]">
                   {{ getEventStatusText(event.startTime) }}
@@ -281,6 +291,8 @@ import { eventsApi } from '../../api/events';
 import { IMAGE_BASE_URL } from '../../api/client';
 import { API_URL } from '../../api/client';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
+import { ref as vueRef } from 'vue';
+import BrokenImagePlaceholder from '../../components/BrokenImagePlaceholder.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -311,6 +323,11 @@ const savedScrollPosition = ref(0);
 const isLoadingMoreData = ref(false);
 const imageObserver = ref<IntersectionObserver | null>(null);
 const infiniteScrollDebounce = ref<NodeJS.Timeout | null>(null);
+// Для отслеживания битых картинок в списке
+const brokenImages = vueRef<{ [key: number]: boolean }>({});
+function handleImgError(idx: number) {
+  brokenImages.value[idx] = true;
+}
 
 const sortOptions = [
   { value: 'id_DESC', label: 'По умолчанию', icon: listOutline },

@@ -68,6 +68,7 @@ export interface EventResponseMediumDTO {
   preview?: string;
   totalVisitors?: number;
   owner: UserMediumDTO;
+  images?: { id: number; eventId: number; filePath: string }[];
 }
 
 export interface EventShortDTO {
