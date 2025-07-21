@@ -4,6 +4,9 @@ const config: CapacitorConfig = {
   appId: 'io.ionic.starter',
   appName: 'EcoEvents',
   webDir: 'dist',
+  server: {
+    cleartext: true
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0, // Не показывать стандартный splash screen

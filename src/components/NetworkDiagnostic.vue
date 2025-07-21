@@ -26,9 +26,10 @@
           {{ isRunning ? 'Проверяю...' : 'Проверить соединение' }}
         </ion-button>
         <div class="debug-info">
-          <p>Статус: {{ isRunning ? 'Проверяется' : 'Готов' }}</p>
+          <p>Статус: {{ isRunning ? 'Проверяется' : (serverConnected ? 'Сервер доступен' : 'Нет соединения с сервером') }}</p>
           <p>Интернет: {{ internetConnected ? 'Да' : 'Нет' }}</p>
           <p>Сервер: {{ serverConnected ? 'Да' : 'Нет' }}</p>
+          <p v-if="lastError" style="color: #d32f2f; font-weight: bold;">Ошибка: {{ lastError }}</p>
         </div>
       </ion-card-content>
     </ion-card>
@@ -60,6 +61,7 @@ const serverConnected = ref(false);
 const lastError = ref('');
 
 const serverUrl = 'http://192.168.31.250:8080';
+const pingEndpoint = `${serverUrl}/api/ping`;
 
 const internetStatus = computed(() => {
   if (isRunning.value) return { text: 'Проверяю...', color: 'warning' };
@@ -92,54 +94,33 @@ const checkServer = async (): Promise<boolean> => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    // Пробуем разные методы запроса
-    const methods = ['HEAD', 'GET', 'OPTIONS'];
-    
-    for (const method of methods) {
-      try {
-        console.log(`🔍 Пробуем ${method} запрос к ${serverUrl}`);
-        
-        const response = await fetch(serverUrl, {
-          method: method as any,
-          mode: 'cors', // Пробуем с CORS
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log(`✅ ${method} запрос успешен:`, response.status, response.statusText);
-        clearTimeout(timeoutId);
-        return true;
-      } catch (methodError) {
-        console.log(`❌ ${method} запрос не удался:`, methodError);
-        
-        // Если CORS не работает, пробуем без CORS
-        const errorMessage = methodError instanceof Error ? methodError.message : String(methodError);
-        if (errorMessage.includes('CORS') || errorMessage.includes('fetch')) {
-          try {
-            console.log(`🔄 Пробуем ${method} без CORS`);
-            const noCorsResponse = await fetch(serverUrl, {
-              method: method as any,
-              mode: 'no-cors',
-              signal: controller.signal
-            });
-            
-            console.log(`✅ ${method} без CORS успешен:`, noCorsResponse.type);
-            clearTimeout(timeoutId);
-            return true;
-          } catch (noCorsError) {
-            console.log(`❌ ${method} без CORS тоже не удался:`, noCorsError);
-          }
-        }
+
+    // Проверяем /api/ping
+    console.log(`🔍 Проверяем сервер по адресу ${pingEndpoint}`);
+    const response = await fetch(pingEndpoint, {
+      method: 'GET',
+      mode: 'cors',
+      signal: controller.signal,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
-    }
-    
+    });
     clearTimeout(timeoutId);
-    throw new Error('Все методы запроса не удались');
-    
+    if (response.ok) {
+      const text = await response.text();
+      if (text.trim() === 'pong') {
+        console.log('✅ Сервер ответил pong');
+        return true;
+      } else {
+        console.log('❌ Сервер ответил, но не pong:', text);
+        lastError.value = `Сервер ответил: ${text}`;
+        return false;
+      }
+    } else {
+      lastError.value = `Ошибка сервера: ${response.status} ${response.statusText}`;
+      return false;
+    }
   } catch (error) {
     console.error('Server check failed:', error);
     lastError.value = error instanceof Error ? error.message : String(error);
@@ -179,18 +160,22 @@ const checkServerWithXHR = (): Promise<boolean> => {
 
 const checkServerWithPing = async (): Promise<boolean> => {
   try {
-    // Пробуем простой ping через fetch с очень коротким таймаутом
+    // Проверяем /api/ping с коротким таймаутом
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
-    
-    const response = await fetch(`${serverUrl}/ping`, {
+    const response = await fetch(pingEndpoint, {
       method: 'GET',
-      mode: 'no-cors',
+      mode: 'cors',
       signal: controller.signal
     });
-    
     clearTimeout(timeoutId);
-    return true;
+    if (response.ok) {
+      const text = await response.text();
+      if (text.trim() === 'pong') {
+        return true;
+      }
+    }
+    return false;
   } catch (error) {
     console.log('❌ Ping не удался:', error);
     return false;
@@ -208,11 +193,8 @@ const checkServerWithImage = async (): Promise<boolean> => {
       console.log('❌ Изображение не загрузилось');
       resolve(false);
     };
-    
-    // Пробуем загрузить изображение с сервера
+    // Пробуем загрузить изображение с сервера (через https)
     img.src = `${serverUrl}/favicon.ico?t=${Date.now()}`;
-    
-    // Таймаут через 3 секунды
     setTimeout(() => {
       console.log('⏰ Таймаут загрузки изображения');
       resolve(false);
@@ -223,27 +205,22 @@ const checkServerWithImage = async (): Promise<boolean> => {
 const checkServerWithWebSocket = (): Promise<boolean> => {
   return new Promise((resolve) => {
     try {
-      // Пробуем WebSocket подключение
+      // Пробуем WebSocket подключение (ws)
       const ws = new WebSocket(`ws://192.168.31.250:8080`);
-      
       ws.onopen = () => {
         console.log('✅ WebSocket подключение успешно');
         ws.close();
         resolve(true);
       };
-      
       ws.onerror = (error) => {
         console.log('❌ WebSocket ошибка:', error);
         resolve(false);
       };
-      
-      // Таймаут через 3 секунды
       setTimeout(() => {
         console.log('⏰ WebSocket таймаут');
         ws.close();
         resolve(false);
       }, 3000);
-      
     } catch (error) {
       console.log('❌ WebSocket исключение:', error);
       resolve(false);
@@ -290,44 +267,41 @@ const checkServerWithNative = async (): Promise<boolean> => {
 const runDiagnostic = async () => {
   isRunning.value = true;
   lastError.value = '';
-  
+  serverConnected.value = false; // Сброс перед началом
   try {
     // Проверяем интернет
     internetConnected.value = await checkInternet();
-    
     // Проверяем сервер через fetch
     serverConnected.value = await checkServer();
-    
     // Если fetch не работает, пробуем XMLHttpRequest
     if (!serverConnected.value) {
       console.log('🔄 Пробуем XMLHttpRequest...');
       serverConnected.value = await checkServerWithXHR();
     }
-    
     // Если XMLHttpRequest не работает, пробуем ping
     if (!serverConnected.value) {
       console.log('🔄 Пробуем ping...');
       serverConnected.value = await checkServerWithPing();
     }
-    
     // Если ping не работает, пробуем загрузку изображения
     if (!serverConnected.value) {
       console.log('🔄 Пробуем загрузку изображения...');
       serverConnected.value = await checkServerWithImage();
     }
-    
     // Если изображение не загружается, пробуем WebSocket
     if (!serverConnected.value) {
       console.log('🔄 Пробуем WebSocket...');
       serverConnected.value = await checkServerWithWebSocket();
     }
-    
     // Если WebSocket не работает, пробуем нативный запрос
     if (!serverConnected.value) {
       console.log('🔄 Пробуем нативный запрос...');
       serverConnected.value = await checkServerWithNative();
     }
-    
+    // Если ни один способ не сработал, показываем ошибку
+    if (!serverConnected.value && !lastError.value) {
+      lastError.value = 'Не удалось установить соединение с сервером.';
+    }
   } catch (error) {
     console.error('Diagnostic error:', error);
     lastError.value = error instanceof Error ? error.message : String(error);
@@ -370,6 +344,7 @@ onMounted(() => {
   border: 2px solid #007bff;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  display: none; /* Скрываем окно диагностики */
 }
 
 .diagnostic-item {

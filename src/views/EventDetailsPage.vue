@@ -27,14 +27,19 @@
       <div v-else-if="event" class="event-container">
         <!-- Hero секция с изображением -->
         <div class="event-hero" :class="{ 'has-image': event.preview }">
-          <div class="hero-image">
+          <div class="hero-image" @click="galleryVisible = true">
             <img 
-              :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" 
+              :src="event.preview
+                ? (event.preview.startsWith('uploads/')
+                    ? API_URL + '/' + event.preview
+                    : IMAGE_BASE_URL + '/' + event.preview)
+                : getEventPlaceholder(event.id ?? 0)" 
               alt="Event image"
               :style="{
                 'object-fit': event.preview ? 'cover' : 'contain',
                 'width': event.preview ? '100%' : 'auto'
               }"
+              draggable="false"
             />
             <div class="hero-overlay"></div>
           </div>
@@ -306,6 +311,21 @@
       @cancel="handleDeleteCancel"
       @dismiss="handleDeleteCancel"
     />
+
+    <VueEasyLightbox
+      :visible="galleryVisible"
+      :imgs="eventImages"
+      :index="galleryIndex"
+      @hide="galleryVisible = false"
+      @on-prev="galleryIndex = $event"
+      @on-next="galleryIndex = $event"
+    >
+      <template #toolbar="{ currentIndex, total }">
+        <div style="position: absolute; top: 16px; right: 24px; color: white; font-size: 18px; z-index: 1001;">
+          {{ currentIndex + 1 }} / {{ total }}
+        </div>
+      </template>
+    </VueEasyLightbox>
   </ion-page>
 </template>
 
@@ -353,9 +373,10 @@ import { useParticipantsStore } from '../stores';
 import type { EventResponseMediumDTO } from '../types/api';
 import type { EventParticipantDTO } from '../types/api';
 import { getEventPlaceholder } from '../utils/eventImages';
-import { IMAGE_BASE_URL } from '../api/client';
+import { IMAGE_BASE_URL, API_URL } from '../api/client';
 import EcoDialog from '../components/EcoDialog.vue';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
+import VueEasyLightbox from 'vue-easy-lightbox';
 
 const router = useRouter();
 const route = useRoute();
@@ -371,6 +392,19 @@ const isRegistering = ref(false);
 
 // Dialog state
 const showDeleteDialog = ref(false);
+
+const galleryVisible = ref(false);
+const galleryIndex = ref(0);
+const eventImages = computed(() => {
+  if (!event.value) return [];
+  if (!event.value.preview) return [getEventPlaceholder(event.value.id ?? 0)];
+  // Исправленная логика формирования пути
+  return [
+    event.value.preview.startsWith('uploads/')
+      ? `${API_URL}/${event.value.preview}`
+      : `${IMAGE_BASE_URL}/${event.value.preview}`
+  ];
+});
 
 const displayedParticipants = computed(() => {
   return [...participants.value]

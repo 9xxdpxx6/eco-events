@@ -193,7 +193,7 @@ import {
   mailOutline,
   callOutline
 } from 'ionicons/icons';
-import { useAuthStore } from '../../stores';
+import { useAuthStore } from '../../stores/auth';
 import { useEventsStore } from '../../stores';
 import { useParticipantsStore } from '../../stores';
 import EcoDialog from '../../components/EcoDialog.vue';

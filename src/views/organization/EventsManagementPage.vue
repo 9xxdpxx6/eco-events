@@ -100,8 +100,8 @@
           </div>
           <h3 class="empty-title">Нет созданных мероприятий</h3>
           <p class="empty-subtitle">Создайте своё первое экологическое мероприятие и начните привлекать волонтёров!</p>
-          <ion-button fill="solid" @click="createEvent" class="action-button">
-            <ion-icon :icon="addOutline" slot="start" />
+          <ion-button fill="solid" @click="createEvent" class="main-create-btn">
+            <ion-icon :icon="addOutline" slot="start" class="main-create-btn__icon" />
             Создать мероприятие
           </ion-button>
       </div>
@@ -134,7 +134,11 @@
           >
             <div class="event-image">
               <img 
-                :src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)" 
+                :src="event.preview
+                  ? (event.preview.startsWith('uploads/')
+                      ? API_URL + '/' + event.preview
+                      : IMAGE_BASE_URL + '/' + event.preview)
+                  : getEventPlaceholder(event.id ?? 0)" 
                 alt="Event image" 
                 :style="{ 
                   'width': event.preview ? '100%' : 'auto'
@@ -275,6 +279,7 @@ import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import EventListLoader from '../../components/EventListLoader.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';
 import { IMAGE_BASE_URL } from '../../api/client';
+import { API_URL } from '../../api/client';
 import EcoDialog from '../../components/EcoDialog.vue';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
@@ -1083,5 +1088,36 @@ onIonViewWillEnter(() => {
   font-size: 64px;
   color: var(--eco-gray-600);
   margin-bottom: var(--eco-space-4);
+}
+
+.main-create-btn {
+  width: 80%;
+  max-width: 320px;
+  margin: var(--eco-space-4) auto 0 auto;
+  border-radius: var(--eco-radius-xl);
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
+  font-size: var(--eco-font-size-base);
+  font-weight: var(--eco-font-weight-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  --background: var(--eco-primary);
+  --color: white;
+  --background-activated: var(--eco-primary-dark);
+  transition: box-shadow 0.2s;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 18px;
+}
+.main-create-btn__icon {
+  font-size: 28px !important;
+  color: white !important;
+  margin-top: 12px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+}
+.main-create-btn:hover, .main-create-btn:active {
+  box-shadow: 0 4px 16px rgba(44, 62, 80, 0.12);
 }
 </style> 

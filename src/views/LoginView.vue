@@ -107,7 +107,7 @@ import {
 } from '@ionic/vue';
 import { leafOutline, refreshOutline } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '../stores';
+import { useAuthStore } from '../stores/auth';
 import { getErrorMessage } from '../utils/network';
 import NetworkDiagnostic from '../components/NetworkDiagnostic.vue';
 
@@ -208,7 +208,6 @@ const showNetworkDiagnostic = () => {
   margin: 0;
   color: white;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  text-stroke: 1px rgba(0, 0, 0, 0.1);
 }
 
 .app-branding {

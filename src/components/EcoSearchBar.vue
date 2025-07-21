@@ -115,7 +115,10 @@ ion-searchbar :deep(.searchbar-input) {
 }
 
 ion-searchbar :deep(.searchbar-search-icon) {
-  padding-top: 2px;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding-top: 0;
   padding-bottom: 0;
 }
 

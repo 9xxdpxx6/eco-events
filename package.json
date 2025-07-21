@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@capacitor-community/http": "^1.4.1",
     "@capacitor/android": "7.3.0",
     "@capacitor/app": "7.0.1",
     "@capacitor/camera": "^7.0.1",
@@ -37,6 +38,7 @@
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.2",
     "vue": "^3.3.0",
+    "vue-easy-lightbox": "^1.19.0",
     "vue-masonry-css": "^1.0.3",
     "vue-router": "^4.2.0"
   },

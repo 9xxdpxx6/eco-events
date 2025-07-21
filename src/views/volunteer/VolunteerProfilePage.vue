@@ -350,7 +350,7 @@ import {
   locationOutline,
   flagOutline
 } from 'ionicons/icons';
-import { useAuthStore } from '../../stores';
+import { useAuthStore } from '../../stores/auth';
 import { useParticipantsStore } from '../../stores';
 import EcoDialog from '../../components/EcoDialog.vue';
 import type { EventParticipantWithEventDetailsDTO } from '../../types/api';

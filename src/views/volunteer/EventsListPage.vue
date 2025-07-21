@@ -81,7 +81,11 @@
               <div class="event-image">
                 <img 
                   :src="getEventPlaceholder(event.id ?? 0)"
-                  :data-src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)"
+                  :data-src="event.preview
+                    ? (event.preview.startsWith('uploads/')
+                        ? API_URL + '/' + event.preview
+                        : IMAGE_BASE_URL + '/' + event.preview)
+                    : getEventPlaceholder(event.id ?? 0)"
                   :alt="event.title"
                   class="lazy-img"
                   loading="lazy"
@@ -139,7 +143,11 @@
             <div class="event-image">
               <img 
                 :src="getEventPlaceholder(event.id ?? 0)"
-                :data-src="event.preview ? `${IMAGE_BASE_URL}/${event.preview}` : getEventPlaceholder(event.id ?? 0)"
+                :data-src="event.preview
+                  ? (event.preview.startsWith('uploads/')
+                      ? API_URL + '/' + event.preview
+                      : IMAGE_BASE_URL + '/' + event.preview)
+                  : getEventPlaceholder(event.id ?? 0)"
                 :alt="event.title"
                 class="lazy-img"
                 loading="lazy"
@@ -271,6 +279,7 @@ import { getEventPlaceholder } from '../../utils/eventImages';
 import { participantsApi } from '../../api/participants';
 import { eventsApi } from '../../api/events';
 import { IMAGE_BASE_URL } from '../../api/client';
+import { API_URL } from '../../api/client';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { eventsApi } from '../api/events';
 import type { EventRequestDTO, EventResponseMediumDTO, EventFilterDTO, EventFilterForUserDTO } from '../types/api';
 import { useParticipantsStore } from './participants';
+import { useAuthStore } from './auth';
 
 interface EventsState {
   events: EventResponseMediumDTO[];
@@ -31,7 +32,6 @@ export const useEventsStore = defineStore('events', {
       this.error = null;
       try {
         // Получаем userId из authStore
-        const { useAuthStore } = await import('./auth');
         const authStore = useAuthStore();
         const userId = authStore.user?.id;
         if (!userId) throw new Error('Пользователь не авторизован');

@@ -51,22 +51,6 @@ const app = createApp(App)
 // Инициализируем authStore после настройки Pinia
 const authStore = useAuthStore();
 
-// Проверяем доступность сети
-const checkNetworkAccess = async () => {
-  if (Capacitor.isNativePlatform()) {
-    try {
-      // Пробуем сделать тестовый запрос к вашему серверу
-      const response = await fetch('http://192.168.31.250:8080', {
-        method: 'HEAD',
-        mode: 'no-cors'
-      });
-      console.log('✅ Сетевое подключение работает');
-    } catch (error) {
-      console.warn('⚠️ Проблема с сетевым подключением:', error);
-    }
-  }
-};
-
 // Выполняем восстановление авторизации (синхронно, так как работает с localStorage)
 if (import.meta.env.DEV) {
   console.log('✅ Авторизация проверена:', {
@@ -75,43 +59,6 @@ if (import.meta.env.DEV) {
   });
 }
 
-// Тестируем API при загрузке приложения
-console.log('🚀 Приложение запускается...')
-console.log('🔗 API URL:', 'http://192.168.31.250:8080')
-
-// Принудительно тестируем API
-setTimeout(() => {
-  console.log('🧪 Тестируем API...')
-  
-  // Тест 1: Простой GET запрос
-  fetch('http://192.168.31.250:8080/v3/api-docs')
-    .then(response => {
-      console.log('✅ Fetch test успешен:', response.status)
-    })
-    .catch(error => {
-      console.error('❌ Fetch test ошибка:', error)
-    })
-  
-  // Тест 2: Axios запрос
-  apiClient.get('/v3/api-docs')
-    .then(response => {
-      console.log('✅ Axios test успешен:', response.status)
-    })
-    .catch(error => {
-      console.error('❌ Axios test ошибка:', error.message)
-    })
-  
-  // Тест 3: HEAD запрос
-  fetch('http://192.168.31.250:8080/api/auth/login', { method: 'HEAD' })
-    .then(response => {
-      console.log('✅ HEAD test успешен:', response.status)
-    })
-    .catch(error => {
-      console.error('❌ HEAD test ошибка:', error)
-    })
-}, 1000)
-
 router.isReady().then(async () => {
-  await checkNetworkAccess();
   app.mount('#app');
 });
