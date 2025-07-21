@@ -201,6 +201,7 @@
                   v-model="images"
                   @update:preview="updatePreview"
                   :max-files="10"
+                  accept="image/png,image/jpeg,image/jpg"
                 />
               </div>
             </div>

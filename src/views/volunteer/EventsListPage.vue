@@ -93,7 +93,7 @@
                   />
                 </template>
                 <template v-else>
-                  <BrokenImagePlaceholder />
+                  <BrokenImagePlaceholder class="broken-image-full" :style="{height: '100%'}" />
                 </template>
                 <div class="event-status">
                   <span :class="['status-badge', getEventStatus(event.startTime)]">
@@ -160,7 +160,7 @@
                 />
               </template>
               <template v-else>
-                <BrokenImagePlaceholder />
+                <BrokenImagePlaceholder class="broken-image-full" :style="{height: '100%'}" />
               </template>
               <div class="event-status">
                 <span :class="['status-badge', getEventStatus(event.startTime)]">
@@ -1201,8 +1201,13 @@ onUnmounted(() => {
 .event-image {
   position: relative;
   width: 100%;
+  min-height: 168px;
+  height: 100%;
+  max-height: 300px;
+  flex-shrink: 0;
   overflow: hidden;
-  min-height: 100px;
+  border-radius: var(--eco-radius-lg);
+  text-align: center;
 }
 
 /* Изображения в плиточном режиме - адаптируются под пропорции фото */
@@ -1230,6 +1235,7 @@ onUnmounted(() => {
   position: absolute;
   top: var(--eco-space-3);
   left: var(--eco-space-3);
+  z-index: 99;
 }
 
 .status-badge {
@@ -1498,5 +1504,15 @@ ion-infinite-scroll-content ion-spinner::part(circle) {
 
 ion-infinite-scroll-content ion-spinner::part(circles) {
   stroke: var(--eco-primary) !important;
+}
+
+.broken-image-full {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 </style> 

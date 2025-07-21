@@ -3,12 +3,12 @@
     <div class="image-grid">
       <div 
         v-for="(image, index) in imagePreviews" 
-        :key="index" 
+        :key="image.url" 
         class="image-container"
         :class="{ 'preview': image.isPreview }"
       >
-        <template v-if="!brokenImages[index]">
-          <img :src="image.url" class="thumbnail" @dblclick="setAsPreview(index)" @error="handleImgError(index)" />
+        <template v-if="!brokenImages[image.url]">
+          <img :src="image.url" class="thumbnail" @dblclick="setAsPreview(index)" @touchend="onTouchEnd(index)" @error="handleImgError(image.url)" />
         </template>
         <template v-else>
           <BrokenImagePlaceholder />
@@ -41,12 +41,17 @@
       {{ errorMessage }}
     </div>
     <div class="uploader-hint" v-if="images.length > 0">
-      Двойной клик по фото, чтобы сделать его главным.
+      Двойной тап по фото, чтобы сделать его главным.
     </div>
     <div v-if="showDeleteAlert" class="ios-alert-backdrop">
       <div class="ios-alert">
         <div v-if="imageToDeleteIndex !== null">
-          <img :src="imagePreviews[imageToDeleteIndex]?.url" class="ios-alert-img" />
+          <template v-if="!brokenImages[imagePreviews[imageToDeleteIndex]?.url]">
+            <img :src="imagePreviews[imageToDeleteIndex]?.url" class="ios-alert-img" />
+          </template>
+          <template v-else>
+            <BrokenImagePlaceholder class="ios-alert-img" />
+          </template>
         </div>
         <div class="ios-alert-title">Удалить изображение?</div>
         <div class="ios-alert-message">Действие не подлежит отмене.</div>
@@ -61,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { IonButton, IonIcon, actionSheetController, IonAlert } from '@ionic/vue';
 import { cameraOutline, star, starOutline, closeOutline } from 'ionicons/icons';
 import { Camera, CameraResultType, CameraSource, Photo } from '@capacitor/camera';
@@ -251,6 +256,17 @@ function setAsPreview(index: number) {
     img.isPreview = (i === 0);
   });
 
+  // Обновить brokenImages чтобы реактивно обновить рамку
+  nextTick(() => {
+    const newBroken: Record<string, boolean> = {};
+    images.value.forEach(img => {
+      if (brokenImages.value[img.url]) {
+        newBroken[img.url] = true;
+      }
+    });
+    brokenImages.value = newBroken;
+  });
+
   // Notify parent of all changes
   updateModelValue();
 }
@@ -296,10 +312,30 @@ async function presentActionSheet() {
   await actionSheet.present();
 }
 
-// Для отслеживания битых картинок
-const brokenImages = vueRef<{ [key: number]: boolean }>({});
-function handleImgError(idx: number) {
-  brokenImages.value[idx] = true;
+// Для отслеживания битых картинок по url
+const brokenImages = vueRef<{ [key: string]: boolean }>({});
+function handleImgError(url: string) {
+  brokenImages.value[url] = true;
+}
+
+// Сброс brokenImages при изменении imagePreviews
+watch(imagePreviews, (newVal) => {
+  const newBroken: Record<string, boolean> = {};
+  newVal.forEach(img => {
+    if (brokenImages.value[img.url]) {
+      newBroken[img.url] = true;
+    }
+  });
+  brokenImages.value = newBroken;
+});
+
+let lastTap = 0;
+function onTouchEnd(index: number) {
+  const now = Date.now();
+  if (now - lastTap < 350) {
+    setAsPreview(index);
+  }
+  lastTap = now;
 }
 </script>
 

@@ -15,6 +15,12 @@
     </ion-header>
     
     <ion-content ref="contentRef" class="event-content">
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content
+          pulling-text="Потяните для обновления"
+          refreshing-text="Обновляем данные..."
+        ></ion-refresher-content>
+      </ion-refresher>
       <!-- Лоадер -->
       <div v-if="isLoading" class="loading-container">
         <div class="loading-spinner">
@@ -342,7 +348,9 @@ import {
   IonBackButton,
   IonButton,
   IonIcon,
-  IonSpinner
+  IonSpinner,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/vue';
 import {
   calendarOutline,
@@ -662,8 +670,17 @@ function openGallery(e?: MouseEvent) {
   galleryVisible.value = true;
 }
 
+const handleRefresh = async (event: any) => {
+  await loadEvent();
+  event.target.complete();
+};
+
 onMounted(() => {
   loadEvent();
+});
+
+defineExpose({
+  handleRefresh
 });
 </script>
 

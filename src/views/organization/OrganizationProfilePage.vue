@@ -7,6 +7,12 @@
     </ion-header>
     
     <ion-content>
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+        <ion-refresher-content
+          pulling-text="Потяните для обновления"
+          refreshing-text="Обновляем данные..."
+        ></ion-refresher-content>
+      </ion-refresher>
       <!-- Информация об организации -->
       <ion-card class="profile-card">
         <ion-card-content>
@@ -173,7 +179,9 @@ import {
   IonChip,
   IonLabel,
   IonList,
-  IonItem
+  IonItem,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/vue';
 import {
   businessOutline,
@@ -288,8 +296,17 @@ const handleAboutConfirm = () => {
   showAboutDialog.value = false;
 };
 
+const handleRefresh = async (event: any) => {
+  await loadStatistics();
+  event.target.complete();
+};
+
 onMounted(() => {
   loadStatistics();
+});
+
+defineExpose({
+  handleRefresh
 });
 </script>
 

@@ -755,7 +755,7 @@ onMounted(async () => {
   font-size: var(--eco-font-size-xl);
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
-  margin: var(--eco-space-2) 0 var(--eco-space-4) 0;
+  margin: var(--eco-space-5) 0 var(--eco-space-4) var(--eco-space-6);
 }
 
 .stats-grid {
@@ -1117,7 +1117,7 @@ onMounted(async () => {
   font-size: var(--eco-font-size-sm);
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-600);
-  margin: 0 0 var(--eco-space-3) 0;
+  margin: var(--eco-space-3) 0 var(--eco-space-3) var(--eco-space-3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1142,7 +1142,7 @@ onMounted(async () => {
 
 
 .setting-item.danger {
-  background: var(--eco-error-light);
+  background: var(--eco-gray-50);
 }
 
 
