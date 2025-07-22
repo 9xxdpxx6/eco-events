@@ -62,79 +62,65 @@
 
       <!-- Список мероприятий -->
       <div v-else-if="displayedEvents.length > 0" :class="['events-container']">
-        <!-- Masonry Grid View -->
-        <masonry-wall
-          v-if="viewMode === 'grid'"
-          :items="displayedEvents"
-          :column-width="180"
-          :gap="12"
-          :key="`masonry-${viewMode}-${selectedFilter}`"
-          class="events-grid"
-        >
-          <template #default="{ item: event }">
-            <div
-              :key="event.id"
-              :id="generateEventId(event)"
-              class="event-card eco-card"
-              @click="openEventDetails(Number(event.id))"
-            >
-              <div class="event-image">
-                <template v-if="!brokenImages[event.id]">
-                  <img 
-                    :src="event.preview
-                      ? (event.preview.startsWith('uploads/')
-                          ? API_URL + '/' + event.preview
-                          : IMAGE_BASE_URL + '/' + event.preview)
-                      : getEventPlaceholder(event.id ?? 0)"
-                    :alt="event.title"
-                    class="lazy-img"
-                    loading="lazy"
-                    @error="handleImgError(event.id)"
-                  />
-                </template>
-                <template v-else>
-                  <BrokenImagePlaceholder class="broken-image-full" :style="{height: '100%'}" />
-                </template>
-                <div class="event-status">
-                  <span :class="['status-badge', getEventStatus(event.startTime)]">
-                    {{ getEventStatusText(event.startTime) }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="event-content">
-                <div class="event-header">
-                  <h3 class="event-title" lang="ru">{{ event.title }}</h3>
-                  <ion-button
-                    v-if="!isUserRegisteredForEvent(event.id)"
-                    fill="clear"
-                    size="small"
-                    class="register-button"
-                    @click.stop="toggleEventRegistration(event)"
-                    :disabled="isRegistering"
-                  >
-                    <ion-icon :icon="addOutline" />
-                  </ion-button>
-                </div>
-
-                <div class="event-meta">
-                  <div class="meta-item">
-                    <ion-icon :icon="timeOutline" />
-                    <span>{{ formatDate(event.startTime) }}</span>
-                  </div>
-                  <div class="meta-item">
-                    <ion-icon :icon="locationOutline" />
-                    <span>{{ event.location || 'Место не указано' }}</span>
-                  </div>
-                </div>
-
-                <p class="event-description" v-if="event.description">
-                  {{ truncateText(event.description, 60) }}
-                </p>
+        <!-- Grid View (простая плитка) -->
+        <div v-if="viewMode === 'grid'" class="events-grid">
+          <div
+            v-for="event in displayedEvents"
+            :key="event.id"
+            :id="generateEventId(event)"
+            class="event-card eco-card"
+            @click="openEventDetails(Number(event.id))"
+          >
+            <div class="event-image">
+              <template v-if="!brokenImages[event.id]">
+                <img 
+                  :src="event.preview
+                    ? (event.preview.startsWith('uploads/')
+                        ? API_URL + '/' + event.preview
+                        : IMAGE_BASE_URL + '/' + event.preview)
+                    : getEventPlaceholder(event.id ?? 0)"
+                  :alt="event.title"
+                  class="lazy-img"
+                  loading="lazy"
+                  @error="handleImgError(event.id)"
+                />
+              </template>
+              <template v-else>
+                <BrokenImagePlaceholder class="broken-image-full" :style="{height: '100%'}" />
+              </template>
+              <div class="event-status">
+                <span :class="['status-badge', getEventStatus(event.startTime)]">
+                  {{ getEventStatusText(event.startTime) }}
+                </span>
               </div>
             </div>
-          </template>
-        </masonry-wall>
+            <div class="event-content">
+              <div class="event-header">
+                <h3 class="event-title" lang="ru">{{ event.title }}</h3>
+                <ion-button
+                  v-if="!isUserRegisteredForEvent(event.id)"
+                  fill="clear"
+                  size="small"
+                  class="register-button"
+                  @click.stop="toggleEventRegistration(event)"
+                  :disabled="isRegistering"
+                >
+                  <ion-icon :icon="addOutline" />
+                </ion-button>
+              </div>
+              <div class="event-meta">
+                <div class="meta-item">
+                  <ion-icon :icon="timeOutline" />
+                  <span>{{ formatDate(event.startTime) }}</span>
+                </div>
+                <div class="meta-item">
+                  <ion-icon :icon="locationOutline" />
+                  <span>{{ event.location || 'Место не указано' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         
         <!-- List View -->
         <div v-else class="events-list">
@@ -201,10 +187,6 @@
                   <span>{{ event.location || 'Место не указано' }}</span>
                 </div>
               </div>
-
-              <p class="event-description" v-if="event.description">
-                {{ truncateText(event.description, 120) }}
-              </p>
             </div>
           </div>
         </div>
@@ -283,7 +265,6 @@ import EventListLoader from '../../components/EventListLoader.vue';
 
 import EcoSearchBar from '../../components/EcoSearchBar.vue';
 import DateRangeFilter from '../../components/DateRangeFilter.vue';
-import MasonryWall from '@yeger/vue-masonry-wall';
 import type { EventResponseMediumDTO, EventParticipantDTO, EventParticipantFilterDTO } from '../../types/api';
 import { getEventPlaceholder } from '../../utils/eventImages';
 import { participantsApi } from '../../api/participants';
@@ -1003,17 +984,12 @@ onUnmounted(() => {
   --background: var(--eco-background-secondary);
 }
 
-/* Добавляем белую тень к header для скрытия полоски при скролле */
-.events-list-page ion-header {
+.events-list-page ion-header,
+.events-list-page ion-toolbar {
   box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
   --box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
   position: relative;
   z-index: 1000;
-}
-
-.events-list-page ion-toolbar {
-  box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
-  --box-shadow: 0 1px 0 0 white, 0 2px 4px rgba(255, 255, 255, 1) !important;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1035,121 +1011,65 @@ onUnmounted(() => {
   align-items: center;
 }
 
-
-
-/* Поиск и фильтры */
-.search-filters-container {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--eco-gray-50);
-  border-bottom: 1px solid var(--eco-gray-200);
-  padding: var(--eco-space-4);
-  margin-bottom: var(--eco-space-4);
-  box-shadow: none !important;
-  transform: translateY(0);
-  transition: transform var(--eco-transition-normal), opacity var(--eco-transition-normal);
-  opacity: 1;
+/* Общие стили для карточек и их элементов */
+.event-card {
   border-radius: var(--eco-radius-lg);
-}
-
-.search-filters-container.filters-hidden {
-  transform: translateY(-120px);
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-
-.filters-section {
   overflow: hidden;
-}
-
-.filters-scroll {
-  display: flex;
-  overflow-x: auto;
-  gap: var(--eco-space-2);
-  padding: var(--eco-space-1) 0;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.filters-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-chip {
-  flex-shrink: 0;
-  --background: var(--eco-gray-100);
-  --color: var(--eco-gray-600);
-  border-radius: var(--eco-radius-lg);
-  font-weight: var(--eco-font-weight-medium);
-  font-size: var(--eco-font-size-sm);
-  transition: all var(--eco-transition-normal);
   cursor: pointer;
-}
-
-.filter-chip.active {
-  --background: var(--eco-primary);
-  --color: white;
-  transform: scale(1.05);
-}
-
-.filter-chip ion-icon {
-  font-size: 16px;
-  margin-right: var(--eco-space-1);
-}
-
-/* Лоадер */
-.loader-container {
-  padding: var(--eco-space-6);
-}
-
-/* Сетка мероприятий */
-.events-container {
-  padding: 0 var(--eco-space-4) var(--eco-space-4);
-}
-
-/* Списочный режим */
-.events-list {
+  transition: all var(--eco-transition-normal);
+  background: var(--eco-white);
+  border: 1px solid var(--eco-gray-200);
+  width: 100%;
   display: flex;
-  flex-direction: column;
-  gap: var(--eco-space-4);
+  will-change: transform;
+  transform: translateZ(0);
+  contain: layout style paint;
 }
 
-.events-list .event-card {
-  display: flex;
-  flex-direction: row;
-  min-height: 120px;
-}
-
-.events-list .event-image {
-  width: 168px;
-  height: 168px;
+.event-image {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-height: 300px;
   flex-shrink: 0;
-  margin: var(--eco-space-3);
-  border-radius: var(--eco-radius-lg);
   overflow: hidden;
+  border-radius: var(--eco-radius-lg);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.events-list .event-content {
+.event-image img,
+.event-image .broken-image-full {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.event-content {
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   padding: var(--eco-space-3);
 }
 
-.events-list .event-header {
+.event-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: var(--eco-space-2);
 }
 
-.events-list .event-title {
+.event-title {
+  font-family: var(--eco-font-family);
   font-size: var(--eco-font-size-base);
-  line-height: var(--eco-line-height-tight);
+  font-weight: var(--eco-font-weight-semibold);
+  color: var(--eco-gray-800);
   margin: 0;
+  line-height: var(--eco-line-height-tight);
   flex: 1;
   margin-right: var(--eco-space-2);
   max-width: 180px;
@@ -1159,146 +1079,18 @@ onUnmounted(() => {
   overflow-wrap: break-word;
 }
 
-.events-list .event-meta {
+.event-meta {
   display: flex;
   flex-wrap: wrap;
   gap: var(--eco-space-3);
   margin-bottom: var(--eco-space-2);
 }
 
-.events-list .meta-item {
+.meta-item {
   display: flex;
   align-items: center;
   gap: var(--eco-space-1);
   font-size: var(--eco-font-size-xs);
-  color: var(--eco-gray-600);
-}
-
-.events-list .event-description {
-  font-size: var(--eco-font-size-xs);
-  line-height: var(--eco-line-height-normal);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  margin: 0;
-}
-
-
-
-/* Общие стили карточек */
-.event-card {
-  border-radius: var(--eco-radius-lg);
-  overflow: hidden;
-  cursor: pointer;
-  transition: all var(--eco-transition-normal);
-  background: var(--eco-white);
-  border: 1px solid var(--eco-gray-200);
-  width: 100%; /* Для корректной работы в Masonry */
-  display: inline-block; /* Для корректной работы в Masonry */
-}
-
-
-
-.event-image {
-  position: relative;
-  width: 100%;
-  min-height: 168px;
-  height: 100%;
-  max-height: 300px;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: var(--eco-radius-lg);
-  text-align: center;
-}
-
-/* Изображения в плиточном режиме - адаптируются под пропорции фото */
-.events-grid .event-image {
-  width: 100%;
-  overflow: hidden;
-  border-radius: var(--eco-radius-lg) var(--eco-radius-lg) 0 0;
-}
-
-.events-grid .event-image img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-/* Общие стили для изображений в других режимах */
-.events-list .event-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.event-status {
-  position: absolute;
-  top: var(--eco-space-3);
-  left: var(--eco-space-3);
-  z-index: 99;
-}
-
-.status-badge {
-  padding: var(--eco-space-1) var(--eco-space-3);
-  border-radius: var(--eco-radius-md);
-  font-size: var(--eco-font-size-xs);
-  font-weight: var(--eco-font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: white;
-  backdrop-filter: blur(8px);
-}
-
-.status-badge.upcoming {
-  background: var(--eco-primary);
-}
-
-.status-badge.soon {
-  background: var(--eco-warning);
-}
-
-.status-badge.finished {
-  background: var(--eco-gray-500);
-}
-
-.event-content {
-  padding: var(--eco-space-4);
-}
-
-.event-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--eco-space-3);
-}
-
-.event-title {
-  font-family: var(--eco-font-family);
-  font-size: var(--eco-font-size-lg);
-  font-weight: var(--eco-font-weight-semibold);
-  color: var(--eco-gray-800);
-  margin: 0;
-  line-height: var(--eco-line-height-tight);
-  flex: 1;
-  margin-right: var(--eco-space-3);
-  hyphens: auto;
-  overflow-wrap: break-word;
-}
-
-.event-meta {
-  display: flex;
-  flex-direction: column;
-  gap: var(--eco-space-2);
-  margin-bottom: var(--eco-space-3);
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: var(--eco-space-2);
-  font-size: var(--eco-font-size-sm);
   color: var(--eco-gray-600);
 }
 
@@ -1309,13 +1101,10 @@ onUnmounted(() => {
 }
 
 .event-description {
-  font-size: var(--eco-font-size-sm);
-  color: var(--eco-gray-600);
-  line-height: var(--eco-line-height-normal);
-  margin: 0;
+  display: none;
 }
 
-/* Общие стили для кнопки регистрации */
+/* Стилизация кнопки регистрации */
 .register-button {
   width: 40px;
   height: 40px;
@@ -1346,6 +1135,87 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+/* Статусы */
+.event-status {
+  position: absolute;
+  top: var(--eco-space-3);
+  left: var(--eco-space-3);
+  z-index: 99;
+}
+
+.status-badge,
+.status-badge-text {
+  padding: var(--eco-space-1) var(--eco-space-3);
+  border-radius: var(--eco-radius-md);
+  font-size: var(--eco-font-size-xs);
+  font-weight: var(--eco-font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+  backdrop-filter: blur(8px);
+  display: inline-block;
+}
+.status-badge.upcoming,
+.status-badge-text.upcoming {
+  background: var(--eco-primary);
+}
+.status-badge.soon,
+.status-badge-text.soon {
+  background: var(--eco-warning);
+}
+.status-badge.finished,
+.status-badge-text.finished {
+  background: var(--eco-gray-500);
+}
+
+/* Плиточный режим */
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+.events-grid .event-card {
+  flex-direction: column;
+  height: 320px;
+}
+.events-grid .event-image {
+  aspect-ratio: 1/1;
+  height: 180px;
+  border-radius: var(--eco-radius-lg) var(--eco-radius-lg) 0 0;
+}
+.events-grid .event-title {
+  max-width: 140px;
+}
+
+/* Списочный режим */
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eco-space-4);
+}
+.events-list .event-card {
+  flex-direction: row;
+  min-height: 168px;
+}
+.events-list .event-image {
+  width: 10vw;
+  height: 10vw;
+  margin: var(--eco-space-3);
+  overflow: hidden;
+}
+.events-list .event-title {
+  max-width: 260px;
+  margin-right: var(--eco-space-1);
+}
+
+/* Скрываем статус на изображении в списочном режиме */
+.events-list .event-status {
+  display: none;
+}
+.event-status-text {
+  margin-bottom: var(--eco-space-2);
+}
+
 /* Пустое состояние */
 .empty-state {
   display: flex;
@@ -1355,7 +1225,6 @@ onUnmounted(() => {
   padding: var(--eco-space-12) var(--eco-space-6);
   text-align: center;
 }
-
 .empty-icon {
   width: 80px;
   height: 80px;
@@ -1366,13 +1235,11 @@ onUnmounted(() => {
   justify-content: center;
   margin-bottom: var(--eco-space-6);
 }
-
 .empty-icon ion-icon {
   font-size: 64px;
   color: var(--eco-gray-600);
   margin-bottom: var(--eco-space-4);
 }
-
 .empty-title {
   font-family: var(--eco-font-family);
   font-size: var(--eco-font-size-xl);
@@ -1380,7 +1247,6 @@ onUnmounted(() => {
   color: var(--eco-gray-700);
   margin: 0 0 var(--eco-space-2) 0;
 }
-
 .empty-subtitle {
   font-size: var(--eco-font-size-base);
   color: var(--eco-gray-500);
@@ -1388,124 +1254,78 @@ onUnmounted(() => {
   max-width: 280px;
 }
 
-
-
-/* Отзывчивость */
-@media (max-width: 480px) {
-  .search-filters-container {
-    padding: var(--eco-space-3);
-  }
-  
-  .events-container {
-    padding: 0 var(--eco-space-3) var(--eco-space-3);
-  }
-  
-  /* Плиточный режим на мобильных - 2 колонки с квадратными фото */
-  
-  /* Изображения уже квадратные через aspect-ratio */
-  
-  /* Списочный режим на мобильных */
-  .events-list {
-    gap: var(--eco-space-3);
-  }
-  
-  .events-list .event-card {
-    min-height: 100px;
-  }
-  
-  .events-list .event-image {
-    width: 120px;
-    height: 120px;
-    margin: var(--eco-space-2);
-  }
-  
-  .event-content {
-    padding: var(--eco-space-3);
-  }
-  
-  .event-title {
-    font-size: var(--eco-font-size-base);
-  }
+/* Поиск и фильтры */
+.search-filters-container {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--eco-gray-50);
+  border-bottom: 1px solid var(--eco-gray-200);
+  padding: var(--eco-space-4);
+  margin-bottom: var(--eco-space-4);
+  box-shadow: none !important;
+  transform: translateY(0);
+  transition: transform var(--eco-transition-normal), opacity var(--eco-transition-normal);
+  opacity: 1;
+  border-radius: var(--eco-radius-lg);
 }
-
-/* Скрываем статус на изображении в списочном режиме */
-.events-list .event-status {
+.search-filters-container.filters-hidden {
+  transform: translateY(-120px);
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+.filters-section {
+  overflow: hidden;
+}
+.filters-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--eco-space-2);
+  padding: var(--eco-space-1) 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.filters-scroll::-webkit-scrollbar {
   display: none;
 }
-
-/* Статус в текстовой части для списочного режима */
-.event-status-text {
-  margin-bottom: var(--eco-space-2);
+.filter-chip {
+  flex-shrink: 0;
+  --background: var(--eco-gray-100);
+  --color: var(--eco-gray-600);
+  border-radius: var(--eco-radius-lg);
+  font-weight: var(--eco-font-weight-medium);
+  font-size: var(--eco-font-size-sm);
+  transition: all var(--eco-transition-normal);
+  cursor: pointer;
+}
+.filter-chip.active {
+  --background: var(--eco-primary);
+  --color: white;
+  transform: scale(1.05);
+}
+.filter-chip ion-icon {
+  font-size: 16px;
+  margin-right: var(--eco-space-1);
 }
 
-.status-badge-text {
-  padding: var(--eco-space-1) var(--eco-space-2);
-  border-radius: var(--eco-radius-sm);
-  font-size: var(--eco-font-size-xs);
-  font-weight: var(--eco-font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: white;
-  display: inline-block;
-}
-
-.status-badge-text.upcoming {
-  background: var(--eco-primary);
-}
-
-.status-badge-text.soon {
-  background: var(--eco-warning);
-}
-
-.status-badge-text.finished {
-  background: var(--eco-gray-500);
-}
-
-.events-grid .event-title {
-  max-width: 140px;
-  word-break: break-word;
-  white-space: normal;
-  hyphens: auto;
-  overflow-wrap: break-word;
+/* Лоадер */
+.loader-container {
+  padding: var(--eco-space-6);
 }
 
 /* Оптимизация для ленивой загрузки изображений */
 .lazy-img {
   transition: opacity 0.3s ease;
   will-change: transform;
-  transform: translateZ(0); /* GPU acceleration */
+  transform: translateZ(0);
 }
-
 .lazy-img[src*="placeholder"] {
   opacity: 0.7;
 }
-
 .lazy-img:not([src*="placeholder"]) {
   opacity: 1;
-}
-
-/* Оптимизация производительности карточек */
-.event-card {
-  will-change: transform;
-  transform: translateZ(0); /* GPU acceleration */
-  contain: layout style paint; /* CSS containment */
-}
-
-/* Стилизация спиннера бесконечной прокрутки */
-ion-infinite-scroll-content {
-  --color: var(--eco-primary);
-}
-
-ion-infinite-scroll-content ion-spinner {
-  --color: var(--eco-primary) !important;
-}
-
-ion-infinite-scroll-content ion-spinner::part(circle) {
-  stroke: var(--eco-primary) !important;
-}
-
-ion-infinite-scroll-content ion-spinner::part(circles) {
-  stroke: var(--eco-primary) !important;
 }
 
 .broken-image-full {
@@ -1516,5 +1336,43 @@ ion-infinite-scroll-content ion-spinner::part(circles) {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+}
+
+/* Стилизация спиннера бесконечной прокрутки */
+ion-infinite-scroll-content {
+  --color: var(--eco-primary);
+}
+ion-infinite-scroll-content ion-spinner {
+  --color: var(--eco-primary) !important;
+}
+ion-infinite-scroll-content ion-spinner::part(circle) {
+  stroke: var(--eco-primary) !important;
+}
+ion-infinite-scroll-content ion-spinner::part(circles) {
+  stroke: var(--eco-primary) !important;
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+  .search-filters-container {
+    padding: var(--eco-space-3);
+  }
+  .events-container {
+    padding: 0 var(--eco-space-3) var(--eco-space-3);
+  }
+  .events-list {
+    gap: var(--eco-space-3);
+  }
+  .events-list .event-card {
+    min-height: 100px;
+  }
+  .events-list .event-image {
+    width: 140px;
+    height: 140px;
+    margin: var(--eco-space-2);
+  }
+  .event-title {
+    font-size: var(--eco-font-size-base);
+  }
 }
 </style> 
