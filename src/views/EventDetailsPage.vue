@@ -385,6 +385,7 @@ import EcoDialog from '../components/EcoDialog.vue';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import BrokenImagePlaceholder from '../components/BrokenImagePlaceholder.vue';
 import CustomGallery from '../components/CustomGallery.vue';
+import { clearFileUrlCache } from '@/utils/imageUploaderCache';
 
 const router = useRouter();
 const route = useRoute();
@@ -510,6 +511,7 @@ const loadEvent = async () => {
     if (isOrganization.value && isMyEvent.value) {
       // Дополнительные данные для организаторов
     }
+    clearFileUrlCache();
   } catch (error) {
     console.error('Error loading event:', error);
     await showErrorToast('Ошибка загрузки мероприятия', 3000);

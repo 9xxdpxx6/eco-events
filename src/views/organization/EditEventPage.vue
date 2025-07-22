@@ -3,9 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button :default-href="`/event/${eventId}`" class="back-button"></ion-back-button>
+          <ion-button fill="clear" @click="goBack" class="back-button">
+            <ion-icon :icon="arrowBackOutline" />
+          </ion-button>
         </ion-buttons>
-        <ion-title class="page-title">Редактировать мероприятие</ion-title>
+        <ion-title class="page-title">Редактирование</ion-title>
         <ion-buttons slot="end">
           <ion-button fill="clear" @click="saveChanges" :disabled="!isFormValid || isSaving" class="save-button">
             {{ isSaving ? 'Сохранение...' : 'Сохранить' }}
@@ -156,36 +158,6 @@
             </div>
           </div>
 
-          <!-- Контактная информация -->
-          <div class="form-section eco-card">
-            <div class="section-header">
-              <ion-icon :icon="mailOutline" />
-              <h2>Контактная информация</h2>
-            </div>
-            
-            <div class="form-fields">
-              <div class="field-group">
-                <label class="field-label">Email для связи</label>
-                <ion-input 
-                  type="email" 
-                  v-model="form.contactEmail" 
-                  placeholder="contact@organization.com"
-                  class="eco-input"
-                ></ion-input>
-              </div>
-              
-              <div class="field-group">
-                <label class="field-label">Телефон для связи</label>
-                <ion-input 
-                  type="tel" 
-                  v-model="form.contactPhone" 
-                  placeholder="+7 (999) 123-45-67"
-                  class="eco-input"
-                ></ion-input>
-              </div>
-            </div>
-          </div>
-
           <!-- Превью мероприятия -->
           <div class="form-section eco-card">
             <div class="section-header">
@@ -322,7 +294,7 @@ import {
   IonCheckbox,
   IonSpinner
 } from '@ionic/vue';
-import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline, calendarOutline } from 'ionicons/icons';
+import { checkmarkOutline, createOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline, calendarOutline, arrowBackOutline } from 'ionicons/icons';
 import { useEventsStore } from '../../stores';
 import { useEventTypesStore } from '../../stores';
 import { useAuthStore } from '../../stores/auth';
@@ -332,6 +304,7 @@ import { API_URL } from '../../api/client';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import ImageUploader from '../../components/ImageUploader.vue';
+import { clearFileUrlCache } from '@/utils/imageUploaderCache';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
@@ -350,8 +323,6 @@ const form = ref({
   duration: '2',
   location: '',
   locationDetails: '',
-  contactEmail: '',
-  contactPhone: '',
   maxParticipants: null as number | null,
   requiresRegistration: true,
   providesEquipment: false,
@@ -407,6 +378,8 @@ const loadEvent = async () => {
     await eventsStore.fetchEventById(eventId);
     const event = eventsStore.getCurrentEvent as any;
 
+    clearFileUrlCache();
+    
     if (event) {
       const eventDate = new Date(event.startTime);
       const endDate = new Date(event.endTime);
@@ -421,8 +394,6 @@ const loadEvent = async () => {
         duration: durationHours.toString(),
         location: event.location,
         locationDetails: (event as any).locationDetails || '',
-        contactEmail: (event as any).contactEmail || '',
-        contactPhone: (event as any).contactPhone || '',
         maxParticipants: (event as any).maxParticipants ?? null,
         requiresRegistration: (event as any).requiresRegistration ?? true,
         providesEquipment: (event as any).providesEquipment ?? false,
@@ -488,18 +459,6 @@ const loadEventTypes = async () => {
   } catch (error) {
     console.error('Error loading event types:', error);
     await showErrorToast('Ошибка загрузки типов мероприятий', 3000);
-  }
-};
-
-const loadUserContactInfo = () => {
-  if (authStore.user) {
-    const user = authStore.user as any;
-    if (!form.value.contactEmail && user.email) {
-      form.value.contactEmail = user.email;
-    }
-    if (!form.value.contactPhone && user.phoneNumber) {
-      form.value.contactPhone = user.phoneNumber;
-    }
   }
 };
 
@@ -609,6 +568,7 @@ const saveChanges = async () => {
 
     await eventsStore.updateEventWithImages(eventId, formData);
     
+    clearFileUrlCache();
     await showSuccessToast('Мероприятие успешно обновлено', 2000);
     
     // Сброс и обновление стейта событий для актуального списка и деталей
@@ -629,10 +589,11 @@ const saveChanges = async () => {
   }
 };
 
+const goBack = () => { router.back(); };
+
 onMounted(() => {
   loadEvent();
   loadEventTypes();
-  loadUserContactInfo();
 });
 </script>
 

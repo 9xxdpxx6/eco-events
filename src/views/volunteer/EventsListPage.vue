@@ -293,6 +293,7 @@ import { API_URL } from '../../api/client';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
 import { ref as vueRef } from 'vue';
 import BrokenImagePlaceholder from '../../components/BrokenImagePlaceholder.vue';
+import { clearFileUrlCache } from '@/utils/imageUploaderCache';
 
 const router = useRouter();
 const route = useRoute();
@@ -569,6 +570,7 @@ const loadEvents = async (reset = true, isRefresh = false) => {
       await eventsStore.fetchEventsSearch(filterParams);
       events.value = eventsStore.getEvents;
       hasMore.value = events.value.length === size;
+      clearFileUrlCache();
     } else {
       await eventsStore.fetchEventsSearch(filterParams);
       const newEvents = eventsStore.getEvents;

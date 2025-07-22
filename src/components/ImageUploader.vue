@@ -3,12 +3,14 @@
     <div class="image-grid">
       <div 
         v-for="(image, index) in imagePreviews" 
-        :key="image.url" 
+        :key="image.url + '-' + index" 
         class="image-container"
         :class="{ 'preview': image.isPreview }"
       >
+        <!-- ВРЕМЕННО: выводим isPreview для диагностики -->
+        <span style="position:absolute;top:0;left:0;background:#fff;color:#000;z-index:10;font-size:10px;">{{ image.isPreview }}</span>
         <template v-if="!brokenImages[image.url]">
-          <img :src="image.url" class="thumbnail" @dblclick="setAsPreview(index)" @touchend="onTouchEnd(index)" @error="handleImgError(image.url)" />
+          <img :src="image.url" class="thumbnail" @dblclick="setAsPreview(index)" @touchend="onTouchEnd(index, $event)" @error="handleImgError(image.url)" />
         </template>
         <template v-else>
           <BrokenImagePlaceholder />
@@ -74,6 +76,7 @@ import { showSuccessToast, showErrorToast, showWarningToast } from '../utils/toa
 import { isPlatform } from '@ionic/vue';
 import { ref as vueRef } from 'vue';
 import BrokenImagePlaceholder from './BrokenImagePlaceholder.vue';
+import { clearFileUrlCache, fileToUrlMap } from '../utils/imageUploaderCache';
 
 interface ImageObject {
   file: File | null;
@@ -120,18 +123,52 @@ function cancelRemoveImage() {
 }
 
 watch(() => props.modelValue, (newValue) => {
-  if (newValue) {
-    images.value = newValue.map((item, index) => {
-      if (typeof item === 'string') {
-        return { file: null, url: item, isPreview: index === 0, isNew: false };
-      }
-      return { file: item, url: URL.createObjectURL(item), isPreview: index === 0, isNew: true };
-    });
-    if (images.value.length > 0) {
-      const preview = images.value.find(img => img.isPreview);
-      emit('update:preview', preview?.file || preview?.url);
-    }
+  if (!newValue) {
+    images.value = [];
+    clearFileUrlCache();
+    brokenImages.value = {};
+    emit('update:preview', null);
+    return;
   }
+
+  // Сравниваем массивы: если совпадают по длине и содержимому, не пересоздаём
+  const current = images.value.map(img => img.file || img.url);
+  const incoming = newValue.map(item => (typeof item === 'string' ? item : item));
+  const isSame = current.length === incoming.length && current.every((val, idx) => val === incoming[idx]);
+  if (isSame) return;
+
+  // Найти текущее превью (по isPreview)
+  let previewUrlOrFile = null;
+  const currentPreview = images.value.find(img => img.isPreview);
+  if (currentPreview) {
+    previewUrlOrFile = currentPreview.file || currentPreview.url;
+  }
+
+  images.value = newValue.map((item) => {
+    let url, file;
+    if (typeof item === 'string') {
+      url = item;
+      file = null;
+    } else {
+      file = item;
+      if (fileToUrlMap.has(file)) {
+        url = fileToUrlMap.get(file)!;
+      } else {
+        url = URL.createObjectURL(file);
+        fileToUrlMap.set(file, url);
+      }
+    }
+    const isPreview = !!((file && previewUrlOrFile === file) || (url && previewUrlOrFile === url));
+    return { file, url, isPreview, isNew: !!file };
+  });
+
+  // Если ни у кого не выставлен isPreview, делаем первый превью
+  if (!images.value.some(img => img.isPreview) && images.value.length > 0) {
+    images.value[0].isPreview = true;
+  }
+
+  const preview = images.value.find(img => img.isPreview);
+  emit('update:preview', preview?.file || preview?.url);
 }, { immediate: true });
 
 async function takePicture(source: CameraSource) {
@@ -241,21 +278,18 @@ function removeImage(index: number) {
   if (wasPreview && images.value.length > 0) {
     images.value[0].isPreview = true;
   }
+  clearFileUrlCache();
+  brokenImages.value = {};
   updateModelValue();
 }
 
 function setAsPreview(index: number) {
   if (index < 0 || index >= images.value.length) return;
-
-  // Move the selected image to the beginning of the array
-  const [selectedImage] = images.value.splice(index, 1);
-  images.value.unshift(selectedImage);
-
-  // Set all images' isPreview to false, then the first one to true
+  console.log('setAsPreview called', { index, images: images.value.map(i => i.url) });
   images.value.forEach((img, i) => {
-    img.isPreview = (i === 0);
+    img.isPreview = (i === index);
   });
-
+  console.log('images after setAsPreview', images.value.map(i => ({ url: i.url, isPreview: i.isPreview })));
   // Обновить brokenImages чтобы реактивно обновить рамку
   nextTick(() => {
     const newBroken: Record<string, boolean> = {};
@@ -266,7 +300,6 @@ function setAsPreview(index: number) {
     });
     brokenImages.value = newBroken;
   });
-
   // Notify parent of all changes
   updateModelValue();
 }
@@ -329,13 +362,17 @@ watch(imagePreviews, (newVal) => {
   brokenImages.value = newBroken;
 });
 
-let lastTap = 0;
-function onTouchEnd(index: number) {
+const lastTapMap = ref<{ [key: number]: number }>({});
+function onTouchEnd(index: number, event: TouchEvent) {
+  event.preventDefault();
   const now = Date.now();
-  if (now - lastTap < 350) {
+  console.log('onTouchEnd', { index, now, lastTap: lastTapMap.value[index] });
+  if (lastTapMap.value[index] && now - lastTapMap.value[index] < 350) {
     setAsPreview(index);
+    lastTapMap.value[index] = 0; // сбросить, чтобы не было ложных срабатываний
+  } else {
+    lastTapMap.value[index] = now;
   }
-  lastTap = now;
 }
 </script>
 

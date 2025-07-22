@@ -3,7 +3,9 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/tabs/events-management" class="back-button"></ion-back-button>
+          <ion-button fill="clear" @click="goBack" class="back-button">
+            <ion-icon :icon="arrowBackOutline" />
+          </ion-button>
         </ion-buttons>
         <ion-title class="page-title">Создать мероприятие</ion-title>
         <ion-buttons slot="end">
@@ -148,36 +150,6 @@
             </div>
           </div>
 
-        <!-- Контактная информация -->
-          <div class="form-section eco-card">
-            <div class="section-header">
-              <ion-icon :icon="mailOutline" />
-              <h2>Контактная информация</h2>
-            </div>
-            
-            <div class="form-fields">
-              <div class="field-group">
-                <label class="field-label">Email для связи</label>
-              <ion-input 
-                type="email" 
-                v-model="form.contactEmail" 
-                placeholder="contact@organization.com"
-                  class="eco-input"
-              ></ion-input>
-              </div>
-            
-              <div class="field-group">
-                <label class="field-label">Телефон для связи</label>
-              <ion-input 
-                type="tel" 
-                v-model="form.contactPhone" 
-                placeholder="+7 (999) 123-45-67"
-                  class="eco-input"
-              ></ion-input>
-              </div>
-            </div>
-          </div>
-
         <!-- Превью мероприятия -->
           <div class="form-section eco-card">
             <div class="section-header">
@@ -315,7 +287,7 @@ import {
   IonCheckbox,
   alertController
 } from '@ionic/vue';
-import { checkmarkOutline, addCircleOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline, calendarOutline } from 'ionicons/icons';
+import { checkmarkOutline, addCircleOutline, informationCircleOutline, timeOutline, locationOutline, mailOutline, settingsOutline, peopleOutline, imageOutline, trashOutline, refreshOutline, calendarOutline, arrowBackOutline } from 'ionicons/icons';
 import { useEventsStore } from '../../stores';
 import { useEventTypesStore } from '../../stores';
 import { useAuthStore } from '../../stores/auth';
@@ -324,8 +296,10 @@ import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import ImageUploader from '../../components/ImageUploader.vue';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
+import { clearFileUrlCache } from '@/utils/imageUploaderCache';
 
 const router = useRouter();
+const goBack = () => { router.back(); };
 const eventsStore = useEventsStore();
 const eventTypesStore = useEventTypesStore();
 const authStore = useAuthStore();
@@ -339,8 +313,6 @@ const form = ref({
   duration: '2',
   location: '',
   locationDetails: '',
-  contactEmail: '',
-  contactPhone: '',
   maxParticipants: null as number | null,
   requiresRegistration: true,
   providesEquipment: false,
@@ -403,8 +375,6 @@ const resetForm = () => {
     duration: '2',
     location: '',
     locationDetails: '',
-    contactEmail: '',
-    contactPhone: '',
     maxParticipants: null,
     requiresRegistration: true,
     providesEquipment: false,
@@ -414,8 +384,6 @@ const resetForm = () => {
   showErrors.value = false;
   images.value = [];
   previewImage.value = null;
-  // Загружаем контактную информацию пользователя заново
-  loadUserContactInfo();
 };
 
 const loadEventTypes = async () => {
@@ -425,18 +393,6 @@ const loadEventTypes = async () => {
   } catch (error) {
     console.error('Error loading event types:', error);
     await showErrorToast('Ошибка загрузки типов мероприятий', 3000);
-  }
-};
-
-const loadUserContactInfo = () => {
-  if (authStore.user) {
-    const user = authStore.user as any;
-    if (!form.value.contactEmail && user.email) {
-      form.value.contactEmail = user.email;
-    }
-    if (!form.value.contactPhone && user.phoneNumber) {
-      form.value.contactPhone = user.phoneNumber;
-    }
   }
 };
 
@@ -565,7 +521,6 @@ const handleTimeFocus = (event: any) => {
 
 onMounted(() => {
   loadEventTypes();
-  loadUserContactInfo();
 });
 </script>
 

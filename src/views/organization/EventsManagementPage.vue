@@ -290,6 +290,7 @@ import EcoDialog from '../../components/EcoDialog.vue';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
 import { ref as vueRef } from 'vue';
 import BrokenImagePlaceholder from '../../components/BrokenImagePlaceholder.vue';
+import { clearFileUrlCache } from '@/utils/imageUploaderCache';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
@@ -425,6 +426,7 @@ const loadAllEvents = async (forceRefresh = false) => {
     });
     
     allEvents.value = eventsStore.getEvents;
+    clearFileUrlCache();
     
   } catch (error) {
     console.error('Error loading all events:', error);
@@ -666,12 +668,28 @@ onIonViewWillEnter(() => {
 .page-title {
   font-weight: var(--eco-font-weight-semibold);
   color: var(--eco-gray-800);
-  text-align: left;
-  justify-content: flex-start;
-  cursor: pointer;
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  width: 100%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  z-index: 1;
 }
 
+.events-management-page ion-title {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+  display: flex;
+  pointer-events: none;
+}
 
+.events-management-page ion-buttons[slot="end"] {
+  z-index: 2;
+}
 
 .create-button {
   --color: var(--eco-gray-700);

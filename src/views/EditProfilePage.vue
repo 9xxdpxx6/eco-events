@@ -3,14 +3,11 @@
     <ion-header>
       <ion-toolbar>
         <ion-buttons slot="start">
-          <ion-back-button default-href="/tabs/volunteer-profile" class="back-button"></ion-back-button>
-        </ion-buttons>
-        <ion-title class="page-title">Редактировать профиль</ion-title>
-        <ion-buttons slot="end">
-          <ion-button fill="clear" @click="handleSave" :disabled="isLoading" class="save-button">
-            {{ isLoading ? 'Сохранение...' : 'Сохранить' }}
+          <ion-button fill="clear" @click="goBack" class="back-button">
+            <ion-icon :icon="arrowBackOutline" />
           </ion-button>
         </ion-buttons>
+        <ion-title class="page-title">Редактировать профиль</ion-title>
       </ion-toolbar>
     </ion-header>
     
@@ -161,7 +158,8 @@ import {
   IonBackButton,
   IonButton,
   IonIcon,
-  IonInput
+  IonInput,
+  onIonViewWillEnter
 } from '@ionic/vue';
 import { 
   personOutline, 
@@ -169,14 +167,17 @@ import {
   mailOutline, 
   lockClosedOutline,
   checkmarkOutline,
-  businessOutline
+  businessOutline,
+  arrowBackOutline
 } from 'ionicons/icons';
 import { useAuthStore } from '../stores/auth';
+import { useRouter } from 'vue-router';
 import { usersApi } from '../api/users';
 import type { UserRegistrationRequestDto, UserRegistrationResponseDto } from '../types/api';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 
 const authStore = useAuthStore();
+const router = useRouter();
 const user = computed(() => authStore.user);
 
 const form = ref<UserRegistrationRequestDto & { confirmPassword?: string }>({
@@ -216,6 +217,9 @@ const loadUserData = async () => {
 };
 
 onMounted(loadUserData);
+onIonViewWillEnter(() => {
+  loadUserData();
+});
 
 const handleSave = async () => {
   // Проверяем совпадение паролей
@@ -247,12 +251,21 @@ const handleSave = async () => {
     // Очищаем поля паролей после успешного сохранения
     form.value.password = '';
     form.value.confirmPassword = '';
+
+    // Редирект на профиль после сохранения
+    if (updatedUser.role === 'ORGANIZATION') {
+      router.push('/tabs/organization-profile');
+    } else {
+      router.push('/tabs/volunteer-profile');
+    }
   } catch (e) {
     await showErrorToast('Ошибка при сохранении профиля', 3000);
   } finally {
     isLoading.value = false;
   }
 };
+
+const goBack = () => { router.back(); };
 </script>
 
 <style scoped>
