@@ -55,7 +55,7 @@ export const eventsApi = {
   },
 
   updateConducted: async (eventId: number, conducted: boolean): Promise<void> => {
-    await client.post(`/api/events/${eventId}/conduct?conducted=${conducted}`);
+    await client.post(`/api/events/${eventId}/conduct`, { conducted });
   },
 
   search: async (filter: EventFilterDTO): Promise<EventResponseMediumDTO[]> => {

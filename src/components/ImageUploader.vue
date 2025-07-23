@@ -7,8 +7,6 @@
         class="image-container"
         :class="{ 'preview': image.isPreview }"
       >
-        <!-- ВРЕМЕННО: выводим isPreview для диагностики -->
-        <span style="position:absolute;top:0;left:0;background:#fff;color:#000;z-index:10;font-size:10px;">{{ image.isPreview }}</span>
         <template v-if="!brokenImages[image.url]">
           <img :src="image.url" class="thumbnail" @dblclick="setAsPreview(index)" @touchend="onTouchEnd(index, $event)" @error="handleImgError(image.url)" />
         </template>

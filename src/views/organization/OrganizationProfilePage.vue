@@ -52,12 +52,12 @@
           <div class="stats-grid">
             <div class="stat-item">
               <ion-icon :icon="calendarOutline" color="primary"></ion-icon>
-              <span class="stat-number">{{ formatNumberSafe(statistics.totalEvents) }}</span>
-              <span class="stat-label">Всего событий</span>
+              <span class="stat-number">{{ formatNumberSafe(statistics.upcomingEvents) }}</span>
+              <span class="stat-label">Предстоит</span>
             </div>
             <div class="stat-item">
               <ion-icon :icon="checkmarkDoneOutline" color="success"></ion-icon>
-              <span class="stat-number">{{ formatNumberSafe(statistics.conductedEvents) }}</span>
+              <span class="stat-number">{{ formatNumberSafe(statistics.completedEvents) }}</span>
               <span class="stat-label">Проведено</span>
             </div>
             <div class="stat-item">
@@ -220,7 +220,9 @@ const statistics = ref({
   conductedEvents: 0,
   totalVisitors: 0,
   eventTypes: [] as string[],
-  totalBonusesAwarded: 0
+  totalBonusesAwarded: 0,
+  completedEvents: 0,
+  upcomingEvents: 0
 });
 
 // Dialog states
@@ -241,7 +243,9 @@ const loadStatistics = async () => {
       conductedEvents: stats.conductedEvents,
       totalVisitors: stats.totalParticipants,
       eventTypes: stats.eventTypes,
-      totalBonusesAwarded: stats.totalBonusesAccrued
+      totalBonusesAwarded: stats.totalBonusesAccrued,
+      completedEvents: stats.completedEvents,
+      upcomingEvents: stats.upcomingEvents
     };
     
   } catch (error) {

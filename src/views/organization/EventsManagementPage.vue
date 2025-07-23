@@ -30,21 +30,21 @@
             </div>
             <div class="stats-info">
               <h2>Управление мероприятиями</h2>
-              <h5>Всего мероприятий: {{ allEvents.length }}</h5>
+              <h5>Всего мероприятий: {{ statistics.totalEvents }}</h5>
             </div>
           </div>
           
           <div class="stats-grid">
             <div class="stat-item">
-              <div class="stat-value">{{ upcomingEventsCount }}</div>
+              <div class="stat-value">{{ statistics.upcomingEvents }}</div>
               <div class="stat-label">Предстоящие</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">{{ activeEventsCount }}</div>
+              <div class="stat-value">{{ statistics.activeEvents }}</div>
               <div class="stat-label">Активные</div>
             </div>
             <div class="stat-item">
-              <div class="stat-value">{{ completedEventsCount }}</div>
+              <div class="stat-value">{{ statistics.completedEvents }}</div>
               <div class="stat-label">Завершённые</div>
             </div>
           </div>
@@ -71,7 +71,7 @@
               @click="setFilter(filter.value)"
             >
               <ion-label>{{ filter.label }}</ion-label>
-              <div v-if="filter.count > 0" class="chip-count">{{ filter.count }}</div>
+              <!-- <div v-if="filter.count > 0" class="chip-count">{{ filter.count }}</div> -->
             </ion-chip>
           </div>
         </div>
@@ -94,7 +94,7 @@
         </div>
 
         <!-- Пустое состояние -->
-        <div v-else-if="allEvents.length === 0" class="empty-state">
+        <div v-else-if="events.length === 0" class="empty-state">
           <div class="empty-icon">
             <ion-icon :icon="calendarOutline" />
           </div>
@@ -107,7 +107,7 @@
       </div>
 
         <!-- Нет результатов поиска -->
-        <div v-else-if="filteredEvents.length === 0" class="no-results">
+        <div v-else-if="events.length === 0" class="no-results">
           <div class="no-results-icon">
             <ion-icon :icon="searchOutline" />
             </div>
@@ -127,7 +127,7 @@
         <!-- Список мероприятий -->
         <div v-else class="events-list">
           <div 
-            v-for="event in paginatedEvents" 
+            v-for="event in events" 
             :key="event.id ?? Math.random()"
             class="event-card eco-card eco-list-item"
             @click="viewEventDetails(Number(event.id))"
@@ -152,7 +152,7 @@
               </template>
               <div class="event-status">
                 <span :class="['status-badge', 'eco-status', getEventStatusClass(event)]">
-                  {{ getEventStatus(event) }}
+                  {{ event.conducted ? 'Проведено' : getEventStatus(event) }}
                 </span>
               </div>
             </div>
@@ -291,17 +291,20 @@ import { showSuccessToast, showErrorToast } from '../../utils/toast';
 import { ref as vueRef } from 'vue';
 import BrokenImagePlaceholder from '../../components/BrokenImagePlaceholder.vue';
 import { clearFileUrlCache } from '@/utils/imageUploaderCache';
+import { usersApi } from '../../api/users';
+import type { OrganizationStatsDTO } from '../../types/api';
 
 const router = useRouter();
 const eventsStore = useEventsStore();
 const authStore = useAuthStore();
 
-const allEvents = ref<EventResponseMediumDTO[]>([]);
-const filteredEvents = ref<EventResponseMediumDTO[]>([]);
-const selectedFilter = ref('all');
+const events = ref<EventResponseMediumDTO[]>([]);
+const page = ref(0);
+const size = 100;
+const hasMore = ref(true);
 const isLoading = ref(false);
-const page = ref(1);
-const size = 15; // Количество отображаемых за раз
+const isLoadingMore = ref(false);
+const selectedFilter = ref('all');
 const searchText = ref('');
 const dateRange = ref({ from: '', to: '' });
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -330,68 +333,49 @@ const scrollToTop = async () => {
 };
 
 const handleRefresh = async (event: any) => {
-  await loadAllEvents(true);
+  await loadEvents(true);
   event.target.complete();
 };
 
-const paginatedEvents = computed(() => {
-  return filteredEvents.value.slice(0, page.value * size);
-});
-
-const hasMore = computed(() => {
-  return paginatedEvents.value.length < filteredEvents.value.length;
-});
-
-const loadMoreEvents = (event: any) => {
-  if (hasMore.value) {
-    page.value++;
+const loadMoreEvents = async (event: any) => {
+  if (isLoading.value || isLoadingMore.value || !hasMore.value) {
+    event.target.complete();
+    return;
   }
+  await loadEvents(false);
   event.target.complete();
 };
-
-const filters = computed(() => [
-  { value: 'all', label: 'Все', count: allEvents.value.length },
-  { value: 'upcoming', label: 'Предстоящие', count: upcomingEventsCount.value },
-  { value: 'active', label: 'Активные', count: activeEventsCount.value },
-  { value: 'past', label: 'Завершённые', count: completedEventsCount.value },
-]);
 
 const setFilter = (value: string) => {
   selectedFilter.value = value;
-  page.value = 1; // Сбрасываем пагинацию при смене фильтра
+  loadEvents(true);
 };
 
 const selectSort = (value: string) => {
   sortBy.value = value;
-  page.value = 1;
-  filterAndSearchEvents();
+  loadEvents(true);
 };
 
-const upcomingEventsCount = computed(() => {
-  const now = new Date();
-  return allEvents.value.filter((event: EventResponseMediumDTO) => {
-    const eventDate = new Date(event.startTime);
-    return eventDate > now;
-  }).length;
+const onDateRangeChange = () => {
+  if (dateRange.value.from || dateRange.value.to) {
+    selectedFilter.value = 'all'; // Сбросить вкладку на "Все" при выборе диапазона дат
+  }
+  loadEvents(true);
+};
+
+watch(searchText, () => {
+  if (debounceTimeout) clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(() => {
+    loadEvents(true);
+  }, 400);
 });
 
-const activeEventsCount = computed(() => {
-  const now = new Date();
-  return allEvents.value.filter((event: EventResponseMediumDTO) => {
-    const eventDate = new Date(event.startTime);
-    const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
-    return eventDate <= now && eventEndTime > now;
-  }).length;
-});
-
-const completedEventsCount = computed(() => {
-  const now = new Date();
-  return allEvents.value.filter((event: EventResponseMediumDTO) => {
-    const eventDate = new Date(event.startTime);
-    const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
-    return eventEndTime <= now;
-  }).length;
-});
+const filters = computed(() => [
+  { value: 'all', label: 'Все', count: events.value.length },
+  { value: 'upcoming', label: 'Предстоящие', count: 0 },
+  { value: 'active', label: 'Активные', count: 0 },
+  { value: 'past', label: 'Завершённые', count: 0 },
+]);
 
 const onScroll = (event: any) => {
   const currentScrollY = event.detail.scrollTop;
@@ -407,118 +391,86 @@ const onScroll = (event: any) => {
   lastScrollY.value = currentScrollY;
 };
 
-const loadAllEvents = async (forceRefresh = false) => {
-  isLoading.value = true;
-  page.value = 1; // Сброс пагинации
+const loadEvents = async (reset = true) => {
+  if (reset) {
+    isLoading.value = true;
+    page.value = 0;
+    events.value = [];
+    hasMore.value = true;
+  } else {
+    page.value += 1;
+    isLoadingMore.value = true;
+  }
   try {
-    const userId = authStore.user?.id;
-    if (!userId) {
-      allEvents.value = [];
-      return;
+    const [sortField, sortOrder] = sortBy.value.split('_');
+    const params: any = {
+      userId: authStore.user?.id,
+      page: page.value,
+      size: size,
+      sortBy: sortField,
+      sortOrder: sortOrder,
+    };
+    if (searchText.value) {
+      params.keyword = searchText.value;
     }
-    
-    // Загружаем ВСЕ события, игнорируя пагинацию
-    await eventsStore.fetchEventsSearch({
-      userId: userId,
-      sortBy: 'id',
-      sortOrder: 'DESC',
-      size: 1000 // Устанавливаем большой размер страницы для получения всех
+    // --- Исправленная логика ---
+    if (dateRange.value.from) {
+      const fromDate = new Date(dateRange.value.from + 'T00:00:00');
+      params.startDateFrom = fromDate.toISOString().replace('Z', '');
+    }
+    if (dateRange.value.to) {
+      const toDate = new Date(dateRange.value.to + 'T23:59:59');
+      params.startDateTo = toDate.toISOString().replace('Z', '');
+    }
+    // Если диапазон дат НЕ выбран — применяем фильтр по статусу
+    if (!dateRange.value.from && !dateRange.value.to) {
+      switch (selectedFilter.value) {
+        case 'upcoming':
+          params.startDateFrom = new Date().toISOString().replace('Z', '');
+          break;
+        case 'active': {
+          const now = new Date();
+          const nowStr = now.toISOString().replace('Z', '');
+          params.startDateFrom = nowStr;
+          params.endDateTo = nowStr;
+          break;
+        }
+        case 'past':
+          params.startDateTo = new Date().toISOString().replace('Z', '');
+          break;
+      }
+    }
+    // --- конец исправления ---
+    const query = new URLSearchParams(params).toString();
+    const fullURL = `/api/events/search?${query}`;
+    console.log('API Request:', {
+      method: 'get',
+      url: '/api/events/search',
+      baseURL: 'http://192.168.31.250:8080',
+      fullURL,
+      params
     });
-    
-    allEvents.value = eventsStore.getEvents;
+    await eventsStore.fetchEventsSearch(params);
+    const newEvents = eventsStore.getEvents;
+    if (reset) {
+      events.value = newEvents;
+    } else {
+      // Добавляем только уникальные
+      const existingIds = new Set(events.value.map(e => e.id));
+      events.value = [...events.value, ...newEvents.filter(e => !existingIds.has(e.id))];
+    }
+    hasMore.value = newEvents.length === size;
     clearFileUrlCache();
-    
   } catch (error) {
-    console.error('Error loading all events:', error);
+    console.error('Error loading events:', error);
     await showErrorToast('Ошибка загрузки мероприятий', 3000);
   } finally {
-    isLoading.value = false;
-  }
-};
-
-const filterAndSearchEvents = () => {
-  let filtered = [...allEvents.value];
-  const now = new Date();
-  
-  // 1. Фильтрация по статусу
-  switch (selectedFilter.value) {
-    case 'upcoming':
-      filtered = filtered.filter((event: EventResponseMediumDTO) => new Date(event.startTime) > now);
-      break;
-    case 'active':
-      filtered = filtered.filter((event: EventResponseMediumDTO) => {
-        const eventDate = new Date(event.startTime);
-        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
-        return eventDate <= now && eventEndTime > now;
-      });
-      break;
-    case 'past':
-      filtered = filtered.filter((event: EventResponseMediumDTO) => {
-        const eventDate = new Date(event.startTime);
-        const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
-        return eventEndTime <= now;
-      });
-      break;
-  }
-
-  // 2. Фильтрация по дате
-  if (dateRange.value.from) {
-    const fromDate = new Date(dateRange.value.from + 'T00:00:00');
-    filtered = filtered.filter((event: EventResponseMediumDTO) => {
-      const eventDate = new Date(event.startTime);
-      return eventDate >= fromDate;
-    });
-  }
-  
-  if (dateRange.value.to) {
-    const toDate = new Date(dateRange.value.to + 'T23:59:59');
-    filtered = filtered.filter((event: EventResponseMediumDTO) => {
-      const eventDate = new Date(event.startTime);
-      return eventDate <= toDate;
-    });
-  }
-
-  // 3. Поиск по текстовому полю
-  if (searchText.value.trim()) {
-    const searchLower = searchText.value.trim().toLowerCase();
-    filtered = filtered.filter((event: EventResponseMediumDTO) =>
-      event.title.toLowerCase().includes(searchLower) ||
-      (event.description && event.description.toLowerCase().includes(searchLower))
-    );
-  }
-  
-  // 4. Сортировка
-  const [sortField, sortOrder] = sortBy.value.split('_');
-  
-  filtered.sort((a: EventResponseMediumDTO, b: EventResponseMediumDTO) => {
-    let aValue: any, bValue: any;
-    
-    switch (sortField) {
-      case 'id':
-        aValue = a.id ?? 0;
-        bValue = b.id ?? 0;
-        break;
-      case 'startTime':
-        aValue = new Date(a.startTime).getTime();
-        bValue = new Date(b.startTime).getTime();
-        break;
-      case 'title':
-        aValue = a.title.toLowerCase();
-        bValue = b.title.toLowerCase();
-        break;
-      default:
-        aValue = a.id ?? 0;
-        bValue = b.id ?? 0;
-    }
-    
-    if (sortOrder === 'DESC') {
-      return typeof aValue === 'string' ? bValue.localeCompare(aValue) : bValue - aValue;
+    if (reset) {
+      isLoading.value = false;
     } else {
-      return typeof aValue === 'string' ? aValue.localeCompare(bValue) : aValue - bValue;
+      isLoadingMore.value = false;
     }
-  });
-  
-  filteredEvents.value = filtered;
+  }
 };
 
 const formatDate = (date: string) => {
@@ -547,6 +499,7 @@ const getEventStatus = (event: EventResponseMediumDTO) => {
 };
 
 const getEventStatusClass = (event: EventResponseMediumDTO) => {
+  if (event.conducted) return 'eco-status-conducted';
   const now = new Date();
   const eventDate = new Date(event.startTime);
   const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
@@ -593,8 +546,9 @@ const handleDeleteConfirm = async () => {
   try {
     await eventsStore.deleteEvent(event.id);
     // Обновляем allEvents и filteredEvents
-    allEvents.value = allEvents.value.filter(e => e.id !== event.id);
-    filterAndSearchEvents();
+    events.value = events.value.filter(e => e.id !== event.id);
+    // hasMore.value = events.value.length === size; // This line is no longer needed as loadEvents handles pagination
+    loadEvents(true); // Reload all events to update stats
     
     await showSuccessToast('Мероприятие удалено', 2000);
   } catch (error) {
@@ -614,22 +568,12 @@ const clearSearch = () => {
   dateRange.value = { from: '', to: '' };
 };
 
-const onDateRangeChange = () => {
-  page.value = 1;
-  filterAndSearchEvents();
-};
+// Удаляю все вычисления и методы, связанные с client-side фильтрацией и сортировкой (filteredEvents, filterAndSearchEvents, paginatedEvents и т.д.)
+// Вместо allEvents/filteredEvents используем только events.value
 
-watch(searchText, () => {
-  if (debounceTimeout) clearTimeout(debounceTimeout);
-  debounceTimeout = setTimeout(() => {
-    page.value = 1;
-    filterAndSearchEvents();
-  }, 400);
+watch(events, () => {
+  // This watcher is no longer needed as filtering and sorting are server-side
 });
-
-watch(selectedFilter, filterAndSearchEvents);
-
-watch(allEvents, filterAndSearchEvents);
 
 // Для отслеживания битых картинок в списке
 const brokenImages = vueRef<{ [key: number]: boolean }>({});
@@ -637,13 +581,49 @@ function handleImgError(idx: number) {
   brokenImages.value[idx] = true;
 }
 
+const statistics = ref<OrganizationStatsDTO & { activeEvents?: number; upcomingEvents?: number; completedEvents?: number }>({
+  totalEvents: 0,
+  totalBonusesAccrued: 0,
+  conductedEvents: 0,
+  totalParticipants: 0,
+  eventTypes: [],
+  activeEvents: 0,
+  upcomingEvents: 0,
+  completedEvents: 0,
+});
+const isLoadingStats = ref(false);
+
+const loadStatistics = async () => {
+  isLoadingStats.value = true;
+  try {
+    const userId = authStore.user?.id;
+    if (!userId) return;
+    const stats = await usersApi.getOrganizationStats(userId);
+    statistics.value = {
+      ...stats,
+      activeEvents: stats.activeEvents ?? 0,
+      upcomingEvents: stats.upcomingEvents ?? 0,
+      completedEvents: stats.completedEvents ?? 0,
+    };
+  } catch (e) {
+    console.error('Ошибка загрузки статистики:', e);
+    await showErrorToast('Ошибка загрузки статистики', 3000);
+  } finally {
+    isLoadingStats.value = false;
+  }
+};
+
 onMounted(() => {
-  loadAllEvents();
+  loadStatistics();
+  loadEvents();
 });
 
 onIonViewWillEnter(() => {
-  loadAllEvents();
+  loadStatistics();
+  loadEvents();
 });
+
+defineExpose({ statistics });
 </script>
 
 <style scoped>
@@ -1160,5 +1140,10 @@ onIonViewWillEnter(() => {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+}
+.eco-status-conducted {
+  background: #b3c2d1;
+  color: #234;
+  border: 1px solid #a0b0c0;
 }
 </style> 

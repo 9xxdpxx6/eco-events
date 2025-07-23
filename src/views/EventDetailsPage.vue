@@ -230,8 +230,19 @@
           </div>
 
           <!-- Кнопки управления (для организаций) -->
-          <div v-if="event && isOrganization && isMyEvent" class="admin-controls-card">
+          <div v-if="event && isOrganization && isMyEvent && !isEventFinished" class="admin-controls-card">
             <div class="admin-actions">
+              <ion-button
+                v-if="!event.conducted"
+                color="success"
+                class="admin-button conduct-button"
+                expand="block"
+                style="grid-column: span 2; margin-bottom: 12px;"
+                @click="showConductDialog = true"
+              >
+                <ion-icon :icon="checkmarkOutline" slot="start" />
+                Провести мероприятие
+              </ion-button>
               <ion-button
                 color="danger"
                 class="admin-button"
@@ -254,7 +265,7 @@
           </div>
 
           <!-- Статус участия (для зарегистрированных волонтёров) -->
-          <div v-if="event && !isOrganization && isUserRegistered">
+          <div v-if="event && !isOrganization && isUserRegistered && !event.conducted">
             <!-- Отмена участия (если мероприятие не завершено) -->
             <div v-if="!isEventFinished" class="cancel-card eco-card">
               <div class="cancel-content">
@@ -270,7 +281,6 @@
                 </ion-button>
               </div>
             </div>
-
             <!-- Статус "Посещено" (если мероприятие завершено) -->
             <div v-else class="attended-card eco-card">
               <div class="attended-content">
@@ -296,7 +306,7 @@
     </ion-content>
 
     <!-- Кнопка регистрации (только для незарегистрированных волонтёров) -->
-            <ion-footer v-if="event && !isOrganization && !isUserRegistered && !isEventFinished" class="action-footer">
+    <ion-footer v-if="event && !isOrganization && !isUserRegistered && !isEventFinished && !event.conducted" class="action-footer">
       <div class="footer-content">
         <ion-button 
           expand="block" 
@@ -322,6 +332,19 @@
       @confirm="handleDeleteConfirm"
       @cancel="handleDeleteCancel"
       @dismiss="handleDeleteCancel"
+    />
+
+    <!-- EcoDialog для подтверждения проведения -->
+    <EcoDialog
+      :is-open="showConductDialog"
+      title="Провести мероприятие?"
+      message="Вы уверены, что хотите отметить мероприятие как проведённое? Это действие нельзя отменить."
+      confirm-text="Провести"
+      cancel-text="Отмена"
+      :is-destructive="false"
+      @confirm="handleConductConfirm"
+      @cancel="handleConductCancel"
+      @dismiss="handleConductCancel"
     />
 
     <!-- Кастомная галерея (реализация ниже) -->
@@ -371,6 +394,7 @@ import {
   documentTextOutline,
   personOutline,
   checkmarkCircleOutline,
+  checkmarkOutline, // добавляем иконку без круга
   hourglassOutline,
   arrowBackOutline
 } from 'ionicons/icons';
@@ -386,6 +410,7 @@ import { showSuccessToast, showErrorToast } from '../utils/toast';
 import BrokenImagePlaceholder from '../components/BrokenImagePlaceholder.vue';
 import CustomGallery from '../components/CustomGallery.vue';
 import { clearFileUrlCache } from '@/utils/imageUploaderCache';
+import { eventsApi } from '../api/events';
 
 const router = useRouter();
 const route = useRoute();
@@ -401,6 +426,7 @@ const isRegistering = ref(false);
 
 // Dialog state
 const showDeleteDialog = ref(false);
+const showConductDialog = ref(false);
 
 const galleryVisible = ref(false);
 const galleryIndex = ref(0);
@@ -622,10 +648,9 @@ const formatDateShort = (dateStr: string) => {
 
 const getEventStatus = () => {
   if (!event.value) return '';
-  
+  if (event.value.conducted) return 'Проведено';
   const now = new Date();
   const eventDate = new Date(event.value.startTime);
-  
   if (eventDate < now) {
     return 'Завершено';
   } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
@@ -634,13 +659,11 @@ const getEventStatus = () => {
     return 'Предстоящее';
   }
 };
-
 const getEventStatusClass = () => {
   if (!event.value) return '';
-  
+  if (event.value.conducted) return 'eco-status-conducted';
   const now = new Date();
   const eventDate = new Date(event.value.startTime);
-  
   if (eventDate < now) {
     return 'eco-status-finished';
   } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
@@ -677,12 +700,33 @@ const handleRefresh = async (event: any) => {
   event.target.complete();
 };
 
+const conductEvent = async () => {
+  if (!event.value?.id) return;
+  try {
+    await eventsApi.updateConducted(event.value.id, true);
+    await showSuccessToast('Мероприятие отмечено как проведённое', 2000);
+    await loadEvent();
+  } catch (error) {
+    console.error('Ошибка при проведении мероприятия:', error);
+    await showErrorToast('Ошибка при проведении мероприятия', 3000);
+  }
+};
+
+const handleConductConfirm = async () => {
+  showConductDialog.value = false;
+  await conductEvent();
+};
+const handleConductCancel = () => {
+  showConductDialog.value = false;
+};
+
 onMounted(() => {
   loadEvent();
 });
 
 defineExpose({
-  handleRefresh
+  handleRefresh,
+  conductEvent
 });
 </script>
 
@@ -1164,6 +1208,13 @@ defineExpose({
   gap: var(--eco-space-3);
 }
 
+/* Новая кнопка проведения */
+.conduct-button {
+  font-weight: var(--eco-font-weight-semibold);
+  font-size: var(--eco-font-size-base);
+  margin-bottom: var(--eco-space-3);
+}
+
 /* Footer действий */
 .action-footer {
   padding: var(--eco-space-2);
@@ -1388,5 +1439,10 @@ defineExpose({
 }
 :deep(.vel-chevron:active), :deep(.vel-chevron:focus) {
   background: none;
+}
+.status-badge.eco-status-conducted {
+  background: #b3c2d1;
+  color: #234;
+  border: 1px solid #a0b0c0;
 }
 </style> 

@@ -248,4 +248,6 @@ export interface OrganizationStatsDTO {
   conductedEvents: number;
   totalParticipants: number;
   eventTypes: string[];
+  completedEvents: number;
+  upcomingEvents: number;
 } 

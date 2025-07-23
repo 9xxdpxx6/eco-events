@@ -89,8 +89,8 @@
                 <BrokenImagePlaceholder class="broken-image-full" :style="{height: '100%'}" />
               </template>
               <div class="event-status">
-                <span :class="['status-badge', getEventStatus(event.startTime)]">
-                  {{ getEventStatusText(event.startTime) }}
+                <span :class="['status-badge', event.conducted ? 'conducted' : getEventStatus(event.startTime)]">
+                  {{ event.conducted ? 'Проведено' : getEventStatusText(event.startTime) }}
                 </span>
               </div>
             </div>
@@ -98,7 +98,7 @@
               <div class="event-header">
                 <h3 class="event-title" lang="ru">{{ event.title }}</h3>
                 <ion-button
-                  v-if="!isUserRegisteredForEvent(event.id)"
+                  v-if="!isUserRegisteredForEvent(event.id) && !event.conducted"
                   fill="clear"
                   size="small"
                   class="register-button"
@@ -149,8 +149,8 @@
                 <BrokenImagePlaceholder class="broken-image-full" :style="{height: '100%'}" />
               </template>
               <div class="event-status">
-                <span :class="['status-badge', getEventStatus(event.startTime)]">
-                  {{ getEventStatusText(event.startTime) }}
+                <span :class="['status-badge', event.conducted ? 'conducted' : getEventStatus(event.startTime)]">
+                  {{ event.conducted ? 'Проведено' : getEventStatusText(event.startTime) }}
                 </span>
               </div>
             </div>
@@ -159,7 +159,7 @@
               <div class="event-header">
                 <h3 class="event-title" lang="ru">{{ event.title }}</h3>
                 <ion-button 
-                  v-if="!isUserRegisteredForEvent(event.id)"
+                  v-if="!isUserRegisteredForEvent(event.id) && !event.conducted"
                   fill="clear" 
                   size="small"
                   class="register-button"
@@ -365,7 +365,8 @@ function selectSort(value: string) {
   }
 }
 
-function getEventStatus(startTime: string) {
+function getEventStatus(startTime: string, conducted?: boolean) {
+  if (conducted) return 'conducted';
   const now = new Date();
   const eventDate = new Date(startTime);
   const diffInHours = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -376,7 +377,8 @@ function getEventStatus(startTime: string) {
   return 'upcoming';
 }
 
-function getEventStatusText(startTime: string) {
+function getEventStatusText(startTime: string, conducted?: boolean) {
+  if (conducted) return 'Проведено';
   const status = getEventStatus(startTime);
   switch (status) {
     case 'finished': return 'Завершено';
@@ -1166,6 +1168,11 @@ onUnmounted(() => {
 .status-badge.finished,
 .status-badge-text.finished {
   background: var(--eco-gray-500);
+}
+.status-badge.conducted {
+  background: #b3c2d1;
+  color: #234;
+  border: 1px solid #a0b0c0;
 }
 
 /* Плиточный режим */
