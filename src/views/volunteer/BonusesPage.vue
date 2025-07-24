@@ -718,13 +718,11 @@ const scrollToTop = async () => {
 }
 .bonus-title {
   font-family: var(--eco-font-family);
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: var(--eco-gray-800);
   margin: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
+  word-break: break-word;
 }
 .bonus-amount {
   font-family: var(--eco-font-family);

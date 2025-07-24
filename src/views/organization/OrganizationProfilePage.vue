@@ -61,15 +61,15 @@
               <span class="stat-label">Проведено</span>
             </div>
             <div class="stat-item">
-              <ion-icon :icon="peopleOutline" color="info"></ion-icon>
+              <ion-icon :icon="peopleOutline" color="secondary"></ion-icon>
               <span class="stat-number">{{ formatNumberSafe(statistics.totalVisitors) }}</span>
               <span class="stat-label">Всего посетителей</span>
             </div>
-            <div class="stat-item">
+            <!-- <div class="stat-item">
               <ion-icon :icon="ribbonOutline" color="warning"></ion-icon>
               <span class="stat-number">{{ formatNumberSafe(statistics.totalBonusesAwarded) }}</span>
               <span class="stat-label">Бонусов начислено</span>
-            </div>
+            </div> -->
           </div>
           
           <!-- Типы мероприятий -->
@@ -317,6 +317,11 @@ defineExpose({
 <style scoped>
 .ion-page {
   --background: var(--eco-background-secondary, #f8f9fa);
+}
+
+.ion-header {
+  box-shadow: 0 2px 8px 0 rgba(255,255,255,0.8);
+  z-index: 10;
 }
 
 .ion-content {

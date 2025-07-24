@@ -152,7 +152,7 @@
               </template>
               <div class="event-status">
                 <span :class="['status-badge', 'eco-status', getEventStatusClass(event)]">
-                  {{ event.conducted ? 'Проведено' : getEventStatus(event) }}
+                  {{ getEventStatus(event) }}
                 </span>
               </div>
             </div>
@@ -486,7 +486,10 @@ const getEventStatus = (event: EventResponseMediumDTO) => {
   const now = new Date();
   const eventDate = new Date(event.startTime);
   const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
-  
+
+  if (event.conducted && eventEndTime < now) {
+    return 'Проведено';
+  }
   if (eventEndTime < now) {
     return 'Завершено';
   } else if (eventDate <= now && eventEndTime > now) {
@@ -499,19 +502,21 @@ const getEventStatus = (event: EventResponseMediumDTO) => {
 };
 
 const getEventStatusClass = (event: EventResponseMediumDTO) => {
-  if (event.conducted) return 'eco-status-conducted';
   const now = new Date();
   const eventDate = new Date(event.startTime);
   const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
-  
+
+  if (event.conducted && eventEndTime < now) {
+    return 'eco-status-conducted'; // Проведено — серый
+  }
   if (eventEndTime < now) {
-    return 'eco-status-finished';
+    return 'eco-status-finished'; // Завершено — менее яркий серый
   } else if (eventDate <= now && eventEndTime > now) {
-    return 'eco-status-active';
+    return 'eco-status-active'; // Активно — зелёный
   } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
-    return 'eco-status-soon';
+    return 'eco-status-soon'; // Скоро — жёлтый/оранжевый
   } else {
-    return 'eco-status-upcoming';
+    return 'eco-status-upcoming'; // Запланировано — синий
   }
 };
 
@@ -1145,5 +1150,25 @@ defineExpose({ statistics });
   background: #b3c2d1;
   color: #234;
   border: 1px solid #a0b0c0;
+}
+.eco-status-finished {
+  background: #e0e0e0;
+  color: #888;
+  border: 1px solid #cccccc;
+}
+.eco-status-active {
+  background: #d2f8e5;
+  color: #1a7f37;
+  border: 1px solid #7be495;
+}
+.eco-status-upcoming {
+  background: #e3edfa;
+  color: #2563eb;
+  border: 1px solid #90b6f2;
+}
+.eco-status-soon {
+  background: #fff4d6;
+  color: #b26a00;
+  border: 1px solid #ffd580;
 }
 </style> 

@@ -250,4 +250,5 @@ export interface OrganizationStatsDTO {
   eventTypes: string[];
   completedEvents: number;
   upcomingEvents: number;
+  activeEvents: number;
 } 
