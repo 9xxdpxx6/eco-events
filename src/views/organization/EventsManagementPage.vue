@@ -127,7 +127,7 @@
         <!-- Список мероприятий -->
         <div v-else class="events-list">
           <div 
-            v-for="event in events" 
+            v-for="event in visibleEvents" 
             :key="event.id ?? Math.random()"
             class="event-card eco-card eco-list-item"
             @click="viewEventDetails(Number(event.id))"
@@ -377,6 +377,14 @@ const filters = computed(() => [
   { value: 'past', label: 'Завершённые', count: 0 },
 ]);
 
+// Фильтрация только активных событий для отображения
+const visibleEvents = computed(() => {
+  if (selectedFilter.value === 'active') {
+    return events.value.filter(e => getEventStatus(e) === 'Активно');
+  }
+  return events.value;
+});
+
 const onScroll = (event: any) => {
   const currentScrollY = event.detail.scrollTop;
   
@@ -430,12 +438,9 @@ const loadEvents = async (reset = true) => {
           break;
         case 'active': {
           const now = new Date();
-          const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
-          const fiveMinLater = new Date(now.getTime() + 5 * 60 * 1000);
-          params.startDateFrom = fiveMinAgo.toISOString().replace('Z', '');
-          params.startDateTo = fiveMinLater.toISOString().replace('Z', '');
-          params.endDateFrom = fiveMinAgo.toISOString().replace('Z', '');
-          params.endDateTo = fiveMinLater.toISOString().replace('Z', '');
+          const nowStr = now.toISOString().replace('Z', '');
+          params.startDateTo = nowStr;
+          params.endDateFrom = nowStr;
           break;
         }
         case 'past':
@@ -487,17 +492,17 @@ const formatDate = (date: string) => {
 
 const getEventStatus = (event: EventResponseMediumDTO) => {
   const now = new Date();
-  const eventDate = new Date(event.startTime);
-  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+  const eventStart = new Date(event.startTime);
+  const eventEnd = event.endTime ? new Date(event.endTime) : new Date(event.startTime); // если endTime нет, считаем как startTime
 
-  if (event.conducted && eventEndTime < now) {
+  if (event.conducted && eventEnd < now) {
     return 'Проведено';
   }
-  if (eventEndTime < now) {
+  if (eventEnd < now) {
     return 'Завершено';
-  } else if (eventDate <= now && eventEndTime > now) {
+  } else if (eventStart <= now && eventEnd > now) {
     return 'Активно';
-  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+  } else if (eventStart.getTime() - now.getTime() < 24 * 60 * 60 * 1000 && eventStart > now) {
     return 'Скоро';
   } else {
     return 'Запланировано';
@@ -506,20 +511,20 @@ const getEventStatus = (event: EventResponseMediumDTO) => {
 
 const getEventStatusClass = (event: EventResponseMediumDTO) => {
   const now = new Date();
-  const eventDate = new Date(event.startTime);
-  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
+  const eventStart = new Date(event.startTime);
+  const eventEnd = event.endTime ? new Date(event.endTime) : new Date(event.startTime);
 
-  if (event.conducted && eventEndTime < now) {
-    return 'eco-status-conducted'; // Проведено — серый
+  if (event.conducted && eventEnd < now) {
+    return 'eco-status-conducted';
   }
-  if (eventEndTime < now) {
-    return 'eco-status-finished'; // Завершено — менее яркий серый
-  } else if (eventDate <= now && eventEndTime > now) {
-    return 'eco-status-active'; // Активно — зелёный
-  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
-    return 'eco-status-soon'; // Скоро — жёлтый/оранжевый
+  if (eventEnd < now) {
+    return 'eco-status-finished';
+  } else if (eventStart <= now && eventEnd > now) {
+    return 'eco-status-active';
+  } else if (eventStart.getTime() - now.getTime() < 24 * 60 * 60 * 1000 && eventStart > now) {
+    return 'eco-status-soon';
   } else {
-    return 'eco-status-upcoming'; // Запланировано — синий
+    return 'eco-status-upcoming';
   }
 };
 

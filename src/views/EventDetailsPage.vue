@@ -674,17 +674,17 @@ const formatDateShort = (dateStr: string) => {
 const getEventStatus = () => {
   if (!event.value) return '';
   const now = new Date();
-  const eventDate = new Date(event.value.startTime);
-  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+  const eventStart = new Date(event.value.startTime);
+  const eventEnd = event.value.endTime ? new Date(event.value.endTime) : new Date(event.value.startTime);
 
-  if (event.value.conducted && eventEndTime < now) {
+  if (event.value.conducted && eventEnd < now) {
     return 'Проведено';
   }
-  if (eventEndTime < now) {
+  if (eventEnd < now) {
     return 'Завершено';
-  } else if (eventDate <= now && eventEndTime > now) {
+  } else if (eventStart <= now && eventEnd > now) {
     return 'Активно';
-  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+  } else if (eventStart.getTime() - now.getTime() < 24 * 60 * 60 * 1000 && eventStart > now) {
     return 'Скоро';
   } else {
     return 'Запланировано';
@@ -694,17 +694,17 @@ const getEventStatus = () => {
 const getEventStatusClass = () => {
   if (!event.value) return '';
   const now = new Date();
-  const eventDate = new Date(event.value.startTime);
-  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
+  const eventStart = new Date(event.value.startTime);
+  const eventEnd = event.value.endTime ? new Date(event.value.endTime) : new Date(event.value.startTime);
 
-  if (event.value.conducted && eventEndTime < now) {
+  if (event.value.conducted && eventEnd < now) {
     return 'eco-status-conducted';
   }
-  if (eventEndTime < now) {
+  if (eventEnd < now) {
     return 'eco-status-finished';
-  } else if (eventDate <= now && eventEndTime > now) {
+  } else if (eventStart <= now && eventEnd > now) {
     return 'eco-status-active';
-  } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
+  } else if (eventStart.getTime() - now.getTime() < 24 * 60 * 60 * 1000 && eventStart > now) {
     return 'eco-status-soon';
   } else {
     return 'eco-status-upcoming';
