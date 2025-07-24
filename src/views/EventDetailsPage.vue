@@ -230,10 +230,21 @@
           </div>
 
           <!-- Кнопки управления (для организаций) -->
-          <div v-if="event && isOrganization && isMyEvent && !isEventFinished" class="admin-controls-card">
+          <div v-if="event && isOrganization && isMyEvent" class="admin-controls-card">
             <div class="admin-actions">
               <ion-button
-                v-if="!event.conducted"
+                v-if="getEventStatus() === 'Проведено'"
+                color="warning"
+                class="admin-button conduct-button"
+                expand="block"
+                style="grid-column: span 2; margin-bottom: 12px;"
+                @click="showCancelConductDialog = true"
+              >
+                <ion-icon :icon="closeOutline" slot="start" />
+                Отменить проведение
+              </ion-button>
+              <ion-button
+                v-else-if="!event.conducted"
                 color="success"
                 class="admin-button conduct-button"
                 expand="block"
@@ -347,6 +358,19 @@
       @dismiss="handleConductCancel"
     />
 
+    <!-- EcoDialog для подтверждения отмены проведения -->
+    <EcoDialog
+      :is-open="showCancelConductDialog"
+      title="Отменить проведение?"
+      message="Вы уверены, что хотите отменить проведение мероприятия? Это действие можно будет вернуть."
+      confirm-text="Отменить проведение"
+      cancel-text="Отмена"
+      :is-destructive="true"
+      @confirm="handleCancelConductConfirm"
+      @cancel="handleCancelConductCancel"
+      @dismiss="handleCancelConductCancel"
+    />
+
     <!-- Кастомная галерея (реализация ниже) -->
     <CustomGallery
       v-model="galleryVisible"
@@ -409,7 +433,7 @@ import EcoDialog from '../components/EcoDialog.vue';
 import { showSuccessToast, showErrorToast } from '../utils/toast';
 import BrokenImagePlaceholder from '../components/BrokenImagePlaceholder.vue';
 import CustomGallery from '../components/CustomGallery.vue';
-import { clearFileUrlCache } from '@/utils/imageUploaderCache';
+import { clearFileUrlCache } from '../utils/imageUploaderCache';
 import { eventsApi } from '../api/events';
 
 const router = useRouter();
@@ -427,6 +451,7 @@ const isRegistering = ref(false);
 // Dialog state
 const showDeleteDialog = ref(false);
 const showConductDialog = ref(false);
+const showCancelConductDialog = ref(false);
 
 const galleryVisible = ref(false);
 const galleryIndex = ref(0);
@@ -648,24 +673,37 @@ const formatDateShort = (dateStr: string) => {
 
 const getEventStatus = () => {
   if (!event.value) return '';
-  if (event.value.conducted) return 'Проведено';
   const now = new Date();
   const eventDate = new Date(event.value.startTime);
-  if (eventDate < now) {
+  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000); // +4 часа
+
+  if (event.value.conducted && eventEndTime < now) {
+    return 'Проведено';
+  }
+  if (eventEndTime < now) {
     return 'Завершено';
+  } else if (eventDate <= now && eventEndTime > now) {
+    return 'Активно';
   } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
     return 'Скоро';
   } else {
-    return 'Предстоящее';
+    return 'Запланировано';
   }
 };
+
 const getEventStatusClass = () => {
   if (!event.value) return '';
-  if (event.value.conducted) return 'eco-status-conducted';
   const now = new Date();
   const eventDate = new Date(event.value.startTime);
-  if (eventDate < now) {
+  const eventEndTime = new Date(eventDate.getTime() + 4 * 60 * 60 * 1000);
+
+  if (event.value.conducted && eventEndTime < now) {
+    return 'eco-status-conducted';
+  }
+  if (eventEndTime < now) {
     return 'eco-status-finished';
+  } else if (eventDate <= now && eventEndTime > now) {
+    return 'eco-status-active';
   } else if (eventDate.getTime() - now.getTime() < 24 * 60 * 60 * 1000) {
     return 'eco-status-soon';
   } else {
@@ -703,12 +741,24 @@ const handleRefresh = async (event: any) => {
 const conductEvent = async () => {
   if (!event.value?.id) return;
   try {
-    await eventsApi.updateConducted(event.value.id, true);
+    await eventsStore.updateEventConducted(event.value.id);
     await showSuccessToast('Мероприятие отмечено как проведённое', 2000);
     await loadEvent();
   } catch (error) {
     console.error('Ошибка при проведении мероприятия:', error);
     await showErrorToast('Ошибка при проведении мероприятия', 3000);
+  }
+};
+
+const cancelConductEvent = async () => {
+  if (!event.value?.id) return;
+  try {
+    await eventsStore.cancelEventConducted(event.value.id);
+    await showSuccessToast('Проведение мероприятия отменено', 2000);
+    await loadEvent();
+  } catch (error) {
+    console.error('Ошибка при отмене проведения:', error);
+    await showErrorToast('Ошибка при отмене проведения', 3000);
   }
 };
 
@@ -718,6 +768,14 @@ const handleConductConfirm = async () => {
 };
 const handleConductCancel = () => {
   showConductDialog.value = false;
+};
+
+const handleCancelConductConfirm = async () => {
+  showCancelConductDialog.value = false;
+  await cancelConductEvent();
+};
+const handleCancelConductCancel = () => {
+  showCancelConductDialog.value = false;
 };
 
 onMounted(() => {

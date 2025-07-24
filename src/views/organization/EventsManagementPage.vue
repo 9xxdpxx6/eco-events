@@ -430,9 +430,12 @@ const loadEvents = async (reset = true) => {
           break;
         case 'active': {
           const now = new Date();
-          const nowStr = now.toISOString().replace('Z', '');
-          params.startDateFrom = nowStr;
-          params.endDateTo = nowStr;
+          const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
+          const fiveMinLater = new Date(now.getTime() + 5 * 60 * 1000);
+          params.startDateFrom = fiveMinAgo.toISOString().replace('Z', '');
+          params.startDateTo = fiveMinLater.toISOString().replace('Z', '');
+          params.endDateFrom = fiveMinAgo.toISOString().replace('Z', '');
+          params.endDateTo = fiveMinLater.toISOString().replace('Z', '');
           break;
         }
         case 'past':

@@ -54,8 +54,18 @@ export const eventsApi = {
     return data;
   },
 
+  /**
+   * Отметить мероприятие как проведённое или отменить проведение
+   */
   updateConducted: async (eventId: number, conducted: boolean): Promise<void> => {
-    await client.post(`/api/events/${eventId}/conduct`, { conducted });
+    await client.post(`/api/events/${eventId}/conduct`, null, { params: { conducted } });
+  },
+
+  /**
+   * Отменить проведение мероприятия
+   */
+  cancelConducted: async (eventId: number): Promise<void> => {
+    await client.post(`/api/events/${eventId}/conduct/cancel`);
   },
 
   search: async (filter: EventFilterDTO): Promise<EventResponseMediumDTO[]> => {

@@ -161,20 +161,40 @@ export const useEventsStore = defineStore('events', {
       }
     },
 
-    async updateEventConducted(eventId: number, conducted: boolean) {
+    async updateEventConducted(eventId: number) {
       this.isLoading = true;
       this.error = null;
       try {
-        await eventsApi.updateConducted(eventId, conducted);
+        await eventsApi.updateConducted(eventId, true);
         const event = this.events.find(event => event.id === eventId);
         if (event) {
-          event.conducted = conducted;
+          event.conducted = true;
         }
         if (this.currentEvent?.id === eventId) {
-          this.currentEvent.conducted = conducted;
+          this.currentEvent.conducted = true;
         }
       } catch (error) {
         this.error = error instanceof Error ? error.message : 'Произошла ошибка при обновлении статуса события';
+        throw error;
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async cancelEventConducted(eventId: number) {
+      this.isLoading = true;
+      this.error = null;
+      try {
+        await eventsApi.updateConducted(eventId, false);
+        const event = this.events.find(event => event.id === eventId);
+        if (event) {
+          event.conducted = false;
+        }
+        if (this.currentEvent?.id === eventId) {
+          this.currentEvent.conducted = false;
+        }
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : 'Произошла ошибка при отмене проведения события';
         throw error;
       } finally {
         this.isLoading = false;

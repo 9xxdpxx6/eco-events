@@ -7,6 +7,13 @@
       </ion-header>
     
     <ion-content ref="contentRef" class="bonuses-content">
+      <!-- Pull-to-refresh -->
+      <ion-refresher slot="fixed" @ionRefresh="handleRefresh">
+        <ion-refresher-content
+          pulling-text="Потяните для обновления"
+          refreshing-text="Обновляем бонусы..."
+        ></ion-refresher-content>
+      </ion-refresher>
       <!-- Статистика бонусов -->
       <div class="stats-section">
         <div class="stats-card eco-card">
@@ -128,7 +135,9 @@ import {
   IonSpinner,
   IonIcon,
   IonInfiniteScroll,
-  IonInfiniteScrollContent
+  IonInfiniteScrollContent,
+  IonRefresher,
+  IonRefresherContent
 } from '@ionic/vue';
 import ErrorState from '../../components/ErrorState.vue';
 import EcoCalendar from '../../components/EcoCalendar.vue';
@@ -217,6 +226,7 @@ const loadAllBonuses = async () => {
       size: 10000,
       sortBy: 'createdAt',
       sortOrder: 'DESC',
+      isActive: true,
     });
     allBonuses.value = all;
   } catch (e) {
@@ -257,6 +267,7 @@ const loadBonuses = async (reset = false) => {
     size,
     sortBy: sortField,
     sortOrder: sortOrder,
+    isActive: true,
   };
   if (dateRange.value.from) filter.createdAtFrom = dateRange.value.from + 'T00:00:00';
   if (dateRange.value.to) filter.createdAtTo = dateRange.value.to + 'T23:59:59';
@@ -281,6 +292,11 @@ const loadBonuses = async (reset = false) => {
 
 const loadMoreBonuses = async (event: any) => {
   await loadBonuses();
+  event.target.complete();
+};
+
+const handleRefresh = async (event: any) => {
+  await reloadBonuses();
   event.target.complete();
 };
 

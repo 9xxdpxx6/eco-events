@@ -222,7 +222,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { onIonViewWillLeave } from '@ionic/vue';
+import { onIonViewWillLeave, onIonViewWillEnter } from '@ionic/vue';
 import { useRouter, useRoute } from 'vue-router';
 import {
   IonPage,
@@ -274,7 +274,7 @@ import { API_URL } from '../../api/client';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
 import { ref as vueRef } from 'vue';
 import BrokenImagePlaceholder from '../../components/BrokenImagePlaceholder.vue';
-import { clearFileUrlCache } from '@/utils/imageUploaderCache';
+import { clearFileUrlCache } from '../../utils/imageUploaderCache';
 
 const router = useRouter();
 const route = useRoute();
@@ -952,6 +952,14 @@ onMounted(async () => {
   await loadUserParticipations();
   // Отмечаем что компонент инициализирован, теперь watch может работать
   isInitialized.value = true;
+});
+
+// Загружаем события при каждом возвращении на страницу, если список пустой
+onIonViewWillEnter(async () => {
+  if (events.value.length === 0 && !isLoading.value) {
+    await loadEvents(true);
+    await loadUserParticipations();
+  }
 });
 
 // Сбрасываем список событий только при переходе на другие табы (не на детали мероприятия)

@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 0, // Не показывать стандартный splash screen
-      backgroundColor: '#2ecc71', // Цвет фона
+      backgroundColor: '#355ADD', // Цвет фона
       showSpinner: false, // Не показывать спиннер
       androidSpinnerStyle: 'large',
       iosSpinnerStyle: 'small',
