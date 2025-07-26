@@ -632,10 +632,12 @@ const handleDeleteCancel = () => {
 };
 
 const openEmail = (email: string) => {
+  console.log('Opening email:', email);
   window.location.href = `mailto:${email}`;
 };
 
 const openPhone = (phone: string) => {
+  console.log('Opening phone:', phone);
   window.location.href = `tel:${phone}`;
 };
 

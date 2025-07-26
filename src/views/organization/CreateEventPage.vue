@@ -296,7 +296,6 @@ import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import ImageUploader from '../../components/ImageUploader.vue';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
-import { clearFileUrlCache } from '@/utils/imageUploaderCache';
 
 const router = useRouter();
 const goBack = () => { router.back(); };
@@ -419,7 +418,9 @@ const saveEvent = async () => {
       if (isNaN(testDate.getTime())) {
         throw new Error('Некорректная дата или время');
       }
-      startTime = testDate.toISOString();
+      // Добавляем +3 часа для сервера
+      const serverDate = new Date(testDate.getTime() + 3 * 60 * 60 * 1000);
+      startTime = serverDate.toISOString();
     } else {
       throw new Error('Не указана дата или время');
     }
@@ -455,6 +456,25 @@ const saveEvent = async () => {
             formData.append('images', imageFile);
         }
     });
+    
+    // Подробный вывод запроса в консоль
+    console.log('=== CREATE EVENT REQUEST ===');
+    console.log('URL:', '/api/events');
+    console.log('Method:', 'POST');
+    console.log('Event Data:', JSON.stringify(eventData, null, 2));
+    console.log('Preview Image:', previewImage.value ? `${previewImage.value.name} (${previewImage.value.size} bytes)` : 'None');
+    console.log('Additional Images:', otherImages.map(img => img instanceof File ? `${img.name} (${img.size} bytes)` : 'String URL').join(', '));
+    console.log('FormData contents:');
+    console.log('  event: JSON blob with event data');
+    if (previewImage.value) {
+      console.log(`  preview: ${previewImage.value.name} (${previewImage.value.size} bytes, ${previewImage.value.type})`);
+    }
+    otherImages.forEach((img, index) => {
+      if (img instanceof File) {
+        console.log(`  images[${index}]: ${img.name} (${img.size} bytes, ${img.type})`);
+      }
+    });
+    console.log('=== END CREATE EVENT REQUEST ===');
     
     await eventsStore.createEventWithImages(formData);
 

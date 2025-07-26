@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appName: 'EcoEvents',
   webDir: 'dist',
   server: {
+    // url: 'https://192.168.227.172:8443',
     cleartext: true
   },
   plugins: {
@@ -18,6 +19,10 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true
     }
+  },
+  android: {
+    allowMixedContent: true,
+    webContentsDebuggingEnabled: true
   }
 };
 

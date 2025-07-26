@@ -53,6 +53,7 @@ import {
   warningOutline,
   refreshOutline
 } from 'ionicons/icons';
+import { API_URL } from '../api/client';
 
 const showDiagnostic = ref(false);
 const isRunning = ref(false);
@@ -60,7 +61,7 @@ const internetConnected = ref(false);
 const serverConnected = ref(false);
 const lastError = ref('');
 
-const serverUrl = 'http://192.168.31.250:8080';
+const serverUrl = API_URL;
 const pingEndpoint = `${serverUrl}/api/ping`;
 
 const internetStatus = computed(() => {
@@ -206,7 +207,8 @@ const checkServerWithWebSocket = (): Promise<boolean> => {
   return new Promise((resolve) => {
     try {
       // Пробуем WebSocket подключение (ws)
-      const ws = new WebSocket(`ws://192.168.31.250:8080`);
+      const wsUrl = API_URL.replace('https://', 'ws://').replace('http://', 'ws://');
+      const ws = new WebSocket(wsUrl);
       ws.onopen = () => {
         console.log('✅ WebSocket подключение успешно');
         ws.close();

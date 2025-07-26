@@ -304,7 +304,6 @@ import { API_URL } from '../../api/client';
 import EcoCalendar from '../../components/EcoCalendar.vue';
 import EcoSelect from '../../components/EcoSelect.vue';
 import ImageUploader from '../../components/ImageUploader.vue';
-import { clearFileUrlCache } from '@/utils/imageUploaderCache';
 import { showSuccessToast, showErrorToast } from '../../utils/toast';
 
 const router = useRouter();
@@ -336,6 +335,7 @@ const isSaving = ref(false);
 const eventTypes = ref<EventTypeDTO[]>([]);
 const images = ref<(File | string)[]>([]);
 const previewImage = ref<File | string | null>(null);
+const originalPreview = ref<string | null>(null);
 const showCalendar = ref(false);
 
 const minDate = new Date().toISOString();
@@ -378,7 +378,7 @@ const loadEvent = async () => {
     await eventsStore.fetchEventById(eventId);
     const event = eventsStore.getCurrentEvent as any;
 
-    clearFileUrlCache();
+    // clearFileUrlCache(); // This line was removed as per the edit hint
     
     if (event) {
       const eventDate = new Date(event.startTime);
@@ -425,22 +425,28 @@ const loadEvent = async () => {
         images.value.push(...otherImages);
       }
 
+      // Устанавливаем превью как относительный путь
+      if (event.preview) {
+        previewImage.value = event.preview;
+      }
+
+      // Сохраняем оригинальное превью для сравнения при сохранении
+      originalPreview.value = event.preview;
+
       if (images.value.length > 0) {
-        // Устанавливаем превью, если оно есть
-        const previewUrl = event.preview
-          ? (event.preview.startsWith('uploads/')
-              ? `${API_URL}/${event.preview}`
-              : `${IMAGE_BASE_URL}/${event.preview}`)
-          : '';
-        const previewIndex = images.value.findIndex(img => img === previewUrl);
-        if (previewIndex !== -1) {
-          // Перемещаем превью в начало массива
-          const [preview] = images.value.splice(previewIndex, 1);
-          images.value.unshift(preview);
-          previewImage.value = preview;
-        } else {
-          previewImage.value = images.value[0];
+        // Перемещаем превью в начало массива, если оно есть
+        if (event.preview) {
+          const previewUrl = event.preview.startsWith('uploads/')
+            ? `${API_URL}/${event.preview}`
+            : `${IMAGE_BASE_URL}/${event.preview}`;
+          const previewIndex = images.value.findIndex(img => img === previewUrl);
+          if (previewIndex !== -1) {
+            // Перемещаем превью в начало массива
+            const [preview] = images.value.splice(previewIndex, 1);
+            images.value.unshift(preview);
+          }
         }
+        // Превью уже установлено выше как относительный путь
       }
     }
   } catch (error) {
@@ -519,20 +525,94 @@ const saveChanges = async () => {
       const datePart = form.value.date.split('T')[0];
       let timePart = form.value.time;
       if (timePart.length <= 5) timePart += ':00';
-      startTime = new Date(`${datePart}T${timePart}`).toISOString();
+      const localDate = new Date(`${datePart}T${timePart}`);
+      // Добавляем +3 часа для сервера
+      const serverDate = new Date(localDate.getTime() + 3 * 60 * 60 * 1000);
+      startTime = serverDate.toISOString();
     }
     if (!startTime || isNaN(Date.parse(startTime))) throw new Error('Некорректная дата/время');
     
     const duration = Number(form.value.duration) || 2;
     const endTime = new Date(new Date(startTime).getTime() + duration * 60 * 60 * 1000).toISOString();
     
+    // Формируем currentImages - массив строк с путями к существующим изображениям
+    const currentImages = images.value
+      .filter(img => typeof img === 'string')
+      .map(url => {
+        const urlStr = url as string;
+        // Убираем полный URL сервера, оставляем только относительный путь
+        if (urlStr.startsWith(API_URL)) {
+          return urlStr.replace(API_URL, '');
+        } else if (urlStr.startsWith(IMAGE_BASE_URL)) {
+          return urlStr.replace(IMAGE_BASE_URL, '');
+        } else if (urlStr.includes('://')) {
+          // Обрабатываем любые полные URL (http://, http://)
+          const urlParts = urlStr.split('/');
+          const uploadsIndex = urlParts.findIndex(part => part === 'uploads');
+          if (uploadsIndex !== -1) {
+            return '/' + urlParts.slice(uploadsIndex).join('/');
+          }
+        }
+        return urlStr;
+      });
+
+    // Определяем preview и обрабатываем currentImages
     let previewPath: string | undefined = undefined;
+    let finalCurrentImages = [...currentImages];
+
     if (previewImage.value) {
-      if (typeof previewImage.value === 'string') {
-        previewPath = previewImage.value.replace(IMAGE_BASE_URL, '');
-      } else {
-        // Если превью - новый файл, то на бэке он определится из multipart-поля 'preview'
-        previewPath = undefined;
+      if (previewImage.value instanceof File) {
+        // Убираем только старое превью из currentImages
+        finalCurrentImages = finalCurrentImages.filter(img => 
+          !img.includes('/uploads/previews/') && 
+          !img.includes('uploads/previews/')
+        );
+      } else if (typeof previewImage.value === 'string') {
+        const previewUrl = previewImage.value as string;
+        // Если это уже относительный путь (начинается с /uploads/ или uploads/)
+        if (previewUrl.startsWith('/uploads/') || previewUrl.startsWith('uploads/')) {
+          previewPath = previewUrl.startsWith('/') ? previewUrl : `/${previewUrl}`;
+        } else if (previewUrl.startsWith(API_URL)) {
+          previewPath = previewUrl.replace(API_URL, '');
+        } else if (previewUrl.startsWith(IMAGE_BASE_URL)) {
+          previewPath = previewUrl.replace(IMAGE_BASE_URL, '');
+        } else if (previewUrl.includes('://')) {
+          // Обрабатываем любые полные URL (http://, https://)
+          const urlParts = previewUrl.split('/');
+          const uploadsIndex = urlParts.findIndex(part => part === 'uploads');
+          if (uploadsIndex !== -1) {
+            previewPath = '/' + urlParts.slice(uploadsIndex).join('/');
+          } else {
+            previewPath = previewUrl;
+          }
+        } else {
+          previewPath = previewUrl;
+        }
+        
+        // Убираем новое превью из currentImages, если оно там есть
+        finalCurrentImages = finalCurrentImages.filter(img => img !== previewPath);
+      }
+    }
+
+    // Основная логика обмена превью и изображений
+    if (originalPreview.value) {
+      // Всегда убираем старое превью из currentImages
+      const cleanOriginalPreview = originalPreview.value.startsWith('/') 
+        ? originalPreview.value 
+        : `/${originalPreview.value}`;
+      
+      finalCurrentImages = finalCurrentImages.filter(
+        img => img !== cleanOriginalPreview
+      );
+
+      // Если новое превью - существующее изображение
+      if (previewPath && previewPath !== originalPreview.value) {
+        // Убираем новое превью из currentImages
+        finalCurrentImages = finalCurrentImages.filter(
+          img => img !== previewPath
+        );
+        
+        // НЕ добавляем старое превью в currentImages - оно будет передано как новое изображение
       }
     }
 
@@ -546,29 +626,77 @@ const saveChanges = async () => {
       eventTypeId: eventType.id!,
       userId: authStore.user?.id || 1,
       preview: previewPath,
-      currentImages: images.value
-        .filter(img => typeof img === 'string')
-        .map(url => ({ filePath: (url as string).replace(IMAGE_BASE_URL, '') }))
+      currentImages: finalCurrentImages
     };
 
     const formData = new FormData();
     formData.append('event', new Blob([JSON.stringify(eventData)], { type: 'application/json' }));
     
+    // Обработка изображений
     const newFiles = images.value.filter(img => img instanceof File) as File[];
 
     if (previewImage.value instanceof File) {
       formData.append('preview', previewImage.value);
-    } 
+    }
 
+    // Собираем все новые изображения
+    const allNewImages: (File | string)[] = [];
+
+    // Добавляем новые файлы (исключая превью)
     newFiles.forEach(file => {
-        if(file !== previewImage.value) {
-            formData.append('images', file);
-        }
+      if (file !== previewImage.value) {
+        allNewImages.push(file);
+      }
     });
+
+    // Если пользователь загружает новое превью, добавляем старое превью в новые изображения
+    if (previewImage.value instanceof File) {
+      // Ищем старое превью в исходных currentImages
+      const oldPreviewInOriginalImages = currentImages.find(img => 
+        img.includes('/uploads/previews/') || img.includes('uploads/previews/')
+      );
+      
+      if (oldPreviewInOriginalImages) {
+        // Добавляем старое превью в новые изображения
+        allNewImages.push(oldPreviewInOriginalImages);
+      }
+    }
+
+    // Если пользователь изменил превью на существующее изображение, добавляем старое превью в новые изображения
+    if (originalPreview.value && previewPath && previewPath !== originalPreview.value && !(previewImage.value instanceof File)) {
+      const oldPreviewPath = originalPreview.value.startsWith('/') ? originalPreview.value : `/${originalPreview.value}`;
+      allNewImages.push(oldPreviewPath);
+    }
+
+    // Добавляем все новые изображения в FormData
+    allNewImages.forEach(item => {
+      formData.append('images', item);
+    });
+
+    // Подробный вывод запроса в консоль
+    console.log('=== UPDATE EVENT REQUEST ===');
+    console.log('URL:', `/api/events/${eventId}`);
+    console.log('Method:', 'POST');
+    console.log('Event Data:', JSON.stringify(eventData, null, 2));
+    console.log('Preview Image:', previewImage.value instanceof File ? `${previewImage.value.name} (${previewImage.value.size} bytes)` : 
+      (typeof previewImage.value === 'string' ? previewImage.value : 'None'));
+    console.log('New Files:', newFiles.map(file => `${file.name} (${file.size} bytes)`).join(', '));
+    console.log('Current Images:', currentImages);
+    console.log('FormData contents:');
+    console.log('  event: JSON blob with event data');
+    if (previewImage.value instanceof File) {
+      console.log(`  preview: ${previewImage.value.name} (${previewImage.value.size} bytes, ${previewImage.value.type})`);
+    }
+    newFiles.forEach((file, index) => {
+      if (file !== previewImage.value) {
+        console.log(`  images[${index}]: ${file.name} (${file.size} bytes, ${file.type})`);
+      }
+    });
+    console.log('=== END UPDATE EVENT REQUEST ===');
 
     await eventsStore.updateEventWithImages(eventId, formData);
     
-    clearFileUrlCache();
+    // clearFileUrlCache(); // This line was removed as per the edit hint
     await showSuccessToast('Мероприятие успешно обновлено', 2000);
     
     // Сброс и обновление стейта событий для актуального списка и деталей

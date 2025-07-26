@@ -307,6 +307,8 @@ const imageObserver = ref<IntersectionObserver | null>(null);
 const infiniteScrollDebounce = ref<NodeJS.Timeout | null>(null);
 // Для отслеживания битых картинок в списке
 const brokenImages = vueRef<{ [key: number]: boolean }>({});
+// Флаг для отслеживания изменений фильтров
+const isFilterChange = ref(false);
 function handleImgError(idx: number) {
   brokenImages.value[idx] = true;
 }
@@ -337,16 +339,26 @@ const hasMore = ref(true);
 
 function setFilter(value: string) {
   selectedFilter.value = value;
+  isFilterChange.value = true; // Устанавливаем флаг изменения фильтра
   if (isInitialized.value) {
     loadEvents(true); // Перезагружаем данные с сервера с новыми фильтрами
   }
 }
 
 const onDateRangeChange = () => {
+  isFilterChange.value = true; // Устанавливаем флаг изменения фильтра
   if (isInitialized.value) {
     loadEvents(true);
   }
 };
+
+function selectSort(value: string) {
+  sortBy.value = value;
+  isFilterChange.value = true; // Устанавливаем флаг изменения фильтра
+  if (isInitialized.value) {
+    loadEvents(true); // Перезагружаем данные с сервера с новой сортировкой
+  }
+}
 
 function isEventThisWeek(dateStr: string) {
   const now = new Date();
@@ -356,13 +368,6 @@ function isEventThisWeek(dateStr: string) {
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 7);
   return eventDate >= startOfWeek && eventDate < endOfWeek;
-}
-
-function selectSort(value: string) {
-  sortBy.value = value;
-  if (isInitialized.value) {
-    loadEvents(true); // Перезагружаем данные с сервера с новой сортировкой
-  }
 }
 
 function getEventStatus(startTime: string, conducted?: boolean) {
@@ -707,10 +712,12 @@ const updateDisplayedEvents = (isRefresh = false) => {
   // Инициализируем ленивую загрузку для новых изображений
   nextTick(() => {
     initLazyLoading();
-    // Восстанавливаем позицию только если это не pull-to-refresh
-    if (!isRefresh) {
+    // Восстанавливаем позицию только если это не pull-to-refresh, компонент инициализирован И не изменение фильтра
+    if (!isRefresh && isInitialized.value && !isFilterChange.value) {
       restoreScrollPosition(previousLastVisibleId);
     }
+    // Сбрасываем флаг изменения фильтра после обновления
+    isFilterChange.value = false;
   });
 };
 

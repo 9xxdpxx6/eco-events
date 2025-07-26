@@ -454,7 +454,7 @@ const loadEvents = async (reset = true) => {
     console.log('API Request:', {
       method: 'get',
       url: '/api/events/search',
-      baseURL: 'http://192.168.31.250:8080',
+      baseURL: API_URL,
       fullURL,
       params
     });
