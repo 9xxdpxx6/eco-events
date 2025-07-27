@@ -114,10 +114,10 @@
               <ion-icon :icon="createOutline" slot="start"></ion-icon>
               <ion-label>Редактировать профиль</ion-label>
             </ion-item>
-            <ion-item button @click="showNotificationSettings">
+            <!-- <ion-item button @click="showNotificationSettings">
               <ion-icon :icon="notificationsOutline" slot="start"></ion-icon>
               <ion-label>Уведомления</ion-label>
-            </ion-item>
+            </ion-item> -->
             <ion-item button @click="showAbout">
               <ion-icon :icon="informationCircleOutline" slot="start"></ion-icon>
               <ion-label>О приложении</ion-label>
@@ -148,7 +148,7 @@
     <EcoDialog
       :is-open="showAboutDialog"
       title="О приложении"
-      message="EcoEvents - приложение для организации и участия в экологических мероприятиях.
+      message="Волонтёрство - приложение для организации и участия в экологических мероприятиях.
 
 Версия: 1.0.0"
       confirm-text="OK"

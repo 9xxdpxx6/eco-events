@@ -225,7 +225,7 @@
                   <ion-icon :icon="chevronForwardOutline" class="setting-arrow" />
                 </div>
                 
-                <div class="setting-item" @click="showNotificationSettings">
+                <!-- <div class="setting-item" @click="showNotificationSettings">
                   <div class="setting-icon">
                     <ion-icon :icon="notificationsOutline" />
                   </div>
@@ -234,7 +234,7 @@
                     <div class="setting-subtitle">Настройки push-уведомлений</div>
                   </div>
                   <ion-icon :icon="chevronForwardOutline" class="setting-arrow" />
-                </div>
+                </div> -->
               </div>
             </div>
 
@@ -303,7 +303,7 @@
     <EcoDialog
       :is-open="showAboutDialog"
       title="О приложении"
-      message="EcoEvents - приложение для организации и участия в экологических мероприятиях.
+      message="Волонтёрство - приложение для организации и участия в экологических мероприятиях.
 
 Версия: 1.0.0"
       confirm-text="OK"

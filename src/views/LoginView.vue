@@ -9,8 +9,8 @@
           </div>
           <div class="app-branding">
             <div class="app-title-section">
-              <img src="@/assets/logo-white.png" alt="EcoEvents Logo" class="app-logo" />
-              <h1 class="app-title">EcoEvents</h1>
+              <img src="@/assets/logo-white.png" alt="Волонтёрство" class="app-logo" />
+              <h1 class="app-title">Волонтёрство</h1>
             </div>
             <p class="app-subtitle">Экологические мероприятия</p>
           </div>
